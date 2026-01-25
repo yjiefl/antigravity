@@ -25,9 +25,9 @@ class SkillManagerGUI:
         self.manager = SkillManager()
         self.source_manager = SourceManager()
         self.current_lang = "zh"  # 当前显示语言: zh=中文, en=英文
-28:         self.all_skills = []      # 存储所有的 skill 数据以供搜索
-29:         self.search_var = tk.StringVar()  # 搜索框变量
-30:         self.search_var.trace_add("write", self.on_search_change) # 监听搜索框变化
+        self.all_skills = []      # 存储所有的 skill 数据以供搜索
+        self.search_var = tk.StringVar()  # 搜索框变量
+        self.search_var.trace_add("write", self.on_search_change) # 监听搜索框变化
         
         # 设置样式
         self.setup_styles()
