@@ -841,6 +841,7 @@ def main():
     """主函数"""
     root = tk.Tk()
     app = SkillManagerGUI(root)
+
     
     # 窗口居中
     root.update_idletasks()
