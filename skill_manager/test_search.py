@@ -65,5 +65,22 @@ class SearchLogicTest(unittest.TestCase):
                    query.lower() in s.get('description_zh', '').lower()]
         self.assertEqual(len(results), 0)
 
+    def test_duplicate_check(self):
+        # Add a duplicate skill
+        self.all_skills.append({
+            'name': 'pdf',
+            'description': 'Another PDF tool',
+            'path': '/other/path'
+        })
+        
+        from collections import defaultdict
+        name_counts = defaultdict(list)
+        for skill in self.all_skills:
+            name_counts[skill['name']].append(skill)
+            
+        duplicates = {name: skills for name, skills in name_counts.items() if len(skills) > 1}
+        self.assertIn('pdf', duplicates)
+        self.assertEqual(len(duplicates['pdf']), 2)
+
 if __name__ == '__main__':
     unittest.main()

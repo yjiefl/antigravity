@@ -173,6 +173,7 @@ class SkillManagerGUI:
         ttk.Button(btn_frame, text="📝 生成翻译", command=self.generate_translations).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn_frame, text="⚙️ 管理来源", command=self.show_source_manager).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn_frame, text="🌐 切换语言", command=self.toggle_language).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(btn_frame, text="🔍 查找重复", command=self.check_duplicates).pack(side=tk.LEFT, padx=(0, 5))
     
     def create_log_section(self, parent, row):
         """创建日志显示区域"""
@@ -260,6 +261,17 @@ class SkillManagerGUI:
         
         if not self.search_var.get():
             self.log_message(f"✓ 已加载 {len(skills)} 个skills", 'info')
+            
+            # 自动检查重复并提示
+            dup_names = set()
+            seen_names = set()
+            for s in self.all_skills:
+                if s['name'] in seen_names:
+                    dup_names.add(s['name'])
+                seen_names.add(s['name'])
+            
+            if dup_names:
+                self.log_message(f"⚠️ 注意: 发现 {len(dup_names)} 个名称重复的 Skill，建议查看！", 'error')
 
     def on_search_change(self, *args):
         """搜索框内容变化回调"""
@@ -297,9 +309,72 @@ class SkillManagerGUI:
                 filtered_count += 1
         
         # 如果正在搜索，且有结果，记录搜索结果数量
-        # (避免实时输入时日志刷屏，可以加个判断或者只在刷新时显示)
-        # 这里我们只在 log_message 中记录，但不打扰用户
         pass
+
+    def check_duplicates(self):
+        """查找并提示重复名称的 skill"""
+        from collections import defaultdict
+        
+        name_counts = defaultdict(list)
+        for skill in self.all_skills:
+            name_counts[skill['name']].append(skill)
+            
+        duplicates = {name: skills for name, skills in name_counts.items() if len(skills) > 1}
+        
+        if not duplicates:
+            messagebox.showinfo("重复检查", "未发现重复名称的 Skill。")
+            return
+            
+        # 创建结果窗口
+        dup_window = tk.Toplevel(self.root)
+        dup_window.title("发现重复 Skill")
+        dup_window.geometry("800x500")
+        
+        frame = ttk.Frame(dup_window, padding="20")
+        frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        dup_window.columnconfigure(0, weight=1)
+        dup_window.rowconfigure(0, weight=1)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
+        
+        ttk.Label(frame, text="以下 Skill 名称存在重复，请检查：", 
+                 font=('Arial', 12, 'bold'), foreground='#e74c3c').grid(row=0, column=0, sticky=tk.W, pady=(0, 10))
+        
+        # 使用 Treeview 显示重复详情
+        columns = ('name', 'version', 'source', 'path')
+        dup_tree = ttk.Treeview(frame, columns=columns, show='headings', height=15)
+        
+        dup_tree.heading('name', text='名称')
+        dup_tree.heading('version', text='版本')
+        dup_tree.heading('source', text='来源')
+        dup_tree.heading('path', text='完整路径')
+        
+        dup_tree.column('name', width=120)
+        dup_tree.column('version', width=80)
+        dup_tree.column('source', width=150)
+        dup_tree.column('path', width=400)
+        
+        # 滚动条
+        scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=dup_tree.yview)
+        dup_tree.configure(yscrollcommand=scrollbar.set)
+        
+        dup_tree.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        
+        # 填充数据
+        for name, skills in duplicates.items():
+            # 为每组重复添加一个空行作为分隔
+            for skill in skills:
+                dup_tree.insert('', tk.END, values=(
+                    skill['name'],
+                    skill['version'],
+                    skill.get('display_source', '未知'),
+                    skill['path']
+                ))
+            # 插入分隔线感视觉效果
+            dup_tree.insert('', tk.END, values=("-"*20, "-"*10, "-"*20, "-"*50))
+            
+        ttk.Button(frame, text="关闭", command=dup_window.destroy).grid(row=2, column=0, pady=(15, 0))
     
     def download_skill(self):
         """下载skill"""

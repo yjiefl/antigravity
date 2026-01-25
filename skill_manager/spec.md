@@ -99,3 +99,21 @@ classDiagram
     }
     SkillManagerGUI --> SkillManager
 ```
+## 7. 重复名称检测功能
+### 7.1 检测流程
+1. 遍历 `self.all_skills` 记录所有 Skill 名称出现的次数。
+2. 找出出现次数大于 1 的名称。
+3. 如果存在重复，弹出对话框显示重复的 Skill 列表以及它们的详细路径。
+
+### 7.2 重复检测流程图
+```mermaid
+flowchart TD
+    A[开始检测] --> B[遍历 all_skills]
+    B --> C[建立名称计数字典]
+    C --> D{是否有计数 > 1?}
+    D -- 是 --> E[收集重复 Skill 详细信息]
+    E --> F[弹出结果对话框]
+    D -- 否 --> G[提示未发现重复]
+    F --> H[结束]
+    G --> H
+```
