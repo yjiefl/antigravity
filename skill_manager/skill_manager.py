@@ -588,6 +588,16 @@ class SkillManager:
         'connect': '应用连接工具,将Claude连接到任何应用。发送邮件、创建问题、发布消息等。',
         'meeting-insights-analyzer': '会议洞察分析器,分析会议记录和录音,发现行为模式和可操作的洞察。',
         'lead-research-assistant': '潜在客户研究助手,通过分析公司数据和在线信息识别高质量潜在客户。',
+        
+        # 新增项目相关翻译
+        'frontend-dev-guidelines': 'React/TypeScript 应用的前端开发指南。包含 Suspense、懒加载、useSuspenseQuery、基于 features 目录的文件组织、MUI v7 样式处理、TanStack Router、性能优化以及 TypeScript 最佳实践。',
+        'backend-dev-guidelines': 'Node.js/Express/TypeScript 微服务的综合后端开发指南。涵盖分层架构（路由 → 控制器 → 服务 → 存储库）、BaseController 模式、错误处理、性能监控、测试策略以及 API 迁移。',
+        'skill-developer': '遵循 Anthropic 最佳实践创建和管理 Claude Code Skill 工具。涵盖 Skill 结构、YAML 元数据、触发类型、钩子机制(hooks)、调试激活以及 500 行规则。',
+        'route-tester': '使用基于 Cookie 的身份验证测试项目中的已认证路由。支持 API 端点测试、功能验证以及身份验证问题调试。',
+        'error-tracking': '为项目服务添加 Sentry v8 错误追踪和性能监控。用于异常捕获、定时任务监测及数据库性能跟踪。',
+        'dispatching-parallel-agents': '当面临 2 个或更多可以独立运行、无需共享状态或顺序依赖的任务时使用，提升并行处理效率。',
+        'executing-plans': '当你有一个书面的实施计划，需要在带有审核检查点的独立会话中执行时使用，确保执行过程受控。',
+        'brainstorming': '在进行任何创造性工作（开发功能、构建组件或修改行为）之前使用的头脑风暴工具。在实施前深度探索用户意图、需求和设计方案。',
     }
 
     def load_translation_library(self) -> Dict:
