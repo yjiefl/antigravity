@@ -391,12 +391,30 @@ class SkillManagerGUI:
         item = self.skills_tree.item(selection[0])
         skill_name = item['values'][0]
         
-        result = messagebox.askyesno("确认", f"确定要卸载 '{skill_name}' 吗?")
+        # 找到对应的 skill 数据
+        skill_data = None
+        for s in self.all_skills:
+            if s['name'] == skill_name:
+                skill_data = s
+                break
+        
+        if not skill_data:
+            messagebox.showerror("错误", "无法找到该 Skill 的信息")
+            return
+
+        # 确定实际要卸载的名称 (如果是包中的 skill，则卸载整个包)
+        target_uninstall_name = skill_data['package_name'] if skill_data.get('is_from_package') else skill_data['name']
+        
+        confirm_msg = f"确定要卸载 '{skill_name}' 吗?"
+        if skill_data.get('is_from_package'):
+            confirm_msg = f"'{skill_name}' 是 Skill 包 '{target_uninstall_name}' 的一部分。\n卸载将移除该包中的所有 Skill。\n\n确定要继续吗?"
+
+        result = messagebox.askyesno("确认", confirm_msg)
         if not result:
             return
         
-        self.log_message(f"🗑️  卸载skill: {skill_name}", 'info')
-        success, msg = self.manager.uninstall_skill(skill_name)
+        self.log_message(f"🗑️  卸载: {target_uninstall_name} (包含 {skill_name})", 'info')
+        success, msg = self.manager.uninstall_skill(target_uninstall_name)
         
         if success:
             self.log_message(msg, 'success')
@@ -414,10 +432,9 @@ class SkillManagerGUI:
         item = self.skills_tree.item(selection[0])
         skill_name = item['values'][0]
         
-        # 从列表中找到对应的skill以获取路径
-        skills = self.manager.list_skills()
+        # 从缓存中找到对应的 skill
         skill_data = None
-        for skill in skills:
+        for skill in self.all_skills:
             if skill['name'] == skill_name:
                 skill_data = skill
                 break
