@@ -253,21 +253,48 @@ class SkillManager:
         """从Git仓库下载skill"""
         try:
             # 检查git是否可用
-            result = subprocess.run(['git', '--version'], 
-                                  capture_output=True, text=True)
-            if result.returncode != 0:
-                return False, "Git未安装,请先安装Git"
+            try:
+                result = subprocess.run(['git', '--version'], 
+                                      capture_output=True, text=True)
+                if result.returncode != 0:
+                    return False, f"Git命令运行异常 (Code {result.returncode}): {result.stderr}"
+            except FileNotFoundError:
+                return False, "系统未找到Git命令,请确保已安装Git并添加到环境变量PATH中"
             
             # 克隆仓库
-            log_func("📦 正在克隆仓库...")
+            log_func(f"📦 正在准备克隆: {url}")
             clone_path = temp_path / 'repo'
-            result = subprocess.run(
-                ['git', 'clone', '--depth', '1', url, str(clone_path)],
-                capture_output=True, text=True
+            
+            # 使用 Popen 以支持实时进度读取
+            # 必须设置 GIT_TERMINAL_PROMPT=0 避免阻塞
+            env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+            
+            # git clone 输出进度到 stderr
+            process = subprocess.Popen(
+                ['git', 'clone', '--depth', '1', '--progress', url, str(clone_path)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+                bufsize=1,
+                universal_newlines=True
             )
             
-            if result.returncode != 0:
-                return False, f"克隆失败: {result.stderr}"
+            # 实时读取 stderr (git 把进度写在 stderr)
+            full_stderr = []
+            while True:
+                line = process.stderr.readline()
+                if not line and process.poll() is not None:
+                    break
+                if line:
+                    clean_line = line.strip()
+                    if clean_line:
+                        log_func(f"  > {clean_line}")
+                        full_stderr.append(clean_line)
+            
+            if process.returncode != 0:
+                error_msg = "\n".join(full_stderr) or "未知Git错误"
+                return False, f"克隆失败: {error_msg}"
             
             # 确定skill名称
             if skill_name is None:
@@ -280,7 +307,7 @@ class SkillManager:
             return success, msg
             
         except Exception as e:
-            return False, f"Git下载失败: {str(e)}"
+            return False, f"Git操作发生异常: {str(e)}"
     
     def download_from_zip(self, url: str, skill_name: str, temp_path: Path, log_func) -> tuple[bool, str]:
         """从ZIP文件下载skill"""
@@ -520,14 +547,49 @@ class SkillManager:
         
         return result
     
-    def translate_to_chinese(self, text: str) -> str:
-        """改进的英文到中文翻译"""
-        if not text:
-            return ""
+    # 手工翻译的高质量中文描述
+    MANUAL_TRANSLATIONS = {
+        # Anthropic官方skills
+        'pdf': 'PDF综合操作工具包,用于提取文本和表格、创建新PDF、合并/拆分文档以及处理表单。当Claude需要填写PDF表单或以编程方式大规模处理、生成或分析PDF文档时使用。',
+        'xlsx': '综合电子表格创建、编辑和分析工具,支持公式、格式化、数据分析和可视化。当Claude需要处理电子表格(.xlsx, .xlsm, .csv, .tsv等)时使用,包括:(1)创建带公式和格式的新电子表格,(2)读取或分析数据,(3)修改现有电子表格并保留公式,(4)在电子表格中进行数据分析和可视化,或(5)重新计算公式。',
+        'pptx': 'PowerPoint演示文稿创建和编辑工具,支持幻灯片设计、内容布局和格式化。用于创建专业的演示文稿。',
+        'docx': 'Word文档创建和编辑工具,支持文档格式化、样式和内容管理。用于创建和编辑专业文档。',
+        'algorithmic-art': '使用p5.js创建算法艺术,具有种子随机性和交互式参数探索功能。当用户请求使用代码创建艺术、生成艺术、算法艺术、流场或粒子系统时使用。创建原创算法艺术而不是复制现有艺术家的作品以避免版权侵犯。',
+        'skill-creator': 'Skill创建指南。当用户想要创建新skill(或更新现有skill)以扩展Claude的能力,提供专业知识、工作流或工具集成时使用。',
+        'theme-factory': '主题样式工具包,用于为作品应用主题。这些作品可以是幻灯片、文档、网页等。',
+        'doc-coauthoring': '引导用户完成文档协作编写的结构化工作流。当用户想要与Claude协作编写文档时使用。',
+        'frontend-design': '前端设计工具,用于创建现代化的网页界面和用户体验设计。',
+        'canvas-design': 'Canvas设计工具,用于创建图形和可视化内容。',
+        'brand-guidelines': '品牌指南工具,帮助创建和维护一致的品牌形象和设计规范。',
+        'internal-comms': '内部沟通工具,用于创建和管理组织内部的沟通内容。',
+        'mcp-builder': 'MCP(Model Context Protocol)服务器构建工具,用于创建和配置MCP服务器。',
+        'slack-gif-creator': 'Slack GIF创建工具,用于为Slack创建动画GIF表情和内容。',
+        'web-artifacts-builder': 'Web作品构建工具,用于创建交互式网页应用和组件。',
+        'webapp-testing': 'Web应用测试工具,用于测试和验证Web应用的功能和性能。',
         
-        import re
+        # ComposioHQ awesome-claude-skills
+        'content-research-writer': '内容研究写作助手,通过进行研究来协助撰写高质量内容。',
+        'tailored-resume-generator': '定制简历生成器,分析职位描述并生成针对性的简历,突出相关技能和经验。',
+        'langsmith-fetch': 'LangSmith调试工具,通过获取执行跟踪来调试LangChain和LangGraph代理。',
+        'template-skill': 'Skill模板,用于创建新的Claude skills的起始模板。',
+        'youtube-downloader': 'YouTube视频下载器,支持自定义质量和格式下载YouTube视频。',
+        'raffle-winner-picker': '抽奖工具,从列表、电子表格或Google Sheets中随机选择获奖者。',
+        'skill-share': 'Skill分享工具,创建新的Claude skills并自动分享到社区。',
+        'developer-growth-analysis': '开发者成长分析工具,分析你最近的Claude Code聊天历史,识别编码模式和成长领域。',
+        'domain-name-brainstormer': '域名创意生成器,为你的项目生成创意域名并检查可用性。',
+        'image-enhancer': '图像增强工具,提高图像质量,特别是截图,通过增强清晰度和细节。',
+        'connect-apps': '应用连接器,将Claude连接到Gmail、Slack、GitHub等外部应用。',
+        'invoice-organizer': '发票整理工具,自动整理发票和收据用于税务准备。',
+        'twitter-algorithm-optimizer': 'Twitter算法优化器,使用Twitter算法分析和优化推文以获得最大曝光。',
+        'changelog-generator': '更新日志生成器,从git提交历史自动创建面向用户的更新日志。',
+        'artifacts-builder': '作品构建器,用于创建复杂的多组件claude.ai HTML作品的工具套件。',
+        'competitive-ads-extractor': '竞品广告提取器,从广告库(Facebook、Google等)提取和分析竞争对手的广告。',
+        'file-organizer': '文件整理工具,智能地在你的计算机上整理文件和文件夹。',
+        'connect': '应用连接工具,将Claude连接到任何应用。发送邮件、创建问题、发布消息等。',
+        'meeting-insights-analyzer': '会议洞察分析器,分析会议记录和录音,发现行为模式和可操作的洞察。',
+        'lead-research-assistant': '潜在客户研究助手,通过分析公司数据和在线信息识别高质量潜在客户。',
+    }
 
-    
     def load_translation_library(self) -> Dict:
         """加载预翻译库"""
         translation_file = Path(__file__).parent / 'skill_translations.json'
@@ -538,6 +600,7 @@ class SkillManager:
             except:
                 return {}
         return {}
+
     def translate_to_chinese(self, text: str, skill_name: str = None) -> str:
         """改进的英文到中文翻译,优先使用预翻译库"""
         if not text:
@@ -548,7 +611,11 @@ class SkillManager:
             if skill_name in self.translation_library:
                 return self.translation_library[skill_name].get('zh', '')
         
-        # 如果没有预翻译,使用自动翻译
+        # 2nd 优先使用手工翻译表
+        if skill_name in self.MANUAL_TRANSLATIONS:
+            return self.MANUAL_TRANSLATIONS[skill_name]
+            
+        # 如果没有预翻译,使用关键字匹配翻译
         import re
         
         translations = {
@@ -582,3 +649,56 @@ class SkillManager:
         
         return result
 
+    def generate_translations(self, progress_callback=None) -> tuple[bool, str]:
+        """生成翻译库并保存"""
+        try:
+            def log(msg):
+                if progress_callback:
+                    progress_callback(msg)
+            
+            log("🔍 正在扫描所有skills...")
+            skills = self.list_skills()
+            
+            log(f"找到 {len(skills)} 个skills,开始生成翻译库...")
+            
+            translation_library = {}
+            for skill in skills:
+                skill_name = skill['name']
+                description = skill.get('description', '')
+                
+                if not description:
+                    continue
+                
+                # 确定翻译来源
+                if skill_name in self.MANUAL_TRANSLATIONS:
+                    zh = self.MANUAL_TRANSLATIONS[skill_name]
+                    source = 'manual'
+                else:
+                    zh = self.translate_to_chinese(description)
+                    source = 'auto'
+                
+                translation_library[skill_name] = {
+                    'en': description,
+                    'zh': zh,
+                    'source': source
+                }
+                
+                status_icon = "✓" if source == 'manual' else "○"
+                log(f"{status_icon} {skill_name}: 已完成 ({'手工' if source == 'manual' else '自动'})")
+            
+            # 保存到文件
+            output_file = Path(__file__).parent / 'skill_translations.json'
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(translation_library, f, ensure_ascii=False, indent=2)
+            
+            # 重新加载到当前实例
+            self.translation_library = translation_library
+            
+            manual_count = sum(1 for v in translation_library.values() if v['source'] == 'manual')
+            auto_count = sum(1 for v in translation_library.values() if v['source'] == 'auto')
+            
+            msg = f"翻译库生成成功! 共 {len(translation_library)} 个 (人工: {manual_count}, 自动: {auto_count})"
+            return True, msg
+            
+        except Exception as e:
+            return False, f"生成翻译库失败: {str(e)}"

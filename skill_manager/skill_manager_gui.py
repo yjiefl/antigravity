@@ -155,6 +155,7 @@ class SkillManagerGUI:
         ttk.Button(btn_frame, text="卸载选中", command=self.uninstall_selected).pack(
             side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn_frame, text="查看详情", command=self.show_skill_info).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(btn_frame, text="📝 生成翻译", command=self.generate_translations).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn_frame, text="⚙️ 管理来源", command=self.show_source_manager).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn_frame, text="🌐 切换语言", command=self.toggle_language).pack(side=tk.LEFT, padx=(0, 5))
     
@@ -304,6 +305,32 @@ class SkillManagerGUI:
         else:
             self.log_message(msg, 'error')
     
+    def generate_translations(self):
+        """重新生成翻译库"""
+        if not messagebox.askyesno("生成翻译", "确定要重新扫描所有Skill并生成翻译库吗?\n(这将更新中文描述)"):
+            return
+            
+        self.log_message("📝 开始更新翻译库...", 'info')
+        
+        def run():
+            def progress_callback(msg):
+                self.root.after(0, lambda: self.log_message(msg, 'info'))
+                
+            success, msg = self.manager.generate_translations(progress_callback)
+            
+            def on_complete():
+                if success:
+                    self.log_message(msg, 'success')
+                    messagebox.showinfo("成功", msg)
+                    self.refresh_skills()
+                else:
+                    self.log_message(msg, 'error')
+                    messagebox.showerror("失败", msg)
+                    
+            self.root.after(0, on_complete)
+            
+        threading.Thread(target=run, daemon=True).start()
+
     def uninstall_selected(self):
         """卸载选中的skill"""
         selection = self.skills_tree.selection()
