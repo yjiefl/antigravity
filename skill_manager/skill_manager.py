@@ -74,14 +74,54 @@ class SkillManager:
             if not skill_path.exists():
                 continue
             
-            # 方式1: 检查是否有skills/子文件夹
-            skills_subdir = skill_path / 'skills'
-            if skills_subdir.exists() and skills_subdir.is_dir():
-                # 这是一个skill包,扫描skills/目录中的所有skills
-                for sub_skill_dir in skills_subdir.iterdir():
-                    if sub_skill_dir.is_dir():
-                        skill_md = sub_skill_dir / 'SKILL.md'
+            # 扫描可能的 skill 存放目录
+            found_sub_skills = False
+            
+            # 1. 检查已知的 skill 存放子目录
+            possible_subdirs = ['skills', '.claude/skills']
+            for subdir_name in possible_subdirs:
+                skills_subdir = skill_path / subdir_name
+                if skills_subdir.exists() and skills_subdir.is_dir():
+                    # 这是一个 skill 包,扫描子目录中的所有 skills
+                    for sub_skill_dir in skills_subdir.iterdir():
+                        if sub_skill_dir.is_dir():
+                            skill_md = sub_skill_dir / 'SKILL.md'
+                            if skill_md.exists():
+                                skill_md_info = self.parse_skill_md(skill_md)
+                                
+                                skills.append({
+                                    'name': skill_md_info.get('skill_name', sub_skill_dir.name),
+                                    'path': str(sub_skill_dir),
+                                    'version': skill_info.get('version', 'unknown'),
+                                    'description': skill_md_info.get('skill_description', ''),
+                                    'description_zh': skill_md_info.get('skill_description_zh', ''),
+                                    'author': skill_info.get('author', ''),
+                                    'installed_at': skill_info.get('installed_at', ''),
+                                    'source': skill_info.get('source', ''),
+                                    'package_name': skill_name,
+                                    'is_from_package': True
+                                })
+                                found_sub_skills = True
+            
+            if not found_sub_skills:
+                # 2. 检查根目录是否包含多个 skill 子目录
+                skill_dirs = []
+                for item in skill_path.iterdir():
+                    if item.is_dir() and item.name not in ['.git', '__pycache__', 'node_modules']:
+                        skill_md = item / 'SKILL.md'
                         if skill_md.exists():
+                            skill_dirs.append(item)
+                
+                if len(skill_dirs) > 0:
+                    # 检查根目录是否本身就是一个 skill (通过根目录是否有 SKILL.md 判断)
+                    root_skill_md = skill_path / 'SKILL.md'
+                    if root_skill_md.exists() and len(skill_dirs) == 0:
+                        # 这是一个独立的 skill (下面会处理)
+                        pass
+                    else:
+                        # 根目录包含多个 skills,作为 skill 包处理
+                        for sub_skill_dir in skill_dirs:
+                            skill_md = sub_skill_dir / 'SKILL.md'
                             skill_md_info = self.parse_skill_md(skill_md)
                             
                             skills.append({
@@ -96,34 +136,9 @@ class SkillManager:
                                 'package_name': skill_name,
                                 'is_from_package': True
                             })
-            else:
-                # 方式2: 检查根目录是否包含多个skill子目录
-                skill_dirs = []
-                for item in skill_path.iterdir():
-                    if item.is_dir():
-                        skill_md = item / 'SKILL.md'
-                        if skill_md.exists():
-                            skill_dirs.append(item)
-                
-                if len(skill_dirs) > 1:
-                    # 根目录包含多个skills,作为skill包处理
-                    for sub_skill_dir in skill_dirs:
-                        skill_md = sub_skill_dir / 'SKILL.md'
-                        skill_md_info = self.parse_skill_md(skill_md)
-                        
-                        skills.append({
-                            'name': skill_md_info.get('skill_name', sub_skill_dir.name),
-                            'path': str(sub_skill_dir),
-                            'version': skill_info.get('version', 'unknown'),
-                            'description': skill_md_info.get('skill_description', ''),
-                            'description_zh': skill_md_info.get('skill_description_zh', ''),
-                            'author': skill_info.get('author', ''),
-                            'installed_at': skill_info.get('installed_at', ''),
-                            'source': skill_info.get('source', ''),
-                            'package_name': skill_name,
-                            'is_from_package': True
-                        })
-                else:
+                            found_sub_skills = True
+            
+            if not found_sub_skills:
                     # 这是一个独立的skill
                     skills.append({
                         'name': skill_name,
