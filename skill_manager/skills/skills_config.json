@@ -1,12 +1,5 @@
 {
   "installed_skills": {
-    "example-skill": {
-      "version": "1.0.0",
-      "description": "",
-      "author": "",
-      "installed_at": "2026-01-25T13:43:26.276139",
-      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmpgqf127rz/repo"
-    },
     "awesome-claude-skills": {
       "version": "1.0.0",
       "description": "",
@@ -27,6 +20,13 @@
       "author": "",
       "installed_at": "2026-01-25T18:46:12.376551",
       "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmpmfbqv_b9/repo"
+    },
+    "anthropic-skills": {
+      "version": "1.0.0",
+      "description": "",
+      "author": "",
+      "installed_at": "2026-01-25T22:17:38.936376",
+      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmplqau4ta9/repo"
     }
   },
   "repositories": []
