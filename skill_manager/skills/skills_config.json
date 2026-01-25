@@ -1,0 +1,19 @@
+{
+  "installed_skills": {
+    "example-skill": {
+      "version": "1.0.0",
+      "description": "",
+      "author": "",
+      "installed_at": "2026-01-25T13:43:26.276139",
+      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmpgqf127rz/repo"
+    },
+    "awesome-claude-skills": {
+      "version": "1.0.0",
+      "description": "",
+      "author": "",
+      "installed_at": "2026-01-25T17:31:56.262215",
+      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmp6s0wflup/repo"
+    }
+  },
+  "repositories": []
+}

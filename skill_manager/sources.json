@@ -1,0 +1,60 @@
+{
+  "sources": [
+    {
+      "id": "anthropic-official",
+      "name": "Anthropic官方Skills",
+      "url": "https://github.com/anthropics/anthropic-skills",
+      "description": "Anthropic官方skill仓库(包含16个官方skills)",
+      "type": "builtin",
+      "skills": [
+        {
+          "name": "anthropic-skills",
+          "url": "https://github.com/anthropics/anthropic-skills.git",
+          "description": "官方完整skill包"
+        }
+      ]
+    },
+    {
+      "id": "composio-awesome",
+      "name": "ComposioHQ Awesome Skills",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills",
+      "description": "ComposioHQ精选的Claude skills集合",
+      "type": "custom",
+      "skills": [
+        {
+          "name": "awesome-claude-skills",
+          "url": "https://github.com/ComposioHQ/awesome-claude-skills.git",
+          "description": "包含28个实用skills"
+        }
+      ]
+    },
+    {
+      "id": "98ef1ded",
+      "name": "claude-code-infrastructure-showcase",
+      "url": "https://github.com/diet103/claude-code-infrastructure-showcase",
+      "description": "",
+      "type": "custom",
+      "skills": [
+        {
+          "name": "claude-code-infrastructure-showcase",
+          "url": "https://github.com/diet103/claude-code-infrastructure-showcase.git",
+          "description": ""
+        }
+      ]
+    },
+    {
+      "id": "ffdf9982",
+      "name": "superpowers",
+      "url": "https://github.com/obra/superpowers",
+      "description": "",
+      "type": "custom",
+      "skills": [
+        {
+          "name": "superpowers",
+          "url": "https://github.com/obra/superpowers.git",
+          "description": ""
+        }
+      ]
+    }
+  ]
+}
