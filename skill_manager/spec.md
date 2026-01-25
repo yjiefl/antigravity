@@ -126,3 +126,14 @@ flowchart TD
 - **涉及文件**:
     - `skill_manager/sources.json`
     - `skill_manager/source_manager.py`
+
+### 8.2 批量删除与个体 Skill 卸载功能增强
+- **日期**: 2026-01-25
+- **问题**: 原有卸载逻辑仅支持单选，且卸载包中子 Skill 时会自动删除整个包（Repository），不符合精细化管理需求。
+- **修复方案**:
+    - 修改 `SkillManager.uninstall_skill` 支持接受具体路径，仅删除指定目录。
+    - 增强 `SkillManagerGUI.uninstall_selected` 支持 Treeview 多选，并循环处理卸载逻辑。
+    - 优化确认提示，区分独立 Skill 与包中子 Skill 的卸载后果。
+- **涉及文件**:
+    - `skill_manager/skill_manager.py`
+    - `skill_manager/skill_manager_gui.py`

@@ -457,45 +457,68 @@ class SkillManagerGUI:
         threading.Thread(target=run, daemon=True).start()
 
     def uninstall_selected(self):
-        """卸载选中的skill"""
+        """卸载选中的skill (支持批量删除)"""
         selection = self.skills_tree.selection()
         if not selection:
             messagebox.showwarning("提示", "请先选择要卸载的skill")
             return
         
-        item = self.skills_tree.item(selection[0])
-        skill_name = item['values'][0]
-        
-        # 找到对应的 skill 数据
-        skill_data = None
-        for s in self.all_skills:
-            if s['name'] == skill_name:
-                skill_data = s
-                break
-        
-        if not skill_data:
-            messagebox.showerror("错误", "无法找到该 Skill 的信息")
+        skills_to_delete = []
+        for sel in selection:
+            item = self.skills_tree.item(sel)
+            skill_name = item['values'][0]
+            
+            # 从本地缓存中匹配对应的 skill 数据
+            skill_data = None
+            for s in self.all_skills:
+                if s['name'] == skill_name:
+                    skill_data = s
+                    break
+            
+            if skill_data:
+                skills_to_delete.append(skill_data)
+
+        if not skills_to_delete:
             return
 
-        # 确定实际要卸载的名称 (如果是包中的 skill，则卸载整个包)
-        target_uninstall_name = skill_data['package_name'] if skill_data.get('is_from_package') else skill_data['name']
-        
-        confirm_msg = f"确定要卸载 '{skill_name}' 吗?"
-        if skill_data.get('is_from_package'):
-            confirm_msg = f"'{skill_name}' 是 Skill 包 '{target_uninstall_name}' 的一部分。\n卸载将移除该包中的所有 Skill。\n\n确定要继续吗?"
-
-        result = messagebox.askyesno("确认", confirm_msg)
-        if not result:
-            return
-        
-        self.log_message(f"🗑️  卸载: {target_uninstall_name} (包含 {skill_name})", 'info')
-        success, msg = self.manager.uninstall_skill(target_uninstall_name)
-        
-        if success:
-            self.log_message(msg, 'success')
-            self.refresh_skills()
+        # 4. 构建确认消息
+        if len(skills_to_delete) == 1:
+            skill = skills_to_delete[0]
+            if skill.get('is_from_package'):
+                msg = f"确定要卸载 '{skill['name']}' 吗?\n(注意: 这只会删除该单个 Skill, 不会删除整个 '{skill['package_name']}' 包)"
+            else:
+                msg = f"确定要卸载 '{skill['name']}' 吗?"
         else:
-            self.log_message(msg, 'error')
+            msg = f"确定要卸载选中的 {len(skills_to_delete)} 个 Skill 吗?"
+
+        if not messagebox.askyesno("确认卸载", msg):
+            return
+
+        # 5. 执行卸载逻辑
+        success_count = 0
+        error_msgs = []
+        
+        for skill in skills_to_delete:
+            display_name = skill['name']
+            # 如果是包中的 skill, 传递路径参数以实现精细删除
+            if skill.get('is_from_package'):
+                success, res_msg = self.manager.uninstall_skill(skill['package_name'], skill['path'])
+            else:
+                success, res_msg = self.manager.uninstall_skill(skill['name'])
+            
+            if success:
+                success_count += 1
+                self.log_message(f"🗑️ {res_msg}", 'success')
+            else:
+                error_msgs.append(f"{display_name}: {res_msg}")
+                self.log_message(f"❌ {display_name} 卸载失败: {res_msg}", 'error')
+
+        # 6. 最终反馈
+        if success_count > 0:
+            self.refresh_skills()
+        
+        if error_msgs:
+            messagebox.showerror("部分卸载失败", f"以下 Skill 卸载失败:\n" + "\n".join(error_msgs))
     
     def show_skill_info(self):
         """显示skill详细信息"""

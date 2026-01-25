@@ -347,30 +347,41 @@ class SkillManager:
         except Exception as e:
             return False, f"ZIP下载失败: {str(e)}"
     
-    def uninstall_skill(self, skill_name: str) -> tuple[bool, str]:
+    def uninstall_skill(self, skill_name: str, skill_path: str = None) -> tuple[bool, str]:
         """
         卸载skill
         
         Args:
-            skill_name: skill名称
+            skill_name: skill名称 (通常是存储在 skills/ 下的顶级文件夹名)
+            skill_path: 具体路径 (如果是包中的子skill, 则提供此绝对路径)
         
         Returns:
             (是否成功, 消息)
         """
-        skill_path = self.skills_dir / skill_name
+        if skill_path:
+            delete_path = Path(skill_path)
+        else:
+            delete_path = self.skills_dir / skill_name
         
-        if not skill_path.exists():
-            return False, f"Skill '{skill_name}' 不存在"
+        if not delete_path.exists():
+            return False, f"路径 '{delete_path}' 不存在"
         
         try:
-            shutil.rmtree(skill_path)
+            # 执行物理删除
+            if delete_path.is_dir():
+                shutil.rmtree(delete_path)
+            else:
+                delete_path.unlink()
             
-            # 更新配置
-            if skill_name in self.config['installed_skills']:
-                del self.config['installed_skills'][skill_name]
-                self.save_config()
+            # 清理配置
+            # 只有当删除的是顶级包(独立模块)或者顶级目录已不复存在时，才从 skills_config.json 中移除
+            if not skill_path or not (self.skills_dir / skill_name).exists():
+                if skill_name in self.config['installed_skills']:
+                    del self.config['installed_skills'][skill_name]
+                    self.save_config()
             
-            return True, f"Skill '{skill_name}' 已卸载"
+            target_desc = f"Skill '{skill_name}'" if not skill_path else f"子 Skill '{delete_path.name}'"
+            return True, f"{target_desc} 已卸载"
             
         except Exception as e:
             return False, f"卸载失败: {str(e)}"
