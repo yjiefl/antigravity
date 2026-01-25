@@ -117,3 +117,12 @@ flowchart TD
     F --> H[结束]
     G --> H
 ```
+
+## 8. 修复记录
+### 8.1 Anthropic 官方 Skills 仓库地址修复
+- **日期**: 2026-01-25
+- **问题**: `sources.json` 和 `source_manager.py` 中的 Anthropic 官方仓库地址 `https://github.com/anthropics/anthropic-skills` 已失效，导致克隆失败。
+- **修复方案**: 将 URL 更新为正确的 `https://github.com/anthropics/skills`。
+- **涉及文件**:
+    - `skill_manager/sources.json`
+    - `skill_manager/source_manager.py`

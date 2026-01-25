@@ -76,13 +76,13 @@ class SourceManager:
             {
                 'id': 'anthropic-official',
                 'name': 'Anthropic官方Skills',
-                'url': 'https://github.com/anthropics/anthropic-skills',
+                'url': 'https://github.com/anthropics/skills',
                 'description': 'Anthropic官方skill仓库(包含16个官方skills)',
                 'type': 'builtin',
                 'skills': [
                     {
                         'name': 'anthropic-skills',
-                        'url': 'https://github.com/anthropics/anthropic-skills.git',
+                        'url': 'https://github.com/anthropics/skills.git',
                         'description': '官方完整skill包'
                     }
                 ]
