@@ -25,6 +25,9 @@ class SkillManagerGUI:
         self.manager = SkillManager()
         self.source_manager = SourceManager()
         self.current_lang = "zh"  # 当前显示语言: zh=中文, en=英文
+28:         self.all_skills = []      # 存储所有的 skill 数据以供搜索
+29:         self.search_var = tk.StringVar()  # 搜索框变量
+30:         self.search_var.trace_add("write", self.on_search_change) # 监听搜索框变化
         
         # 设置样式
         self.setup_styles()
@@ -116,9 +119,21 @@ class SkillManagerGUI:
         list_frame = ttk.LabelFrame(parent, text="已安装的Skills", padding="10")
         list_frame.grid(row=row, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         list_frame.columnconfigure(0, weight=1)
-        list_frame.rowconfigure(0, weight=1)
+        list_frame.rowconfigure(1, weight=1)
         parent.rowconfigure(row, weight=1)
         
+        # 搜索栏
+        search_frame = ttk.Frame(list_frame)
+        search_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        search_frame.columnconfigure(1, weight=1)
+        
+        ttk.Label(search_frame, text="🔍 搜索:", style='Header.TLabel').grid(row=0, column=0, padx=(0, 5))
+        self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var, font=('Arial', 10))
+        self.search_entry.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        
+        # 清空搜索按钮
+        ttk.Button(search_frame, text="重置", command=lambda: self.search_var.set(""), width=5).grid(row=0, column=2, padx=(5, 0))
+
         # 创建Treeview
         columns = ('name', 'version', 'description', 'source')
         self.skills_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=8)
@@ -137,8 +152,8 @@ class SkillManagerGUI:
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.skills_tree.yview)
         self.skills_tree.configure(yscrollcommand=scrollbar.set)
         
-        self.skills_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        self.skills_tree.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
         
         # 添加双击事件
         self.skills_tree.bind('<Double-1>', lambda e: self.show_skill_info())
@@ -215,6 +230,8 @@ class SkillManagerGUI:
         
         # 加载skills
         skills = self.manager.list_skills()
+        self.all_skills = []
+        
         for skill in skills:
             # 确定来源
             source = '未知'
@@ -235,21 +252,54 @@ class SkillManagerGUI:
                 else:
                     source = '未知'
             
+            skill['display_source'] = source
+            self.all_skills.append(skill)
             
-            # 根据当前语言选择描述
-            if self.current_lang == "zh" and skill.get('description_zh'):
-                desc = skill.get('description_zh', '')
-            else:
-                desc = skill.get('description', '')
-            desc = desc[:50] + '...' if len(desc) > 50 else desc
+        # 应用当前过滤器
+        self.apply_filter(self.search_var.get().lower())
+        
+        if not self.search_var.get():
+            self.log_message(f"✓ 已加载 {len(skills)} 个skills", 'info')
+
+    def on_search_change(self, *args):
+        """搜索框内容变化回调"""
+        query = self.search_var.get().lower()
+        self.apply_filter(query)
+
+    def apply_filter(self, query):
+        """根据关键词过滤并显示 skills"""
+        # 清空当前列表
+        for item in self.skills_tree.get_children():
+            self.skills_tree.delete(item)
             
-            self.skills_tree.insert('', tk.END, values=(
-                skill['name'],
-                skill['version'],
-                desc,
-                source
-            ))
-        self.log_message(f"✓ 已加载 {len(skills)} 个skills", 'info')
+        filtered_count = 0
+        for skill in self.all_skills:
+            # 搜索匹配: 名称, 英文描述, 中文描述
+            name_match = query in skill['name'].lower()
+            desc_en_match = query in skill.get('description', '').lower()
+            desc_zh_match = query in skill.get('description_zh', '').lower()
+            
+            if name_match or desc_en_match or desc_zh_match:
+                # 根据当前语言选择描述
+                if self.current_lang == "zh" and skill.get('description_zh'):
+                    desc = skill.get('description_zh', '')
+                else:
+                    desc = skill.get('description', '')
+                
+                display_desc = desc[:50] + '...' if len(desc) > 50 else desc if desc else ""
+                
+                self.skills_tree.insert('', tk.END, values=(
+                    skill['name'],
+                    skill['version'],
+                    display_desc,
+                    skill['display_source']
+                ))
+                filtered_count += 1
+        
+        # 如果正在搜索，且有结果，记录搜索结果数量
+        # (避免实时输入时日志刷屏，可以加个判断或者只在刷新时显示)
+        # 这里我们只在 log_message 中记录，但不打扰用户
+        pass
     
     def download_skill(self):
         """下载skill"""
