@@ -29,6 +29,12 @@ async function initApp() {
         // 绑定事件
         bindEvents();
 
+        // 启动健康检查
+        startHealthCheck();
+
+        // 初始化日期限制
+        initDateConstraints();
+
         console.log('应用初始化完成');
     } catch (error) {
         console.error('应用初始化失败:', error);
@@ -185,6 +191,76 @@ function bindEvents() {
     document.querySelectorAll('#fieldSelector input[type="checkbox"]').forEach(checkbox => {
         checkbox.addEventListener('change', handleFieldChange);
     });
+
+    // 快捷日期按钮
+    document.querySelectorAll('.quick-dates button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const days = parseInt(e.target.dataset.days);
+            setQuickDate(days);
+        });
+    });
+
+    // 导航栏点击效果
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function () {
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+}
+
+/**
+ * 设置快捷日期
+ */
+function setQuickDate(days) {
+    const end = new Date();
+    end.setDate(end.getDate() - 1); // 结束是昨天
+
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+
+    document.getElementById('endDate').value = end.toISOString().split('T')[0];
+    document.getElementById('startDate').value = start.toISOString().split('T')[0];
+}
+
+/**
+ * 初始化日期限制 (不能选今天)
+ */
+function initDateConstraints() {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const maxDate = yesterday.toISOString().split('T')[0];
+
+    document.getElementById('startDate').setAttribute('max', maxDate);
+    document.getElementById('endDate').setAttribute('max', maxDate);
+
+    // 如果当前值超过了限制，重置它
+    if (document.getElementById('startDate').value > maxDate) {
+        document.getElementById('startDate').value = '2024-01-01';
+    }
+    if (document.getElementById('endDate').value > maxDate) {
+        document.getElementById('endDate').value = maxDate;
+    }
+}
+
+/**
+ * 启动健康检查
+ */
+function startHealthCheck() {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.status-text');
+
+    setInterval(async () => {
+        const isOnline = await api.ping();
+        if (isOnline) {
+            statusDot.className = 'status-dot online';
+            statusText.textContent = '后端连接正常';
+        } else {
+            statusDot.className = 'status-dot offline';
+            statusText.textContent = '连接已断开';
+            // 可以选择在这里显示更显眼的错误提示
+        }
+    }, 5000);
 }
 
 /**
@@ -286,9 +362,14 @@ async function handleExport(format) {
         return;
     }
 
-    const cityId = appState.selectedCity;
+    const cityId = appState.selectedCities[0]; // 修复：使用选中列表中的第一个
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
+
+    if (!cityId) {
+        showError('请先查询数据后再尝试导出');
+        return;
+    }
 
     try {
         await api.exportWeather({
@@ -346,7 +427,7 @@ function displayStatsCards(summary) {
             '太阳辐射',
             summary.solar_radiation.avg,
             'W/m²',
-            `总计: ${summary.solar_radiation.total.toFixed(0)} W/m²`,
+            `总计: ${summary.solar_radiation.total_kwh.toFixed(2)} kWh/m²`,
             'radiation'
         ));
     }

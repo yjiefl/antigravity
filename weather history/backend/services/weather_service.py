@@ -49,7 +49,8 @@ class WeatherService:
         start_date: str,
         end_date: str,
         fields: List[str],
-        timezone: str = 'Asia/Shanghai'
+        timezone: str = 'Asia/Shanghai',
+        city_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         获取历史天气数据
@@ -99,6 +100,14 @@ class WeatherService:
             
             # 存入缓存
             self.cache.set(cache_key, parsed_data)
+            
+            # 如果提供了city_id，同时存入永久数据库
+            if city_id:
+                try:
+                    self.save_to_database(city_id, parsed_data)
+                    logger.info(f"同时将数据保存到永久数据库: 城市ID={city_id}")
+                except Exception as e:
+                    logger.warning(f"保存到永久数据库失败(非致命): {e}")
             
             logger.info(f"获取天气数据成功，共 {len(parsed_data.get('hourly_data', []))} 条记录")
             return parsed_data

@@ -97,8 +97,10 @@ class DataAnalyzer:
             if 'shortwave_radiation' in df.columns:
                 radiation_data = df['shortwave_radiation'].dropna()
                 if len(radiation_data) > 0:
+                    total_sum = radiation_data.sum()
                     summary['solar_radiation'] = {
-                        'total': round(radiation_data.sum(), 2),
+                        'total': round(total_sum, 2),
+                        'total_kwh': round(total_sum / 1000, 2),  # 转换为kWh/m²
                         'avg': round(radiation_data.mean(), 2),
                         'max': round(radiation_data.max(), 2)
                     }

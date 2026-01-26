@@ -3,6 +3,14 @@
  * 处理批量下载、完整性检查和数据统计
  */
 
+// 数据管理状态
+let downloadState = {
+    isDownloading: false,
+    cancelRequested: false,
+    totalChunks: 0,
+    completedChunks: 0
+};
+
 // 初始化数据管理功能
 function initDataManagement() {
     // 标签页切换
@@ -24,6 +32,12 @@ function initDataManagement() {
 
     // 刷新统计按钮
     document.getElementById('refreshStatsBtn').addEventListener('click', loadDataStatistics);
+
+    // 取消下载按钮
+    document.getElementById('cancelDownloadBtn').addEventListener('click', () => {
+        downloadState.cancelRequested = true;
+        showResultMessage('downloadResult', '由于用户请求，下载即将中止...', 'error');
+    });
 
     // 填充城市下拉框
     populateManagementCities();
@@ -67,46 +81,69 @@ function populateManagementCities() {
 /**
  * 处理批量下载
  */
+/**
+ * 处理批量下载
+ */
 async function handleBatchDownload() {
     const cityId = parseInt(document.getElementById('downloadCity').value);
-    const startDate = document.getElementById('downloadStartDate').value;
-    const endDate = document.getElementById('downloadEndDate').value;
+    const startDateStr = document.getElementById('downloadStartDate').value;
+    const endDateStr = document.getElementById('downloadEndDate').value;
 
-    if (!cityId || !startDate || !endDate) {
+    if (!cityId || !startDateStr || !endDateStr) {
         showResultMessage('downloadResult', '请填写所有字段', 'error');
         return;
     }
 
+    if (downloadState.isDownloading) return;
+
+    // 重置状态
+    downloadState.isDownloading = true;
+    downloadState.cancelRequested = false;
+
     const btn = document.getElementById('batchDownloadBtn');
     btn.disabled = true;
-    btn.textContent = '下载中...';
+
+    const progressContainer = document.getElementById('downloadProgressContainer');
+    const resultMsg = document.getElementById('downloadResult');
+    progressContainer.style.display = 'block';
+    resultMsg.style.display = 'none';
 
     try {
-        const response = await api.post('/data/batch-download', {
-            city_id: cityId,
-            start_date: startDate,
-            end_date: endDate,
-            fields: appState.selectedFields.length > 0 ? appState.selectedFields : DEFAULT_FIELDS
-        });
+        // 将时间范围分割成月份
+        const chunks = segmentDatesByMonth(startDateStr, endDateStr);
+        downloadState.totalChunks = chunks.length;
+        downloadState.completedChunks = 0;
 
-        if (response.code === 200 && response.data.success) {
-            showResultMessage('downloadResult',
-                `✓ ${response.data.message}\n` +
-                `城市: ${response.data.city_name}\n` +
-                `时间范围: ${response.data.start_date} 至 ${response.data.end_date}\n` +
-                `总记录数: ${response.data.total_records}\n` +
-                `已保存: ${response.data.saved_records} 条`,
-                'success'
+        const fields = appState.selectedFields.length > 0 ? appState.selectedFields : ["temperature_2m", "relative_humidity_2m", "shortwave_radiation", "wind_speed_10m"];
+
+        for (const chunk of chunks) {
+            if (downloadState.cancelRequested) {
+                throw new Error('下载已由用户取消');
+            }
+
+            updateDownloadProgress(
+                `正在下载: ${chunk.start} 至 ${chunk.end}`,
+                (downloadState.completedChunks / downloadState.totalChunks) * 100
             );
 
-            // 刷新统计数据
-            loadDataStatistics();
-        } else {
-            showResultMessage('downloadResult', response.data.message, 'error');
+            await api.post('/data/batch-download', {
+                city_id: cityId,
+                start_date: chunk.start,
+                end_date: chunk.end,
+                fields: fields
+            });
+
+            downloadState.completedChunks++;
         }
+
+        updateDownloadProgress('下载完成！', 100);
+        showResultMessage('downloadResult', `✓ 成功下载并保存了 ${downloadState.totalChunks} 个时间段的数据`, 'success');
+        loadDataStatistics();
+
     } catch (error) {
-        showResultMessage('downloadResult', '下载失败: ' + error.message, 'error');
+        showResultMessage('downloadResult', error.message, 'error');
     } finally {
+        downloadState.isDownloading = false;
         btn.disabled = false;
         btn.innerHTML = `
             <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -114,50 +151,120 @@ async function handleBatchDownload() {
             </svg>
             下载并保存到数据库
         `;
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+        }, 3000);
     }
+}
+
+/**
+ * 将日期范围按月份分割
+ */
+function segmentDatesByMonth(startStr, endStr) {
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const chunks = [];
+
+    let current = new Date(start);
+    while (current <= end) {
+        const chunkStart = new Date(current);
+        // 设置为下个月的第一天，然后减去一天
+        const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+        let chunkEnd = new Date(nextMonth.getTime() - 86400000);
+
+        if (chunkEnd > end) {
+            chunkEnd = new Date(end);
+        }
+
+        chunks.push({
+            start: chunkStart.toISOString().split('T')[0],
+            end: chunkEnd.toISOString().split('T')[0]
+        });
+
+        current = new Date(nextMonth);
+    }
+    return chunks;
+}
+
+/**
+ * 更新下载进度UI
+ */
+function updateDownloadProgress(status, percentage) {
+    const container = document.getElementById('downloadProgressContainer');
+    const bar = container.querySelector('.progress-bar-fill');
+    const percentText = container.querySelector('.progress-percentage');
+    const statusText = container.querySelector('.progress-status');
+
+    bar.style.width = `${percentage}%`;
+    percentText.textContent = `${Math.round(percentage)}%`;
+    statusText.textContent = status;
 }
 
 /**
  * 处理下载所有城市数据
  */
 async function handleDownloadAllCities() {
-    const startDate = document.getElementById('downloadStartDate').value;
-    const endDate = document.getElementById('downloadEndDate').value;
+    const startDateStr = document.getElementById('downloadStartDate').value;
+    const endDateStr = document.getElementById('downloadEndDate').value;
 
-    if (!startDate || !endDate) {
+    if (!startDateStr || !endDateStr) {
         showResultMessage('downloadResult', '请选择日期范围', 'error');
         return;
     }
 
+    if (downloadState.isDownloading) return;
+
+    // 重置状态
+    downloadState.isDownloading = true;
+    downloadState.cancelRequested = false;
+
     const btn = document.getElementById('downloadAllCitiesBtn');
-    const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '全城市下载中 (这可能需要几分钟)...';
+
+    const progressContainer = document.getElementById('downloadProgressContainer');
+    const resultMsg = document.getElementById('downloadResult');
+    progressContainer.style.display = 'block';
+    resultMsg.style.display = 'none';
 
     try {
-        const response = await api.post('/data/batch-download-all', {
-            start_date: startDate,
-            end_date: endDate,
-            fields: appState.selectedFields.length > 0 ? appState.selectedFields : ["temperature_2m", "relative_humidity_2m", "shortwave_radiation", "wind_speed_10m"]
-        });
+        const cities = appState.cities;
+        downloadState.totalChunks = cities.length;
+        downloadState.completedChunks = 0;
 
-        if (response.code === 200) {
-            showResultMessage('downloadResult',
-                `✓ ${response.message}\n` +
-                `开始执行全城市下载任务。由于数据量较大，请稍后在"数据统计"中查看进度。`,
-                'success'
+        const fields = appState.selectedFields.length > 0 ? appState.selectedFields : ["temperature_2m", "relative_humidity_2m", "shortwave_radiation", "wind_speed_10m"];
+
+        for (const city of cities) {
+            if (downloadState.cancelRequested) {
+                throw new Error('下载已由用户取消');
+            }
+
+            updateDownloadProgress(
+                `正在下载: ${city.name} (${downloadState.completedChunks + 1}/${cities.length})`,
+                (downloadState.completedChunks / downloadState.totalChunks) * 100
             );
 
-            // 延迟刷新统计
-            setTimeout(loadDataStatistics, 5000);
-        } else {
-            showResultMessage('downloadResult', response.message, 'error');
+            await api.post('/data/batch-download', {
+                city_id: city.id,
+                start_date: startDateStr,
+                end_date: endDateStr,
+                fields: fields
+            });
+
+            downloadState.completedChunks++;
         }
+
+        updateDownloadProgress('全城市下载完成！', 100);
+        showResultMessage('downloadResult', `✓ 成功同步了 ${cities.length} 个城市在指定范围内的数据`, 'success');
+        loadDataStatistics();
+
     } catch (error) {
-        showResultMessage('downloadResult', '下载全部失败: ' + error.message, 'error');
+        showResultMessage('downloadResult', error.message, 'error');
     } finally {
+        downloadState.isDownloading = false;
         btn.disabled = false;
-        btn.textContent = originalText;
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+        }, 3000);
     }
 }
 

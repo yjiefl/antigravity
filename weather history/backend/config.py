@@ -45,6 +45,17 @@ GUANGXI_CITIES = [
     {'id': 12, 'city_name': '河池', 'longitude': 108.0854, 'latitude': 24.6928, 'region': '广西'},
     {'id': 13, 'city_name': '来宾', 'longitude': 109.2211, 'latitude': 23.7509, 'region': '广西'},
     {'id': 14, 'city_name': '崇左', 'longitude': 107.3645, 'latitude': 22.3769, 'region': '广西'},
+    # 增加更多主流城市
+    {'id': 101, 'city_name': '北京', 'longitude': 116.4074, 'latitude': 39.9042, 'region': '北京'},
+    {'id': 102, 'city_name': '上海', 'longitude': 121.4737, 'latitude': 31.2304, 'region': '上海'},
+    {'id': 103, 'city_name': '广州', 'longitude': 113.2644, 'latitude': 23.1291, 'region': '广东'},
+    {'id': 104, 'city_name': '深圳', 'longitude': 114.0579, 'latitude': 22.5431, 'region': '广东'},
+    {'id': 105, 'city_name': '成都', 'longitude': 104.0665, 'latitude': 30.5723, 'region': '四川'},
+    {'id': 106, 'city_name': '杭州', 'longitude': 120.1551, 'latitude': 30.2741, 'region': '浙江'},
+    {'id': 107, 'city_name': '武汉', 'longitude': 114.3055, 'latitude': 30.5928, 'region': '湖北'},
+    {'id': 108, 'city_name': '西安', 'longitude': 108.9402, 'latitude': 34.3416, 'region': '陕西'},
+    {'id': 109, 'city_name': '重庆', 'longitude': 106.5507, 'latitude': 29.5630, 'region': '重庆'},
+    {'id': 110, 'city_name': '南京', 'longitude': 118.7968, 'latitude': 32.0603, 'region': '江苏'},
 ]
 
 # 可用的天气数据字段

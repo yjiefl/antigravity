@@ -36,10 +36,18 @@
                     </svg>
                     <h1>广西历史天气数据查询系统</h1>
                 </div>
-                <nav class="nav">
-                    <a href="#" class="nav-link active">数据查询</a>
-                    <a href="#" class="nav-link">关于</a>
-                </nav>
+                <div class="header-right">
+                    <div id="connectionStatus" class="status-indicator">
+                        <span class="status-dot online"></span>
+                        <span class="status-text">后端连接正常</span>
+                    </div>
+                    <nav class="nav">
+                        <a href="#query-panel" class="nav-link">参数设置</a>
+                        <a href="#dataDisplay" class="nav-link">数据图表</a>
+                        <a href="#dataTable" class="nav-link">详细数据</a>
+                        <a href="#management-panel" class="nav-link">数据管理</a>
+                    </nav>
+                </div>
             </div>
         </div>
     </header>
@@ -48,7 +56,7 @@
     <main class="main">
         <div class="container">
             <!-- 查询面板 -->
-            <section class="query-panel">
+            <section id="query-panel" class="query-panel">
                 <h2 class="section-title">查询参数</h2>
                 <div class="query-form">
                     <div class="form-row">
@@ -69,6 +77,18 @@
                         <div class="form-group">
                             <label for="endDate">结束日期</label>
                             <input type="date" id="endDate" class="form-control" value="2024-01-31">
+                        </div>
+
+                        <div class="form-group full-width" style="margin-top: 10px;">
+                            <label>快速选择时间段</label>
+                            <div class="quick-dates">
+                                <button class="btn btn-tiny" data-days="7">最近7天</button>
+                                <button class="btn btn-tiny" data-days="14">最近14天</button>
+                                <button class="btn btn-tiny" data-days="30">最近30天</button>
+                                <button class="btn btn-tiny" data-days="90">最近90天</button>
+                                <button class="btn btn-tiny" data-days="180">最近180天</button>
+                                <button class="btn btn-tiny" data-days="365">最近365天</button>
+                            </div>
                         </div>
                     </div>
 
@@ -173,7 +193,7 @@
     </footer>
 
     <!-- 数据管理面板 -->
-    <section class="container" style="margin-top: 2rem; margin-bottom: 4rem;">
+    <section id="management-panel" class="container" style="margin-top: 2rem; margin-bottom: 4rem;">
         <div class="data-management-panel">
             <h2 class="section-title">数据管理</h2>
             <div class="management-tabs">
@@ -213,6 +233,18 @@
                         <button id="downloadAllCitiesBtn" class="btn btn-secondary">
                             一键下载所有城市数据
                         </button>
+                    </div>
+                    <div id="downloadProgressContainer" class="progress-box" style="display: none;">
+                        <div class="progress-header">
+                            <span class="progress-title">下载进度</span>
+                            <span class="progress-percentage">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-status">正在准备下载...</div>
+                        <button id="cancelDownloadBtn" class="btn btn-tiny btn-danger"
+                            style="margin-top: 10px;">取消下载</button>
                     </div>
                     <div id="downloadResult" class="result-message" style="display: none;"></div>
                 </div>

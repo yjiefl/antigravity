@@ -164,7 +164,8 @@ def query_weather():
             latitude=city_info['latitude'],
             start_date=start_date,
             end_date=end_date,
-            fields=fields
+            fields=fields,
+            city_id=city_id
         )
         
         # 计算统计摘要
@@ -249,7 +250,8 @@ def export_weather():
             latitude=city_info['latitude'],
             start_date=start_date,
             end_date=end_date,
-            fields=fields
+            fields=fields,
+            city_id=city_id
         )
         
         # 生成文件名

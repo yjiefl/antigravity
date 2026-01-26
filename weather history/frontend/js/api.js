@@ -161,8 +161,20 @@ class APIClient {
      * 健康检查
      * @returns {Promise} 健康状态
      */
-    async healthCheck() {
-        return this.get('/health');
+    /**
+     * 健康检查ping
+     * @returns {Promise<boolean>} 是否在线
+     */
+    async ping() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/health`, {
+                method: 'GET',
+                cache: 'no-cache'
+            });
+            return response.ok;
+        } catch (error) {
+            return false;
+        }
     }
 }
 
