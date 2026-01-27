@@ -100,6 +100,7 @@ class DataAnalyzer:
                     total_sum = radiation_data.sum()
                     summary['solar_radiation'] = {
                         'total': round(total_sum, 2),
+                        'total_mj': round(total_sum * 0.0036, 2),  # Wh/m² 转换为 MJ/m²
                         'total_kwh': round(total_sum / 1000, 2),  # 转换为kWh/m²
                         'avg': round(radiation_data.mean(), 2),
                         'max': round(radiation_data.max(), 2)
@@ -124,6 +125,17 @@ class DataAnalyzer:
                         'max': round(pressure_data.max(), 2),
                         'min': round(pressure_data.min(), 2)
                     }
+            
+            # 天气代码统计 (最频繁出现的天气)
+            if 'weather_code' in df.columns:
+                weather_data = df['weather_code'].dropna()
+                if len(weather_data) > 0:
+                    # 获取最频繁出现的值 (众数)
+                    mode_val = weather_data.mode()
+                    if not mode_val.empty:
+                        summary['weather'] = {
+                            'most_frequent': int(mode_val.iloc[0])
+                        }
             
             logger.debug(f"计算统计摘要成功: {len(data)} 条记录")
             return convert_to_python_types(summary)

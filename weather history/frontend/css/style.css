@@ -1,48 +1,59 @@
 /* ========================================
    广西历史天气数据查询系统 - 样式文件
-   采用现代化玻璃态设计、深色主题
+   采用现代化苹果风格、扁平化、玻璃态设计
    ======================================== */
 
 /* 全局变量 */
+/* 全局变量 */
 :root {
-    /* 颜色 */
-    --color-primary: #0ea5e9;
-    --color-primary-dark: #0284c7;
-    --color-secondary: #f97316;
-    --color-success: #10b981;
-    --color-warning: #f59e0b;
-    --color-danger: #ef4444;
+    /* 苹果色彩体系 */
+    --color-primary: #007aff;
+    /* Apple Blue */
+    --color-primary-dark: #0071e3;
+    --color-secondary: #ff9500;
+    --color-success: #34c759;
+    --color-warning: #ffcc00;
+    --color-danger: #ff3b30;
 
-    /* 背景色 */
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-card: rgba(255, 255, 255, 0.05);
-    --bg-card-hover: rgba(255, 255, 255, 0.08);
+    /* 苹果风格背景 (Light Mode) */
+    --bg-primary: #f5f5f7;
+    /* Apple System Gray 6 */
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    /* Solid White for better contrast */
+    --bg-card-hover: #ffffff;
+    /* Keep white on hover, maybe shadow change */
+    --bg-surface: rgba(255, 255, 255, 0.8);
+    /* Glassmorphism background */
+    --bg-input: #ffffff;
 
     /* 文字颜色 */
-    --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    --text-primary: #1d1d1f;
+    /* Apple Black */
+    --text-secondary: #86868b;
+    --text-muted: #a1a1a6;
 
-    /* 边框 */
-    --border-color: rgba(255, 255, 255, 0.1);
+    /* 边框与半径 */
+    --border-color: rgba(0, 0, 0, 0.1);
     --border-radius: 12px;
-    --border-radius-lg: 16px;
+    --border-radius-lg: 18px;
+    --border-radius-pill: 99px;
 
-    /* 阴影 */
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+    /* 苹果风格阴影与特效 */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05), 0 12px 16px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.08);
+    --glass-blur: 20px;
 
-    /* 间距 */
-    --spacing-xs: 0.5rem;
-    --spacing-sm: 1rem;
-    --spacing-md: 1.5rem;
-    --spacing-lg: 2rem;
-    --spacing-xl: 3rem;
+    /* 苹果系统字体 */
+    --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
 
-    /* 字体 */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    /* 间距体系 */
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 20px;
+    --spacing-lg: 32px;
+    --spacing-xl: 48px;
 }
 
 /* 全局样式 */
@@ -50,6 +61,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
 }
 
 html {
@@ -59,25 +71,28 @@ html {
 
 body {
     font-family: var(--font-family);
-    background: linear-gradient(135deg, var(--bg-primary) 0%, #1e40af 100%);
+    background: var(--bg-primary);
+    background-image: linear-gradient(180deg, #f5f5f7 0%, #ffffff 100%);
     background-attachment: fixed;
     color: var(--text-primary);
-    line-height: 1.6;
+    line-height: 1.5;
     min-height: 100vh;
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 1320px;
     margin: 0 auto;
-    padding: 0 var(--spacing-md);
+    padding: 0 var(--spacing-lg);
 }
 
-/* 顶部导航栏 */
+/* 顶部导航栏 (Apple Style) */
 .header {
-    background: var(--bg-card);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
-    padding: var(--spacing-md) 0;
+    background: rgba(255, 255, 255, 0.8);
+    /* Light translucent white */
+    backdrop-filter: saturate(180%) blur(var(--glass-blur));
+    -webkit-backdrop-filter: saturate(180%) blur(var(--glass-blur));
+    border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
+    padding: 12px 0;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -103,16 +118,24 @@ body {
 
 .logo h1 {
     font-size: 1.5rem;
-    font-weight: 600;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    font-weight: 700;
+    /* 高级感蓝色渐变：从深天蓝到典雅靛蓝 */
+    background: linear-gradient(135deg, #007aff 0%, #0033bb 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    letter-spacing: -0.02em;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
 }
 
 .nav {
     display: flex;
-    gap: var(--spacing-md);
+    gap: 16px;
 }
 
 .nav-link {
@@ -120,13 +143,56 @@ body {
     text-decoration: none;
     padding: var(--spacing-xs) var(--spacing-md);
     border-radius: var(--border-radius);
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .nav-link:hover,
-.nav-link.active {
-    color: var(--text-primary);
-    background: var(--bg-card-hover);
+.nav-link.active,
+.nav-btn.active {
+    color: var(--color-primary);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--border-radius);
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--font-family);
+}
+
+.nav-btn:hover {
+    color: var(--color-primary);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* 主标签页切换内容 */
+.main-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.main-tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* 主内容区 */
@@ -134,11 +200,12 @@ body {
     padding: var(--spacing-xl) 0;
 }
 
-/* 查询面板 */
+/* 查询面板 (Apple Glassmorphism) */
 .query-panel {
-    background: var(--bg-card);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 0.5px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
@@ -147,9 +214,10 @@ body {
 
 .section-title {
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: var(--spacing-md);
     color: var(--text-primary);
+    letter-spacing: -0.5px;
 }
 
 .query-form {
@@ -160,7 +228,7 @@ body {
 
 .form-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: var(--spacing-md);
 }
 
@@ -175,126 +243,208 @@ body {
 }
 
 .form-group label {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: 0.8125rem;
+    font-weight: 600;
     color: var(--text-secondary);
+    /* 从 text-muted 改为更深的 text-secondary */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .form-control {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: #ffffff;
+    border: 1px solid #d2d2d7;
+    /* Apple input border */
     border-radius: var(--border-radius);
-    padding: 0.75rem 1rem;
+    padding: 10px 14px;
     color: var(--text-primary);
     font-family: var(--font-family);
     font-size: 1rem;
-    transition: all 0.3s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .form-control:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    background: rgba(255, 255, 255, 0.9);
 }
 
 .form-control option {
-    background: var(--bg-secondary);
+    background: #ffffff;
     color: var(--text-primary);
 }
 
-/* 字段选择器 */
+/* 城市/字段选择器 (Apple Chip Style) - Item 2 */
 .field-selector {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: var(--spacing-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
 }
 
 .field-checkbox {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+    gap: 8px;
+    padding: 6px 14px;
+    background: #f2f2f7;
+    /* Apple System Gray 6 / Fill */
+    border: 1px solid transparent;
+    border-radius: var(--border-radius-pill);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    user-select: none;
 }
 
-.field-checkbox:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--color-primary);
+.field-checkbox:hover:not(:has(input:checked)) {
+    background: #e5e5ea;
+}
+
+/* 选中状态立即变色，并移除背景色渐变效果使反馈更即时 */
+.field-checkbox:has(input:checked) {
+    background: var(--color-primary) !important;
+    border-color: transparent !important;
+    color: white !important;
+    transition: none !important;
 }
 
 .field-checkbox input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: var(--color-primary);
+    width: 0;
+    height: 0;
+    opacity: 0;
+    position: absolute;
 }
 
 .field-checkbox label {
     cursor: pointer;
     font-size: 0.875rem;
+    font-weight: 500;
     color: var(--text-secondary);
-    user-select: none;
+    white-space: nowrap;
 }
 
-/* 按钮 */
+.field-checkbox:has(input:checked) label {
+    color: #ffffff;
+}
+
+/* 城市选择器的紧凑模式 */
+.city-selector-compact {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+.city-selector-compact::-webkit-scrollbar {
+    width: 4px;
+}
+
+.city-selector-compact::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.city-checkbox {
+    margin-bottom: 0 !important;
+}
+
+/* 按钮 (Apple Style) */
 .form-actions {
     display: flex;
-    gap: var(--spacing-sm);
+    gap: 12px;
     flex-wrap: wrap;
+    margin-top: 8px;
 }
 
 .btn {
     display: inline-flex;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: 0.75rem 1.5rem;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
     border: none;
-    border-radius: var(--border-radius);
+    border-radius: var(--border-radius-pill);
     font-family: var(--font-family);
-    font-size: 1rem;
-    font-weight: 500;
+    font-size: 0.9375rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s cubic-bezier(0.1, 0.1, 0.1, 1);
     text-decoration: none;
+    line-height: 1;
 }
 
 .btn-icon {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    background: var(--color-primary);
     color: white;
-    box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    background: #0071e3;
+    transform: scale(1.02);
 }
 
 .btn-primary:active {
-    transform: translateY(0);
+    background: #0062c3;
+    transform: scale(0.98);
 }
 
 .btn-secondary {
-    background: var(--bg-secondary);
+    background: #e5e5ea;
+    /* Light gray for secondary buttons */
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
 }
 
 .btn-secondary:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--color-primary);
+    background: #d1d1d6;
+    transform: scale(1.02);
+}
+
+/* 退出按钮专项强制样式 - 确保无圆圈，纯文字 */
+#shutdownBtn {
+    background: transparent !important;
+    color: var(--color-danger) !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    padding: var(--spacing-xs) var(--spacing-sm) !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease;
+}
+
+#shutdownBtn:hover {
+    color: #b91c1c !important;
+    /* 深红色提升可读性 */
+    background: rgba(255, 59, 48, 0.08) !important;
+    /* 极浅反馈背景 */
+    text-decoration: underline !important;
+    transform: scale(1.05) !important;
+}
+
+.btn-danger-soft {
+    background: transparent;
+    color: var(--color-danger);
+    border: none;
+    font-weight: 500;
+}
+
+.btn-tiny {
+    padding: 6px 14px;
+    font-size: 0.8125rem;
 }
 
 .btn:disabled {
-    opacity: 0.5;
+    opacity: 0.3;
     cursor: not-allowed;
     transform: none !important;
 }
@@ -331,179 +481,216 @@ body {
     gap: var(--spacing-lg);
 }
 
-/* 统计卡片 */
+/* 统计卡片 (Apple Style) */
 .stats-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: var(--spacing-md);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    /* 从 240px 减小到 180px */
+    gap: 12px;
+    margin-bottom: 30px;
 }
 
 .stat-card {
-    background: var(--bg-card);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: var(--spacing-md);
-    transition: all 0.3s ease;
+    background: var(--bg-surface);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--border-radius);
+    /* 稍微减小圆角 */
+    padding: 12px;
+    /* 从 16px 减小到 12px */
+    transition: transform 0.3s cubic-bezier(0.2, 1, 0.2, 1), background 0.3s ease;
 }
 
 .stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--color-primary);
+    transform: scale(1.02);
+    background: var(--bg-card-hover);
 }
 
 .stat-card-header {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-sm);
+    gap: 8px;
+    margin-bottom: 8px;
+    /* 从 16px 减小 */
 }
 
 .stat-icon {
-    width: 40px;
-    height: 40px;
-    padding: 8px;
-    border-radius: var(--border-radius);
+    width: 24px;
+    /* 从 30px 减小到 24px */
+    height: 24px;
+    padding: 5px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .stat-icon.temperature {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
+    background: #ff3b30;
 }
 
 .stat-icon.radiation {
-    background: linear-gradient(135deg, #f97316, #ea580c);
+    background: #ff9500;
 }
 
 .stat-icon.wind {
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: #34c759;
 }
 
 .stat-icon.precipitation {
-    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    background: #007aff;
 }
 
-.stat-icon svg {
-    width: 24px;
-    height: 24px;
-    color: white;
+.stat-icon.weather {
+    background: #5856d6;
+    font-size: 1.25rem;
 }
 
 .stat-label {
-    font-size: 0.875rem;
+    font-size: 0.7rem;
+    /* 从 0.75rem 减小 */
+    font-weight: 600;
     color: var(--text-secondary);
+    letter-spacing: 0.1px;
 }
 
 .stat-value {
-    font-size: 2rem;
+    font-size: 1.4rem;
+    /* 从 1.75rem 减小 */
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 2px;
+    letter-spacing: -0.4px;
 }
 
 .stat-unit {
-    font-size: 1rem;
-    color: var(--text-muted);
-    margin-left: var(--spacing-xs);
+    font-size: 0.8rem;
+    /* 从 0.875rem 减小 */
+    color: var(--text-secondary);
+    margin-left: 2px;
 }
 
 .stat-details {
     display: flex;
-    gap: var(--spacing-md);
-    font-size: 0.875rem;
-    color: var(--text-secondary);
+    gap: 8px;
+    font-size: 0.6875rem;
+    /* 约 11px */
+    color: #4b5563;
+    font-weight: 500;
+    margin-top: 2px;
 }
 
-/* 图表区域 */
+/* 城市统计分组标题 */
+.city-stats-divider {
+    margin: 24px 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: var(--color-primary);
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.city-stats-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(0, 122, 255, 0.2), transparent);
+}
+
+/* 图表区域 (Apple Style Grid) */
 .charts-section {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: var(--spacing-md);
+    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    gap: 20px;
 }
 
 .chart-card {
-    background: var(--bg-card);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 0.5px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    padding: var(--spacing-md);
+    padding: 24px;
     box-shadow: var(--shadow-md);
 }
 
 .chart-title {
     font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: var(--spacing-md);
+    font-weight: 700;
+    margin-bottom: 20px;
     color: var(--text-primary);
+    letter-spacing: -0.3px;
 }
 
-/* 数据表格 */
+/* 数据表格 (Apple Style Table) */
 .table-card {
-    background: var(--bg-card);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 0.5px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    padding: var(--spacing-md);
+    padding: 24px;
     box-shadow: var(--shadow-md);
+    overflow: hidden;
 }
 
 .table-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: var(--spacing-md);
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 20px;
     color: var(--text-primary);
 }
 
 .table-container {
     overflow-x: auto;
+    border-radius: 10px;
+    border: 0.5px solid var(--border-color);
 }
 
 .data-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 0.875rem;
 }
 
 .data-table thead {
-    background: var(--bg-secondary);
-    position: sticky;
-    top: 0;
+    background: rgba(0, 0, 0, 0.02);
 }
 
 .data-table th {
-    padding: var(--spacing-sm);
+    padding: 14px 16px;
     text-align: left;
     font-weight: 600;
-    color: var(--text-primary);
-    border-bottom: 2px solid var(--border-color);
-    white-space: nowrap;
+    color: var(--text-muted);
+    border-bottom: 0.5px solid var(--border-color);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
 }
 
 .data-table td {
-    padding: var(--spacing-sm);
-    border-bottom: 1px solid var(--border-color);
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border-color);
     color: var(--text-secondary);
 }
 
-.data-table tbody tr {
-    transition: background 0.2s ease;
+.data-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .data-table tbody tr:hover {
-    background: var(--bg-card-hover);
+    background: rgba(0, 0, 0, 0.02);
 }
 
 /* 底部信息栏 */
 .footer {
-    background: var(--bg-card);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid var(--border-color);
-    padding: var(--spacing-lg) 0;
-    margin-top: var(--spacing-xl);
+    padding: 40px 0;
+    margin-top: 60px;
     text-align: center;
+    border-top: 0.5px solid var(--border-color);
 }
 
 .footer p {
@@ -517,11 +704,94 @@ body {
     font-size: 0.75rem;
 }
 
+/* 快速选择日期样式 (Apple Segmented Style) */
+.quick-dates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: #ffffff;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 12px;
+}
+
+.quick-dates .btn-tiny {
+    background: #f2f2f7;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 0.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.quick-dates .btn-tiny:hover {
+    background: #007aff;
+    color: white;
+}
+
+/* 城市选择逻辑优化 (Apple Chip Set) - Item 2 & 4 */
+.city-selector-compact {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    padding: 20px !important;
+    background: #ffffff !important;
+    border-radius: var(--border-radius-lg) !important;
+    border: 0.5px solid var(--border-color) !important;
+    min-height: 60px;
+}
+
+/* 城市 Checkbox 样式 */
+.city-checkbox {
+    margin: 0 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.city-checkbox:hover {
+    transform: translateY(-2px);
+    background: #e5e5ea !important;
+}
+
+/* 全选容器样式 */
+/* 全选容器样式 */
+.select-all-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(0, 122, 255, 0.15);
+    border: 0.5px solid rgba(0, 122, 255, 0.3);
+    border-radius: var(--border-radius-pill);
+    margin-right: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.select-all-box:hover {
+    background: rgba(0, 122, 255, 0.25);
+}
+
+.select-all-box label {
+    font-size: 0.8125rem;
+    color: #007aff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.select-all-box input[type="checkbox"] {
+    accent-color: var(--color-primary);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .header-content {
         flex-direction: column;
-        gap: var(--spacing-sm);
+        gap: 15px;
     }
 
     .logo h1 {
@@ -535,60 +805,57 @@ body {
     .form-row {
         grid-template-columns: 1fr;
     }
-
-    .field-selector {
-        grid-template-columns: 1fr;
-    }
 }
 
-/* 滚动条样式 */
+/* 滚动条样式 (Apple Style) */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-primary);
+    background: rgba(0, 0, 0, 0.3);
 }
 
-/* 数据管理面板 */
+/* 数据管理面板 (Apple Card) */
 .data-management-panel {
-    background: var(--bg-card);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 0.5px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    padding: var(--spacing-lg);
+    padding: 30px;
     box-shadow: var(--shadow-md);
 }
 
 .management-tabs {
-    display: flex;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-md);
-    border-bottom: 2px solid var(--border-color);
+    display: inline-flex;
+    background: rgba(118, 118, 128, 0.12);
+    padding: 2px;
+    border-radius: 10px;
+    margin-bottom: 24px;
 }
 
 .tab-btn {
-    padding: var(--spacing-sm) var(--spacing-lg);
+    padding: 6px 16px;
     background: transparent;
     border: none;
     color: var(--text-secondary);
     font-family: var(--font-family);
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
+    border-radius: 8px;
+    transition: all 0.2s cubic-bezier(0.1, 0.1, 0.1, 1);
 }
 
 .tab-btn:hover {
@@ -596,8 +863,9 @@ body {
 }
 
 .tab-btn.active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
+    background: #ffffff;
+    color: #1d1d1f;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
 }
 
 .tab-content {
@@ -747,11 +1015,12 @@ body {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    background: rgba(0, 0, 0, 0.2);
+    gap: var(--spacing-xs);
+    background: #f2f2f7;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.8125rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .status-dot {
@@ -795,7 +1064,7 @@ body {
 }
 
 .btn-tiny {
-    padding: 4px 10px;
+    padding: 6px 12px;
     font-size: 0.75rem;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -803,6 +1072,11 @@ body {
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 32px;
 }
 
 .btn-tiny:hover {
@@ -811,6 +1085,7 @@ body {
     border-color: var(--color-primary);
     transform: translateY(-1px);
 }
+
 
 /* 进度条样式 */
 .progress-box {
@@ -850,7 +1125,7 @@ body {
 }
 
 .btn-danger {
-    background: var(--color-danger);
+    background: linear-gradient(135deg, var(--color-danger), #b91c1c);
     color: white;
     border: none;
 }
@@ -858,4 +1133,155 @@ body {
 .btn-danger:hover {
     background: #dc2626;
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.city-selector-compact {
+    max-height: 120px;
+    overflow-y: auto;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    border-radius: var(--border-radius);
+    background: #ffffff;
+}
+
+/* 筛选栏样式 (Item 14 & 15) */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+    align-items: center;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.form-control-sm {
+    padding: 4px 8px;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.form-control-sm:focus {
+    border-color: var(--color-primary);
+}
+
+.btn-icon-tiny {
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+    opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-group {
+        justify-content: space-between;
+    }
+}
+
+/* 城市管理详情样式 (Apple Style) */
+.search-box {
+    display: flex;
+    gap: 12px;
+}
+
+.search-results-list {
+    background: #ffffff;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 8px;
+    margin-top: 12px;
+}
+
+.search-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.search-result-item:hover {
+    background: #f2f2f7;
+}
+
+.result-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+}
+
+.result-region {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.managed-city-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.managed-city-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9f9fa;
+    /* Very light gray */
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
+}
+
+.managed-city-item:hover {
+    background: #f2f2f7;
+    transform: translateY(-1px);
+}
+
+.city-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+}
+
+.city-region {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
 }

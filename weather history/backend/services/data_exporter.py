@@ -29,7 +29,8 @@ class DataExporter:
         data: List[Dict[str, Any]],
         filename: str,
         fields: List[str] = None,
-        include_summary: bool = True
+        include_summary: bool = True,
+        city_name: str = None
     ) -> bytes:
         """
         导出数据为Excel格式
@@ -45,7 +46,7 @@ class DataExporter:
         """
         try:
             # 转换为DataFrame
-            df = self._format_data(data, fields)
+            df = self._format_data(data, fields, city_name)
             
             # 创建Excel工作簿
             wb = Workbook()
@@ -103,7 +104,8 @@ class DataExporter:
         self,
         data: List[Dict[str, Any]],
         filename: str,
-        fields: List[str] = None
+        fields: List[str] = None,
+        city_name: str = None
     ) -> bytes:
         """
         导出数据为CSV格式
@@ -118,7 +120,7 @@ class DataExporter:
         """
         try:
             # 转换为DataFrame
-            df = self._format_data(data, fields)
+            df = self._format_data(data, fields, city_name)
             
             # 转换为CSV
             output = BytesIO()
@@ -135,7 +137,8 @@ class DataExporter:
     def _format_data(
         self,
         data: List[Dict[str, Any]],
-        fields: List[str] = None
+        fields: List[str] = None,
+        city_name: str = None
     ) -> pd.DataFrame:
         """
         格式化数据为DataFrame
@@ -153,18 +156,59 @@ class DataExporter:
         # 创建DataFrame
         df = pd.DataFrame(data)
         
-        # 如果指定了字段，只保留这些字段
-        if fields:
-            # 确保字段存在
-            available_fields = [f for f in fields if f in df.columns]
-            df = df[available_fields]
+        # 添加城市信息
+        if city_name:
+            df['city'] = city_name
         
-        # 重命名列为中文（可选）
+        # 拆分日期和时间
+        if 'datetime' in df.columns:
+            df['datetime_dt'] = pd.to_datetime(df['datetime'])
+            df['date'] = df['datetime_dt'].dt.date
+            df['time'] = df['datetime_dt'].dt.strftime('%H:%M')
+        
+        # 天气代码转换 (Item 17)
+        if 'weather_code' in df.columns:
+            weather_map = {
+                0: '晴朗', 1: '晴到多云', 2: '多云', 3: '阴天', 45: '雾', 
+                48: '沉积雾', 51: '小毛毛雨', 53: '毛毛雨', 55: '大毛毛雨',
+                61: '小雨', 63: '中雨', 65: '大雨', 71: '小雪', 73: '中雪', 
+                75: '大雪', 80: '阵雨', 81: '中阵雨', 82: '大阵雨', 95: '雷阵雨'
+            }
+            df['weather_code'] = df['weather_code'].map(lambda x: f"{int(x)} ({weather_map.get(int(x), '未知')})" if pd.notnull(x) else x)
+        
+        # 如果指定了字段，确保包含我们新增的辅助字段
+        # 按照固定顺序排列核心字段，增加导出的整齐度 (Item 2 改进)
+        helper_cols = ['city', 'date', 'time']
+        core_order = [
+            'temperature_2m', 'relative_humidity_2m', 'dew_point_2m',
+            'precipitation', 'rain', 'snowfall', 'surface_pressure', 'cloud_cover',
+            'wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m',
+            'wind_speed_100m', 'wind_direction_100m',
+            'shortwave_radiation', 'direct_radiation', 'diffuse_radiation', 'direct_normal_irradiance',
+            'evapotranspiration', 'soil_temperature_0_to_7cm', 'soil_moisture_0_to_7cm',
+            'weather_code'
+        ]
+        
+        final_cols = [c for c in helper_cols if c in df.columns]
+        for c in core_order:
+            if c in df.columns:
+                if fields is None or c in fields:
+                    final_cols.append(c)
+        
+        # 严格限制字段：只导出 core_order 中定义的或明确请求的字段 (Item 2 & 13)
+        # 不再通过循环 df.columns 来添加数据库中多余的空闲字段（如已弃用的 80m 风速等）
+        
+        df = df[final_cols]
+        
+        # 重命名列为中文
         column_mapping = self._get_column_mapping()
         df = df.rename(columns=column_mapping)
         
+        # 删除临时的辅助列
+        if 'datetime_dt' in df.columns:
+            df = df.drop(columns=['datetime_dt'])
+        
         return df
-    
     def _get_column_mapping(self) -> Dict[str, str]:
         """
         获取列名映射（英文到中文）
@@ -173,6 +217,9 @@ class DataExporter:
             列名映射字典
         """
         return {
+            'city': '城市',
+            'date': '日期',
+            'time': '时间',
             'datetime': '日期时间',
             'temperature_2m': '温度(°C)',
             'relative_humidity_2m': '相对湿度(%)',
@@ -185,17 +232,16 @@ class DataExporter:
             'wind_speed_10m': '10米风速(km/h)',
             'wind_direction_10m': '10米风向(°)',
             'wind_gusts_10m': '10米阵风(km/h)',
-            'wind_speed_80m': '80米风速(km/h)',
-            'wind_speed_120m': '120米风速(km/h)',
-            'wind_speed_180m': '180米风速(km/h)',
+            'wind_speed_100m': '100米风速(km/h)',
+            'wind_direction_100m': '100米风向(°)',
             'shortwave_radiation': '短波辐射(W/m²)',
             'direct_radiation': '直接辐射(W/m²)',
             'diffuse_radiation': '散射辐射(W/m²)',
             'direct_normal_irradiance': '直接法向辐照度(W/m²)',
-            'visibility': '能见度(m)',
             'evapotranspiration': '蒸发蒸腾量(mm)',
             'soil_temperature_0_to_7cm': '土壤温度(°C)',
             'soil_moisture_0_to_7cm': '土壤湿度(m³/m³)',
+            'weather_code': '天气代码',
         }
     
     def _add_summary_sheet(self, workbook: Workbook, df: pd.DataFrame):
@@ -254,8 +300,60 @@ class DataExporter:
                         pass
                 adjusted_width = min(max_length + 2, 30)
                 ws_summary.column_dimensions[column_letter].width = adjusted_width
+
+            # 新增：按日汇总表 (Item 15)
+            if '日期' in df.columns:
+                self._add_daily_summary_sheet(workbook, df)
             
             logger.debug("添加汇总表成功")
             
         except Exception as e:
             logger.error(f"添加汇总表失败: {e}")
+            
+    def _add_daily_summary_sheet(self, workbook: Workbook, df: pd.DataFrame):
+        """添加每日汇总表"""
+        try:
+            ws_daily = workbook.create_sheet('每日汇总')
+            
+            # 数值列（排除日期和城市）
+            numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+            
+            # 基础分组字段
+            group_cols = ['日期']
+            if '城市' in df.columns:
+                group_cols.append('城市')
+            
+            # 按日汇总（均值）
+            daily_df = df.groupby(group_cols)[numeric_cols].mean().reset_index()
+            
+            # 特殊处理：降水量、辐射和蒸发量应该是总和 (Item 2 修复)
+            sum_cols = [
+                '降水量(mm)', '降雨量(mm)', '蒸发蒸腾量(mm)',
+                '短波辐射(W/m²)', '直接辐射(W/m²)', '散射辐射(W/m²)', 
+                '直接法向辐照度(W/m²)'
+            ]
+            for col in sum_cols:
+                if col in daily_df.columns:
+                    # 确保是按日期和城市分组重新计算总和
+                    daily_sum = df.groupby(group_cols)[col].sum().reset_index()
+                    # 按照索引对齐，将均值替换为总和
+                    daily_df[col] = daily_sum[col]
+            
+            # 写入数据
+            for r in dataframe_to_rows(daily_df, index=False, header=True):
+                ws_daily.append(r)
+                
+            # 设置样式（同上）
+            header_fill = PatternFill(start_color='70AD47', end_color='70AD47', fill_type='solid')
+            header_font = Font(color='FFFFFF', bold=True)
+            for cell in ws_daily[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                
+            # 自动列宽
+            for column in ws_daily.columns:
+                ws_daily.column_dimensions[column[0].column_letter].width = 15
+
+        except Exception as e:
+            logger.error(f"添加每日汇总表失败: {e}")

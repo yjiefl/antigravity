@@ -11,6 +11,8 @@ from backend.services.cache_manager import CacheManager
 from backend.models.city import CityManager
 from backend.models.database import DatabaseManager
 
+from backend.config import AVAILABLE_FIELDS
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +22,48 @@ class WeatherService:
     负责从Open-Meteo API获取历史天气数据
     """
     
+    def search_city(self, query: str) -> List[Dict[str, Any]]:
+        """
+        搜索城市
+        
+        Args:
+            query: 搜索关键词
+            
+        Returns:
+            搜索到的城市列表
+        """
+        try:
+            url = f"https://geocoding-api.open-meteo.com/v1/search?name={query}&language=zh&count=10"
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = []
+            for item in data.get('results', []):
+                # 构造省/市/县描述
+                admin1 = item.get('admin1', '')
+                admin2 = item.get('admin2', '')
+                admin3 = item.get('admin3', '')
+                country = item.get('country', '')
+                
+                region_parts = [r for r in [country, admin1, admin2, admin3] if r]
+                region = " > ".join(region_parts)
+                
+                results.append({
+                    'name': item.get('name'),
+                    'latitude': item.get('latitude'),
+                    'longitude': item.get('longitude'),
+                    'region': region,
+                    'country': country,
+                    'admin1': admin1,
+                    'admin2': admin2,
+                    'admin3': admin3
+                })
+            return results
+        except Exception as e:
+            logger.error(f"查询城市失败: {e}")
+            return []
+
     def __init__(
         self, 
         base_url: str,
@@ -66,37 +110,83 @@ class WeatherService:
         Returns:
             天气数据字典
         """
-        # 生成缓存键
+        # 如果提供了city_id，为了保证数据库的完整性，我们总是获取所有可用字段 (Item 2)
+        request_fields = fields
+        if city_id:
+            # 策略：本地数据库优先
+            try:
+                # 1. 尝试从本地持久化表 weather_data 获取数据
+                db_data = self.db_manager.get_weather_data({
+                    'city_id': city_id,
+                    'start_date': f"{start_date}T00:00",
+                    'end_date': f"{end_date}T23:59"
+                })
+                
+                # 2. 检查本地数据是否完整
+                # 计算期望的小时数
+                d1 = datetime.strptime(start_date, '%Y-%m-%d')
+                d2 = datetime.strptime(end_date, '%Y-%m-%d')
+                expected_hours = (d2 - d1).days * 24 + 24
+                
+                if len(db_data) >= expected_hours:
+                    logger.info(f"本地数据库命中: 找到 {len(db_data)} 条记录，满足期望的 {expected_hours} 小时")
+                    # 格式化输出，保持与 API 响应一致
+                    return {
+                        'latitude': latitude,
+                        'longitude': longitude,
+                        'timezone': timezone,
+                        'hourly_data': db_data
+                    }
+                else:
+                    logger.info(f"本地数据库不完整: 仅有 {len(db_data)}/{expected_hours} 小时，将回退到 API/缓存")
+            except Exception as e:
+                logger.warning(f"本地数据库预查失败: {e}")
+
+            # 如果本地不完整，准备向 API 请求所有字段以填补本地库
+            all_fields = []
+            for cat in AVAILABLE_FIELDS.values():
+                all_fields.extend(cat.keys())
+            request_fields = list(set(fields + all_fields))
+            
+        # 生成缓存键 (包含请求的所有字段)
         cache_params = {
             'lon': longitude,
             'lat': latitude,
             'start': start_date,
             'end': end_date,
-            'fields': sorted(fields),
+            'fields': sorted(request_fields),
             'tz': timezone
         }
         cache_key = self.cache.generate_cache_key(cache_params)
         
-        # 检查缓存
+        # 检查缓存 (快照缓存)
         cached_data = self.cache.get(cache_key)
         if cached_data:
-            logger.info(f"从缓存获取数据: {start_date} 至 {end_date}")
+            logger.info(f"从快照缓存获取数据: {start_date} 至 {end_date}")
+            # 如果请求的字段被缓存，则提取原本请求的部分返回
+            if request_fields != fields:
+                filtered_hourly = []
+                for rec in cached_data.get('hourly_data', []):
+                    filtered_rec = {k: v for k, v in rec.items() if k in fields or k == 'datetime'}
+                    filtered_hourly.append(filtered_rec)
+                
+                return {**cached_data, 'hourly_data': filtered_hourly}
             return cached_data
         
         # 构建API URL
         api_url = self._build_api_url(
-            longitude, latitude, start_date, end_date, fields, timezone
+            longitude, latitude, start_date, end_date, request_fields, timezone
         )
         
         try:
             # 调用API
-            logger.info(f"调用Open-Meteo API: {start_date} 至 {end_date}")
+            logger.info(f"调用Open-Meteo API: {start_date} 至 {end_date}, 字段数: {len(request_fields)}")
             response = requests.get(api_url, timeout=30)
             response.raise_for_status()
             
-            # 解析响应
+            # 解析响应 (使用实际请求的字段)
             data = response.json()
-            parsed_data = self._parse_response(data, fields)
+            parsed_data = self._parse_response(data, request_fields)
             
             # 存入缓存
             self.cache.set(cache_key, parsed_data)
@@ -110,6 +200,16 @@ class WeatherService:
                     logger.warning(f"保存到永久数据库失败(非致命): {e}")
             
             logger.info(f"获取天气数据成功，共 {len(parsed_data.get('hourly_data', []))} 条记录")
+            
+            # 如果实际请求的字段多于用户请求，只向用户返回用户请求的部分
+            if request_fields != fields:
+                filtered_hourly = []
+                for rec in parsed_data.get('hourly_data', []):
+                    filtered_rec = {k: v for k, v in rec.items() if k in fields or k == 'datetime'}
+                    filtered_hourly.append(filtered_rec)
+                
+                return {**parsed_data, 'hourly_data': filtered_hourly}
+                
             return parsed_data
             
         except requests.exceptions.RequestException as e:
@@ -193,8 +293,20 @@ class WeatherService:
         Returns:
             完整的API URL
         """
-        # 将字段列表转换为逗号分隔的字符串
-        hourly_params = ','.join(fields)
+        # 将字段列表转换为逗号分隔的字符串，考虑 API 参数映射 (Item 2)
+        api_fields_list = []
+        for f in fields:
+            # 查找字段对应的 API 参数名
+            found = False
+            for group in AVAILABLE_FIELDS.values():
+                if f in group:
+                    api_fields_list.append(group[f].get('api_param', f))
+                    found = True
+                    break
+            if not found:
+                api_fields_list.append(f)
+        
+        hourly_params = ','.join(api_fields_list)
         
         # 构建URL参数
         params = {
@@ -245,8 +357,15 @@ class WeatherService:
                 
                 # 添加每个字段的值
                 for field in fields:
-                    if field in hourly:
-                        record[field] = hourly[field][i]
+                    # 查找字段对应的 API 参数名 (Item 2)
+                    api_key = field
+                    for group in AVAILABLE_FIELDS.values():
+                        if field in group:
+                            api_key = group[field].get('api_param', field)
+                            break
+                            
+                    if api_key in hourly:
+                        record[field] = hourly[api_key][i]
                     else:
                         record[field] = None
                 

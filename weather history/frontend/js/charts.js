@@ -12,25 +12,44 @@ class ChartManager {
         this.defaultOptions = {
             responsive: true,
             maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
             plugins: {
                 legend: {
                     labels: {
-                        color: '#cbd5e1',
+                        color: '#1e293b',
                         font: {
                             family: 'Inter',
-                            size: 12
-                        }
+                            size: 13,
+                            weight: '600'
+                        },
+                        padding: 15
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    titleColor: '#f1f5f9',
-                    bodyColor: '#cbd5e1',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)', // 亮色背景更高级
+                    titleColor: '#1e293b',
+                    bodyColor: '#334155',
+                    borderColor: '#e2e8f0',
                     borderWidth: 1,
-                    padding: 12,
+                    padding: 14,
+                    cornerRadius: 8,
                     displayColors: true,
+                    usePointStyle: true,
+                    boxPadding: 6,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
                     callbacks: {
+                        title: function (context) {
+                            return context[0].label; // 显示完整的日期时间
+                        },
                         label: function (context) {
                             let label = context.dataset.label || '';
                             if (label) {
@@ -39,7 +58,7 @@ class ChartManager {
                             if (context.parsed.y !== null) {
                                 label += context.parsed.y.toFixed(2);
                             }
-                            return label;
+                            return ' ' + label; // 增加间距
                         }
                     }
                 }
@@ -47,26 +66,26 @@ class ChartManager {
             scales: {
                 x: {
                     ticks: {
-                        color: '#94a3b8',
+                        color: '#64748b', // 更深的灰色
                         font: {
                             family: 'Inter',
                             size: 11
                         }
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)' // 浅色背景对应的深色网格
                     }
                 },
                 y: {
                     ticks: {
-                        color: '#94a3b8',
+                        color: '#64748b',
                         font: {
                             family: 'Inter',
                             size: 11
                         }
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)'
                     }
                 }
             }
@@ -89,8 +108,9 @@ class ChartManager {
      * 创建温度趋势图
      * @param {string} canvasId - Canvas元素ID
      * @param {array} data - 数据数组
+     * @param {string} cityName - 城市名称
      */
-    createTemperatureChart(canvasId, data) {
+    createTemperatureChart(canvasId, data, cityName = '') {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
 
@@ -129,7 +149,10 @@ class ChartManager {
                 plugins: {
                     ...this.defaultOptions.plugins,
                     title: {
-                        display: false
+                        display: !!cityName,
+                        text: `温度趋势 - ${cityName}`,
+                        color: '#1d1d1f', // 纯黑/深灰
+                        font: { size: 15, weight: '700' } // 调大加粗
                     }
                 }
             }
@@ -140,8 +163,9 @@ class ChartManager {
      * 创建辐照度分布图
      * @param {string} canvasId - Canvas元素ID
      * @param {array} data - 数据数组
+     * @param {string} cityName - 城市名称
      */
-    createRadiationChart(canvasId, data) {
+    createRadiationChart(canvasId, data, cityName = '') {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
 
@@ -204,7 +228,10 @@ class ChartManager {
                 plugins: {
                     ...this.defaultOptions.plugins,
                     title: {
-                        display: false
+                        display: !!cityName,
+                        text: `辐照度分布 - ${cityName}`,
+                        color: '#1d1d1f',
+                        font: { size: 15, weight: '700' }
                     }
                 }
             }
@@ -215,8 +242,9 @@ class ChartManager {
      * 创建风速变化图
      * @param {string} canvasId - Canvas元素ID
      * @param {array} data - 数据数组
+     * @param {string} cityName - 城市名称
      */
-    createWindSpeedChart(canvasId, data) {
+    createWindSpeedChart(canvasId, data, cityName = '') {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
 
@@ -234,8 +262,8 @@ class ChartManager {
 
         if (data[0]?.wind_speed_10m !== undefined) {
             datasets.push({
-                label: '10米风速 (km/h)',
-                data: data.map(d => d.wind_speed_10m),
+                label: '10米风速 (m/s)',
+                data: data.map(d => (d.wind_speed_10m / 3.6).toFixed(2)),
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
                 borderWidth: 2,
@@ -244,10 +272,10 @@ class ChartManager {
             });
         }
 
-        if (data[0]?.wind_speed_80m !== undefined) {
+        if (data[0]?.wind_speed_100m !== undefined) {
             datasets.push({
-                label: '80米风速 (km/h)',
-                data: data.map(d => d.wind_speed_80m),
+                label: '100米风速 (km/h)',
+                data: data.map(d => d.wind_speed_100m),
                 borderColor: '#14b8a6',
                 backgroundColor: 'rgba(20, 184, 166, 0.1)',
                 borderWidth: 2,
@@ -267,7 +295,10 @@ class ChartManager {
                 plugins: {
                     ...this.defaultOptions.plugins,
                     title: {
-                        display: false
+                        display: !!cityName,
+                        text: `风速变化 - ${cityName}`,
+                        color: '#1d1d1f',
+                        font: { size: 15, weight: '700' }
                     }
                 }
             }
@@ -278,8 +309,9 @@ class ChartManager {
      * 创建降水量图
      * @param {string} canvasId - Canvas元素ID
      * @param {array} data - 数据数组
+     * @param {string} cityName - 城市名称
      */
-    createPrecipitationChart(canvasId, data) {
+    createPrecipitationChart(canvasId, data, cityName = '') {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
 
@@ -312,7 +344,10 @@ class ChartManager {
                 plugins: {
                     ...this.defaultOptions.plugins,
                     title: {
-                        display: false
+                        display: !!cityName,
+                        text: `降水量 - ${cityName}`,
+                        color: '#1d1d1f',
+                        font: { size: 15, weight: '700' }
                     }
                 }
             }
@@ -374,6 +409,12 @@ class ChartManager {
                         ...this.defaultOptions.plugins.legend,
                         display: true,
                         position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: `多城市对比: ${label}`,
+                        color: '#1d1d1f',
+                        font: { size: 16, weight: '700' }
                     }
                 }
             }

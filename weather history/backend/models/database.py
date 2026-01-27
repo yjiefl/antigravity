@@ -32,7 +32,6 @@ class DatabaseManager:
         """
         self.db_path = db_path
         self._ensure_db_directory()
-        self.connection = None
         logger.info(f"数据库管理器初始化完成: {db_path}")
     
     def _ensure_db_directory(self):
@@ -42,28 +41,22 @@ class DatabaseManager:
             os.makedirs(db_dir)
             logger.info(f"创建数据库目录: {db_dir}")
     
-    def connect(self):
-        """建立数据库连接"""
+    def get_connection(self):
+        """获取新的数据库连接"""
         try:
-            self.connection = sqlite3.connect(self.db_path)
-            self.connection.row_factory = sqlite3.Row  # 使结果可以通过列名访问
-            logger.info("数据库连接成功")
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            conn.row_factory = sqlite3.Row  # 使结果可以通过列名访问
+            return conn
         except sqlite3.Error as e:
             logger.error(f"数据库连接失败: {e}")
             raise
-    
-    def disconnect(self):
-        """关闭数据库连接"""
-        if self.connection:
-            self.connection.close()
-            logger.info("数据库连接已关闭")
     
     def init_database(self):
         """
         初始化数据库，创建所有必要的表
         """
-        self.connect()
-        cursor = self.connection.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         
         try:
             # 创建城市配置表
@@ -107,11 +100,36 @@ class DatabaseManager:
                     evapotranspiration REAL,
                     soil_temperature_0_to_7cm REAL,
                     soil_moisture_0_to_7cm REAL,
+                    weather_code REAL,
+                    wind_speed_100m REAL,
+                    wind_direction_100m REAL,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (city_id) REFERENCES city_config(id),
                     UNIQUE(city_id, datetime)
                 )
             ''')
+            
+            # 确保老数据库字段完整
+            # 1. 检查 weather_data 字段
+            for column in ['weather_code', 'wind_speed_100m', 'wind_direction_100m']:
+                try:
+                    cursor.execute(f'ALTER TABLE weather_data ADD COLUMN {column} REAL')
+                    logger.info(f"添加 weather_data.{column} 列成功")
+                except sqlite3.OperationalError:
+                    pass
+            
+            # 2. 检查 city_config 字段
+            try:
+                cursor.execute('ALTER TABLE city_config ADD COLUMN region TEXT DEFAULT "广西"')
+                logger.info("添加 city_config.region 列成功")
+            except sqlite3.OperationalError:
+                pass
+                
+            try:
+                cursor.execute('ALTER TABLE city_config ADD COLUMN is_active INTEGER DEFAULT 1')
+                logger.info("添加 city_config.is_active 列成功")
+            except sqlite3.OperationalError:
+                pass
             
             # 创建API缓存表
             cursor.execute('''
@@ -140,29 +158,22 @@ class DatabaseManager:
                 ON api_cache(expired_at)
             ''')
             
-            self.connection.commit()
+            conn.commit()
             logger.info("数据库表创建成功")
             
         except sqlite3.Error as e:
             logger.error(f"数据库初始化失败: {e}")
-            self.connection.rollback()
+            conn.rollback()
             raise
         finally:
-            self.disconnect()
+            conn.close()
     
     def execute_query(self, sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
         """
         执行查询SQL语句
-        
-        Args:
-            sql: SQL查询语句
-            params: 查询参数
-            
-        Returns:
-            查询结果列表
         """
-        self.connect()
-        cursor = self.connection.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         
         try:
             cursor.execute(sql, params)
@@ -175,51 +186,37 @@ class DatabaseManager:
             logger.error(f"查询执行失败: {e}")
             raise
         finally:
-            self.disconnect()
+            conn.close()
     
     def execute_update(self, sql: str, params: tuple = ()) -> int:
         """
         执行更新SQL语句（INSERT, UPDATE, DELETE）
-        
-        Args:
-            sql: SQL更新语句
-            params: 更新参数
-            
-        Returns:
-            受影响的行数
         """
-        self.connect()
-        cursor = self.connection.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         
         try:
             cursor.execute(sql, params)
-            self.connection.commit()
+            conn.commit()
             affected_rows = cursor.rowcount
             logger.debug(f"更新成功，影响 {affected_rows} 行")
             return affected_rows
         except sqlite3.Error as e:
             logger.error(f"更新执行失败: {e}")
-            self.connection.rollback()
+            conn.rollback()
             raise
         finally:
-            self.disconnect()
+            conn.close()
     
     def bulk_insert(self, table: str, data_list: List[Dict[str, Any]]) -> int:
         """
         批量插入数据
-        
-        Args:
-            table: 表名
-            data_list: 数据字典列表
-            
-        Returns:
-            插入的行数
         """
         if not data_list:
             return 0
         
-        self.connect()
-        cursor = self.connection.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         
         try:
             # 获取列名
@@ -233,7 +230,7 @@ class DatabaseManager:
             values_list = [tuple(item[col] for col in columns) for item in data_list]
             
             cursor.executemany(sql, values_list)
-            self.connection.commit()
+            conn.commit()
             
             inserted_rows = cursor.rowcount
             logger.info(f"批量插入成功，插入 {inserted_rows} 行到表 {table}")
@@ -241,20 +238,14 @@ class DatabaseManager:
             
         except sqlite3.Error as e:
             logger.error(f"批量插入失败: {e}")
-            self.connection.rollback()
+            conn.rollback()
             raise
         finally:
-            self.disconnect()
+            conn.close()
     
     def insert_weather_data(self, data: Dict[str, Any]) -> int:
         """
         插入单条天气数据
-        
-        Args:
-            data: 天气数据字典
-            
-        Returns:
-            插入的记录ID
         """
         columns = ', '.join(data.keys())
         placeholders = ', '.join(['?' for _ in data])
@@ -262,31 +253,25 @@ class DatabaseManager:
         
         sql = f"INSERT OR REPLACE INTO weather_data ({columns}) VALUES ({placeholders})"
         
-        self.connect()
-        cursor = self.connection.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         
         try:
             cursor.execute(sql, values)
-            self.connection.commit()
+            conn.commit()
             record_id = cursor.lastrowid
             logger.debug(f"插入天气数据成功，ID: {record_id}")
             return record_id
         except sqlite3.Error as e:
             logger.error(f"插入天气数据失败: {e}")
-            self.connection.rollback()
+            conn.rollback()
             raise
         finally:
-            self.disconnect()
+            conn.close()
     
     def get_weather_data(self, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         根据过滤条件获取天气数据
-        
-        Args:
-            filters: 过滤条件字典，如 {'city_id': 1, 'start_date': '2024-01-01'}
-            
-        Returns:
-            天气数据列表
         """
         conditions = []
         params = []
@@ -307,3 +292,79 @@ class DatabaseManager:
         sql = f"SELECT * FROM weather_data WHERE {where_clause} ORDER BY datetime"
         
         return self.execute_query(sql, tuple(params))
+
+    def delete_weather_data(self, filters: Dict[str, Any]) -> int:
+        """
+        根据过滤条件删除天气数据
+        
+        Args:
+            filters: 过滤条件
+            
+        Returns:
+            删除的行数
+        """
+        conditions = []
+        params = []
+        
+        if 'city_id' in filters:
+            conditions.append("city_id = ?")
+            params.append(filters['city_id'])
+            
+        if 'start_date' in filters:
+            conditions.append("datetime >= ?")
+            params.append(filters['start_date'])
+            
+        if 'end_date' in filters:
+            conditions.append("datetime <= ?")
+            params.append(filters['end_date'])
+            
+        if not conditions:
+            # 防止误删全表
+            return 0
+            
+        where_clause = " AND ".join(conditions)
+        sql = f"DELETE FROM weather_data WHERE {where_clause}"
+        
+        return self.execute_update(sql, tuple(params))
+
+    def get_weather_data_stats(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        根据过滤条件获取数据统计（行数、时间范围等）
+        
+        Args:
+            filters: 过滤条件
+            
+        Returns:
+            统计信息字典
+        """
+        conditions = []
+        params = []
+        
+        if 'city_id' in filters:
+            conditions.append("city_id = ?")
+            params.append(filters['city_id'])
+            
+        if 'start_date' in filters:
+            conditions.append("datetime >= ?")
+            params.append(filters['start_date'])
+            
+        if 'end_date' in filters:
+            conditions.append("datetime <= ?")
+            params.append(filters['end_date'])
+            
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        
+        # 查询总行数和日期范围
+        sql = f'''
+            SELECT 
+                COUNT(*) as count,
+                MIN(datetime) as start_date,
+                MAX(datetime) as end_date
+            FROM weather_data 
+            WHERE {where_clause}
+        '''
+        
+        result = self.execute_query(sql, tuple(params))
+        if result:
+            return dict(result[0])
+        return {'count': 0, 'start_date': None, 'end_date': None}
