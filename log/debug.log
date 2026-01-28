@@ -19,3 +19,5 @@
 - 遗留问题：`awesome-claude-skills` 的 1 个领先 commit 由于权限问题未能推送到 ComposioHQ，建议用户检查是否需要推送到个人 Fork。
 2026-01-29 06:15 Audit skill 'new-energy-safety-audit'. Found threshold contradictions (0.5% vs 1%) and hardcoded data in prompts. Recommended modularizing region data and unifying error thresholds.
 2026-01-29 06:25 Completed optimization for 'new-energy-safety-audit'. Unified thresholds to 0.5% (data) and 1% (precision). Modularized station data with regions. Fixed config paths. Created structured README.md prompt instructions.
+2026-01-29 06:30 Removed '场站端制度汇编' from skill instructions and README. Shifted audit focus to closure logic and causal consistency in the absence of administrative document references.
+2026-01-29 06:48 Enhanced skill references. Added infrastructure columns to stations.md, created management_redlines.md, and documented the 51.30% ratio origin in calculation_details.md.
