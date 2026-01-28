@@ -1,0 +1,33 @@
+{
+  "installed_skills": {
+    "awesome-claude-skills": {
+      "version": "1.0.0",
+      "description": "",
+      "author": "",
+      "installed_at": "2026-01-25T17:31:56.262215",
+      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmp6s0wflup/repo"
+    },
+    "claude-code-infrastructure-showcase": {
+      "version": "1.0.0",
+      "description": "",
+      "author": "",
+      "installed_at": "2026-01-25T18:34:06.591525",
+      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmp2ske260_/repo"
+    },
+    "superpowers": {
+      "version": "1.0.0",
+      "description": "",
+      "author": "",
+      "installed_at": "2026-01-25T18:46:12.376551",
+      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmpmfbqv_b9/repo"
+    },
+    "anthropic-skills": {
+      "version": "1.0.0",
+      "description": "",
+      "author": "",
+      "installed_at": "2026-01-25T22:17:38.936376",
+      "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmplqau4ta9/repo"
+    }
+  },
+  "repositories": []
+}
