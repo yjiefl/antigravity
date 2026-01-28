@@ -22,3 +22,5 @@
 2026-01-29 06:30 Removed '场站端制度汇编' from skill instructions and README. Shifted audit focus to closure logic and causal consistency in the absence of administrative document references.
 2026-01-29 06:48 Enhanced skill references. Added infrastructure columns to stations.md, created management_redlines.md, and documented the 51.30% ratio origin in calculation_details.md.
 2026-01-29 06:55 Enabled data anomaly analysis. Created threshold_benchmarks.md with industry standards for efficiency, aux power, and forecasting. Updated output format to include 'Index Anomaly' dimension.
+2026-01-29 07:00 Created GEM.md containing the all-in-one system prompt for Gemini, enabling standalone usage with full knowledge base integration.
+2026-01-29 07:08 Updated GEM.md to the 'Ultimate Comprehensive Version'. Integrated individual site thresholds, cross-table wind disaster consistency, 51.30% magic number, and strict management redline keywords.
