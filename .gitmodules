@@ -1,0 +1,9 @@
+[submodule "skill_manager/skills/anthropic-skills"]
+	path = skill_manager/skills/anthropic-skills
+	url = https://github.com/anthropics/skills.git
+[submodule "skill_manager/skills/awesome-claude-skills"]
+	path = skill_manager/skills/awesome-claude-skills
+	url = https://github.com/ComposioHQ/awesome-claude-skills.git
+[submodule "weather history"]
+	path = weather history
+	url = https://github.com/yjiefl/guangxi-weather-history.git

@@ -137,3 +137,15 @@ flowchart TD
 - **涉及文件**:
     - `skill_manager/skill_manager.py`
     - `skill_manager/skill_manager_gui.py`
+### 8.3 新增 "new-energy-safety-audit" 技能
+- **日期**: 2026-01-28
+- **背景**: 针对新能源（风、光、储）安全生产调度会材料审核需求，创建了专业化的审核专家 Skill。
+- **功能**: 
+    - 数据对标（参考 `references/stations.md`）。
+    - 逻辑及计算审核（基于 `references/audit_rules.md`）。
+    - 输出标准化报告（基于 `references/output_format.md`）。
+- **注册**: 已在 `skill_manager/skills/skills_config.json` 中配置。
+
+### 8.4 子模块一致性修复 (进行中)
+- **问题**: 发现工程中存在 gitlink (160000) 但缺少 `.gitmodules` 文件。
+- **修复方案**: 手动构建 `.gitmodules` 并关联 `anthropic-skills`、`awesome-claude-skills` 及 `weather history`。

@@ -27,6 +27,13 @@
       "author": "",
       "installed_at": "2026-01-25T22:17:38.936376",
       "source": "/var/folders/1b/ds0gdxd520q3gkqlw1360ymh0000gn/T/tmplqau4ta9/repo"
+    },
+    "new-energy-safety-audit": {
+      "version": "1.0.0",
+      "description": "新能源安全生产调度会材料审核专家",
+      "author": "Antigravity",
+      "installed_at": "2026-01-28T21:55:00",
+      "source": "/Users/yangjie/Desktop/code/antigravity/skill_manager/skills/new-energy-safety-audit"
     }
   },
   "repositories": []
