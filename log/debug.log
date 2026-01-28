@@ -1,0 +1,19 @@
+2026-01-28: 准备换电脑，提交所有文件并推送到 GitHub
+2026-01-28: 执行换电脑后的数据一致性检查。
+- 主项目 antigravity: 与 GitHub 同步。
+- weather history: 与 GitHub 同步。
+- awesome-claude-skills: 本地领先 1 个 commit，建议推送。
+- 发现未追踪文件夹: 新能源安全生产调度会材料审核专家/。
+- 子模块配置: 缺少 .gitmodules，虽然本地文件完整。
+
+2026-01-28: 创建新技能 "new-energy-safety-audit" (新能源安全生产调度会材料审核专家)。
+- 基于 `gem提示词.md` 提取专家逻辑、场站数据及审核算法。
+- 使用 `skill-creator` 工具初始化并打包技能。
+- 结构化存储：核心指令 (SKILL.md)、场站参考 (stations.md)、算法规则 (audit_rules.md)、输出模版 (output_format.md)。
+- 已在 `skill_manager/skills/skills_config.json` 中注册。
+
+2026-01-28: 执行换电脑后的数据一致性修正。
+- 修复子模块缺失问题：创建了 `.gitmodules` 并关联了 `anthropic-skills`、`awesome-claude-skills` 及 `weather history`。
+- 更新文档：在 `skill_manager/spec.md` 中记录了新技能 "new-energy-safety-audit" 的创建及子模块修复计划。
+- 同步：已将本地修改（包括新技能文件夹）提交并推送到 GitHub (f766a1b)。
+- 遗留问题：`awesome-claude-skills` 的 1 个领先 commit 由于权限问题未能推送到 ComposioHQ，建议用户检查是否需要推送到个人 Fork。
