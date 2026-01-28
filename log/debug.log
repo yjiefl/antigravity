@@ -21,3 +21,4 @@
 2026-01-29 06:25 Completed optimization for 'new-energy-safety-audit'. Unified thresholds to 0.5% (data) and 1% (precision). Modularized station data with regions. Fixed config paths. Created structured README.md prompt instructions.
 2026-01-29 06:30 Removed '场站端制度汇编' from skill instructions and README. Shifted audit focus to closure logic and causal consistency in the absence of administrative document references.
 2026-01-29 06:48 Enhanced skill references. Added infrastructure columns to stations.md, created management_redlines.md, and documented the 51.30% ratio origin in calculation_details.md.
+2026-01-29 06:55 Enabled data anomaly analysis. Created threshold_benchmarks.md with industry standards for efficiency, aux power, and forecasting. Updated output format to include 'Index Anomaly' dimension.
