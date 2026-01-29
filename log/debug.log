@@ -53,4 +53,7 @@
 2. 编写 Python 脚本自动生成《作业风险管控系统.xlsx》，内置了引用《规范》的 S/E/P 参数表、标准风险库，并在‘风险管控工具’表中配置了自动计算风险值 and 判定等级的公式。
 [2026-01-29 18:14] feat: sync work on 现场安全风险管控系统 and update logs
 [2026-01-29 19:24] 开始本阶段同步工作：用户切换到新电脑，需确保本地代码与 GitHub 完全同步。已确认主仓库已是最新，并成功同步子模块（anthropic-skills, awesome-claude-skills, weather history）及关联项目（data-analyzer）。当前所有仓库均已处于 origin/main 最新状态。
-
+[2026-01-29 19:35] 修复 `data-analyzer` 启动报错：
+1. 发现新电脑未安装 Node.js，执行 `brew install node` 完成安装。
+2. 优化 `start.sh` 脚本，将硬编码的 `/opt/homebrew/bin/node` 路径改为动态获取（`which node`），增强了环境兼容性。
+3. 验证通过：`./start.sh` 成功安装依赖并启动 Vite 开发服务器。
