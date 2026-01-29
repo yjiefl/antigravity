@@ -24,3 +24,8 @@
 2026-01-29 06:55 Enabled data anomaly analysis. Created threshold_benchmarks.md with industry standards for efficiency, aux power, and forecasting. Updated output format to include 'Index Anomaly' dimension.
 2026-01-29 07:00 Created GEM.md containing the all-in-one system prompt for Gemini, enabling standalone usage with full knowledge base integration.
 2026-01-29 07:08 Updated GEM.md to the 'Ultimate Comprehensive Version'. Integrated individual site thresholds, cross-table wind disaster consistency, 51.30% magic number, and strict management redline keywords.
+2026-01-29 07:02 Completed final synchronization. All skill files, reference data, and the ultimate GEM.md instruction have been committed and pushed to GitHub (yjiefl/antigravity).
+
+2026-01-29 08:20: 开始新环境同步。执行 git reset --hard 和 submodule update，仓库已与 origin/main 保持一致，Git 用户配置完成。
+
+2026-01-29 12:05: 完成天气历史数据导出功能优化：取消了总汇总表，增强了每日汇总表（新增主要天气、日辐照量计算、日平均风速计算）。同时添加了 Dockerfile 和 docker-compose.yml 配置文件，支持 QNAP NAS 部署。更新了相关文档。
