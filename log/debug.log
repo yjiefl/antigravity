@@ -5,13 +5,11 @@
 - awesome-claude-skills: 本地领先 1 个 commit，建议推送。
 - 发现未追踪文件夹: 新能源安全生产调度会材料审核专家/。
 - 子模块配置: 缺少 .gitmodules，虽然本地文件完整。
-
 2026-01-28: 创建新技能 "new-energy-safety-audit" (新能源安全生产调度会材料审核专家)。
 - 基于 `gem提示词.md` 提取专家逻辑、场站数据及审核算法。
 - 使用 `skill-creator` 工具初始化并打包技能。
 - 结构化存储：核心指令 (SKILL.md)、场站参考 (stations.md)、算法规则 (audit_rules.md)、输出模版 (output_format.md)。
 - 已在 `skill_manager/skills/skills_config.json` 中注册。
-
 2026-01-28: 执行换电脑后的数据一致性修正。
 - 修复子模块缺失问题：创建了 `.gitmodules` 并关联了 `anthropic-skills`、`awesome-claude-skills` 及 `weather history`。
 - 更新文档：在 `skill_manager/spec.md` 中记录了新技能 "new-energy-safety-audit" 的创建及子模块修复计划。
@@ -25,25 +23,15 @@
 2026-01-29 07:00 Created GEM.md containing the all-in-one system prompt for Gemini, enabling standalone usage with full knowledge base integration.
 2026-01-29 07:08 Updated GEM.md to the 'Ultimate Comprehensive Version'. Integrated individual site thresholds, cross-table wind disaster consistency, 51.30% magic number, and strict management redline keywords.
 2026-01-29 07:02 Completed final synchronization. All skill files, reference data, and the ultimate GEM.md instruction have been committed and pushed to GitHub (yjiefl/antigravity).
-
 2026-01-29 08:20: 开始新环境同步。执行 git reset --hard 和 submodule update，仓库已与 origin/main 保持一致，Git 用户配置完成。
-
 2026-01-29 12:05: 完成天气历史数据导出功能优化：取消了总汇总表，增强了每日汇总表（新增主要天气、日辐照量计算、日平均风速计算）。同时添加了 Dockerfile 和 docker-compose.yml 配置文件，支持 QNAP NAS 部署。更新了相关文档。
-
 2026-01-29 12:55: 修复导出数据信息不全的问题。优化了 WeatherService 的本地优先逻辑：现在不仅检查记录条数，还会检查请求字段在本地数据库中是否全为 None。若字段缺失则自动触发 API 请求以补全（‘增肥’）数据。同时修改了批量导出接口，由直接读取数据库改为通过天气服务，确保所有导出都能利用最新的字段补全逻辑。
-
 2026-01-29 13:08: 修复了批量导出时的 NameError: all_data is not defined 错误。在循环开始前正确初始化了变量，并清理了冗余代码。
-
 2026-01-29 13:45: 为「导出选定范围数据到本地」功能添加了文件准备进度提示。通过在前端循环调用数据准备接口，复用了现有的进度条 UI，提供了清晰的城市级进度反馈。在数据准备完成后，再执行正式的大批量导出。
-
 2026-01-29 13:48: 完成了 NAS Docker 部署方案策划。编写了 `NAS_DEPLOYMENT.md` 详细操作指南，涵盖了 Docker Compose 和镜像导入两种方案。同时添加了 `.dockerignore` 文件以优化镜像构建。
-
 2026-01-29 13:50: 为用户编写并配置了 `sync_to_nas.sh` 同步脚本。该脚本基于 `rsync` 协议，已配置好 NAS IP、用户名及排除项，支持一键将本地代码同步到 QNAP 指定共享目录。
-
 2026-01-29 13:52: 根据用户反馈，将 `sync_to_nas.sh` 脚本中的 SSH 端口更新为 22222，以修复由于非标准端口导致的连接被拒绝问题。
-
 2026-01-29 14:19: 修复了 NAS 部署过程中的端口冲突。由于 5001 端口常被 QNAP 系统占用，已将 `docker-compose.yml` 中的外部映射端口修改为 5002。
-
 2026-01-29 14:24: 修复了 Docker 环境下初次启动报错「应用初始化失败」的问题。通过在 `app.py` 中添加数据库自动初始化和默认城市导入逻辑，确保新环境下无需手动运行 `init_db.py` 即可正常工作。
 [2026-01-29 17:34] 格式化文档：将《作业风险评估规范》转换为 Markdown 格式，增强了可读性。
 [2026-01-29 17:58] 格式化文档：将《工作方案模版.doc》转换为 Markdown 格式，便于阅读和版本控制。
