@@ -57,3 +57,8 @@
 1. 发现新电脑未安装 Node.js，执行 `brew install node` 完成安装。
 2. 优化 `start.sh` 脚本，将硬编码的 `/opt/homebrew/bin/node` 路径改为动态获取（`which node`），增强了环境兼容性。
 3. 验证通过：`./start.sh` 成功安装依赖并启动 Vite 开发服务器。
+[2026-01-29 20:38] feat: 为 "new-energy-safety-audit" 技能新增限电判定逻辑。
+- 创建了 `references/curtailment_judgment.md`，明确了辐照、可用功率、实际功率、AGC 指令四维判定准则。
+- 更新了 `SKILL.md` 和 `GEM.md` 以集成最新判定逻辑。
+- 更新了 `README.md` 和 `skill_manager/spec.md` 记录功能变更。
+- 可行性验证：逻辑符合电力监控系统（AGC）与功率预测系统的常规交互规范，可有效识别虚假限电或站内受阻。
