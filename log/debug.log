@@ -151,3 +151,9 @@
 - 调试情况：运行 python3 .agent/skills/ui-ux-pro-max/scripts/search.py --design-system 验证通过。
 - 存在问题：无。
 - 验证情况：已执行测试命令并获得正确的 ASCII 设计系统输出。
+
+[2026-01-31 19:55:00] 编制 Skill 管理器使用指南
+- 修改总结：在 skill_manager 目录下编制了详细的 guide.md。通过分析 skill_translations.json、仓库结构以及特定 Skill（如 New Energy Power Expert）的内容，将现有几百个 Skill 归纳为 6 大类别。
+- 调试情况：手动核对了各类别的功能描述与实际代码/配置文件的一致性。
+- 存在问题：Skill 数量众多，部分 Skill 可能存在重叠。指南主要选取了核心及翻译库中已有的关键项进行编制。
+- 验证情况：guide.md 已成功创建，涵盖了电力专家、办公、开发、设计等关键领域。
