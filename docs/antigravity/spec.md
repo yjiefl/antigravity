@@ -24,6 +24,7 @@ Download, translate, and organize the official Antigravity documentation for loc
 - `/docs/antigravity/`: Antigravity 官方文档本地化整理。
 - `/log/`: 项目运行与调试日志。
 - `/现场安全风险管控系统/`: 特定业务系统模块。
+- `/docs/公文范本/`: 公文范本数据处理。
 
 ## Design Principles
 

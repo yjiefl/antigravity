@@ -1,32 +1,15 @@
-2026-02-01 17:34:00: Initializing documentation download and translation task.
-2026-02-01 17:34:00: Created project directories /log and /docs/antigravity.
-2026-02-01 17:34:00: Starting to create spec.md and README.md.
-2026-02-01 17:45:00: Completed batch crawling and translation of 42 doc pages.
-2026-02-01 17:45:00: Created terminology.md, guide.md, and update.md.
-2026-02-01 17:45:00: All documents saved to /docs/antigravity/.
-2026-02-01 17:45:00: Task completed successfully.
-2026-02-01 18:30:00: 完成文件夹重新分类（AI, apps, services, docs），更新项目文档并推送到 GitHub。
-2026-02-01 18:35:00: 创建 Chart Studio 图表生成器项目，包含饼图、流程图、思维导图、电气图四个模块。支持深色/浅色主题、JSON/CSV 数据导入、PNG/SVG 导出。服务器启动于 http://localhost:3000。
-2026-02-01 19:00:00: 开始 Chart Studio v1.1.0 迭代开发。目标：删除流程图/思维导图/电气图，新增柱状图/折线图，增强饼图功能，优化 UI。
-2026-02-01 21:15:00: 完成《公文范本》DOCX 转 Markdown 转换及清理。
-- 使用 pandoc 完成基础转换。
-- 编写 `clean_md.py` 执行多轮清理：
-  - 移除 `![](media/...)` 图片占位符。
-  - 移除文档书签和锚点噪音。
-  - 标准化标题（H1/H2）。
-  - 修复 DOCX 特有的断行和标点问题（如 `1 ．` 转为 `1.`）。
-- 手动修正了 6 处自动化脚本难以处理的标题拼接问题。
-- 验证：文件 `公文范本_cleaned.md` 内容格式正确且易读。
-- 2026-02-01 22:30:00: 完成 DOCX 排版深度优化。
-  - 修复失效的目录链接，转换为标准列表。
-  - 移除页眉页脚残留信息（ISBN/CIP等）。
-  - 修复标题层级（H2）及标点符号（如 `## 1Title` -> `## 1. Title`）。
-
-2026-02-01 20:30:00: 执行全系统恢复操作。
-由于本地文件状态异常，已将主仓库及所有子模块强制恢复至 GitHub（origin/main）版本，并清理了所有未追踪文件及缓存（.DS_Store, __pycache__, 临时下载文件等）。目前本地环境已与 GitHub 完全同步。
-
-2026-02-01 22:45:00: 完成“新能源电力全能专家” (New Energy Power Expert) 技能的知识库扩充。
-- 读取并分析 docs/公文范本/公文范本_cleaned.md。
-- 提取关键规则（安全红线、运行风险管理、分时电价执行规范）。
-- 更新 AI/New Energy Power Expert/database/knowledge_base.json，新增 5 条核心校验规则。
-- 验证：知识库 JSON 格式正确，新增规则覆盖 Safety, Operation, Grid Rules, Commercial 领域。
+[2026-02-02 05:55:00] [DEBUG] Task: Fix MD025 in /Users/yangjie/Desktop/code/antigravity/docs/公文范本/公文范本_cleaned.md
+Problem: Multiple H1 headers.
+Plan:
+1. Keep the first H1 (# 公文范本).
+2. Demote all other H1 headers to H2.
+3. Detect and remove "page header artifacts" (repeated section headers that interrupt flow).
+Logic:
+- Define known section headers (One to Nine).
+- Track the current section being processed.
+- If a known section header appears again while it is already the current section (and we haven't switched to another), treat it as an artifact and remove it.
+- If a known section header appears and matches a differnet section, treat it as a new section start (keep and demote).
+- Demote all other unknown H1s to H2 to ensure MD025 compliance.
+Verification:
+- Will run script and check file integrity.
+[2026-02-02 06:10:00] [DEBUG] Task: De-identification of 公文范本_cleaned.md. Action: Removed specific company names (CSG and subsidiaries) using python script. Result: grep check confirmed removal of keywords '南方电网', '深圳供电局' etc. Replaced with generic placeholders.
