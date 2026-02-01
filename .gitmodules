@@ -7,3 +7,9 @@
 [submodule "weather history"]
 	path = weather history
 	url = https://github.com/yjiefl/guangxi-weather-history.git
+[submodule "data-analyzer"]
+	path = data-analyzer
+	url = https://github.com/yjiefl/data-analyzer.git
+[submodule "new energy monitor"]
+	path = new energy monitor
+	url = https://github.com/yjiefl/new-energy-monitor.git
