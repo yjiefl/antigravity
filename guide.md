@@ -1,35 +1,24 @@
-# 项目使用说明 (Guide)
+# 项目快速使用指南
 
-## UI UX Pro Max 技能
+## 仓库结构概览
 
-本项目已集成 **UI UX Pro Max** 设计智能技能包，旨在提升 AI 在 UI/UX 设计和前端工程方面的表现。
+本仓库已按照功能模块进行了重新分类：
 
-### 功能特色
+- **AI**: 存放 AI 技能插件、提示词工程等。
+- **Apps**: 存放完整的、可运行的桌面或 Web 应用程序。
+- **Services**: 存放各种中间件、数据处理服务等。
+- **Docs**: 查阅本地化的 Antigravity 开发文档。
 
-- **67 种 UI 风格**: 包含 Glassmorphism, Minimalism, Bento Grid 等。
-- **96 种配色方案**: 针对不同行业（SaaS, 医疗, 金融等）优化的调色板。
-- **57 种字体搭配**: 预设的 Google Fonts 组合。
-- **99 条 UX 准则**: 涵盖无障碍性、性能、交互等方面的最佳实践。
-- **设计系统生成**: 能够根据需求自动生成完整的设计系统方案。
+## 常用操作
 
-### 如何使用
+### 查阅文档
 
-当你需要进行 UI/UX 相关任务（如：设计网页、构建组件、优化布局）时，AI 会自动调用此技能。
+所有翻译后的 Antigravity 文档均位于 `docs/antigravity/` 目录下，您可以直接在编辑器中阅读 Markdown 文件。
 
-你也可以手动指定 AI 使用以下命令进行搜索或生成：
+### 日志记录
 
-```bash
-# 生成完整的设计系统方案
-python3 .agent/skills/ui-ux-pro-max/scripts/search.py "你的需求描述" --design-system
+每次重要的操作都会记录在 `log/debug.log` 中，方便追踪修复进度。
 
-# 搜索特定领域的风格或最佳实践
-python3 .agent/skills/ui-ux-pro-max/scripts/search.py "glassmorphism" --domain style
-python3 .agent/skills/ui-ux-pro-max/scripts/search.py "accessibility" --domain ux
-```
+## 开发规范
 
-### 推荐工作流
-
-1. **分析需求**: 确定产品类型、风格关键词和行业。
-2. **生成设计系统**: 使用 `--design-system` 获取基础样板。
-3. **补充搜索**: 针对图表、字体或特定 UX 问题进行深入搜索。
-4. **实施开发**: 根据推荐的配色、字体和样式进行代码编写。
+请遵循 `docs/antigravity/spec.md` 中定义的 S.O.L.I.D 原则和文档组织规范。

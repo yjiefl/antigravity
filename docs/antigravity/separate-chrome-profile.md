@@ -1,4 +1,5 @@
 # 独立的 Chrome 配置文件 (Separate Chrome Profile)
+
 为了将浏览器与您的常规浏览隔离开来，它运行在[独立的 Chrome 配置文件](https://support.google.com/chrome/answer/2364824)上。
 
 由于 Chrome 配置文件是隔离的，这不会共享您正常浏览配置文件中的任何 Cookie 或登录信息。但是，所有登录都将持久化，这样您将来任何时候打开浏览器时，您的所有账户依然存在。此配置文件还应包含您的 [Chrome 扩展程序](./chrome-extension.md)安装，以便您的正常浏览配置文件完全不受影响。

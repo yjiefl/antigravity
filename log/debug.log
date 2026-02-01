@@ -5,3 +5,6 @@
 2026-02-01 17:45:00: Created terminology.md, guide.md, and update.md.
 2026-02-01 17:45:00: All documents saved to /docs/antigravity/.
 2026-02-01 17:45:00: Task completed successfully.
+2026-02-01 18:30:00: 完成文件夹重新分类（AI, apps, services, docs），更新项目文档并推送到 GitHub。
+2026-02-01 18:35:00: 创建 Chart Studio 图表生成器项目，包含饼图、流程图、思维导图、电气图四个模块。支持深色/浅色主题、JSON/CSV 数据导入、PNG/SVG 导出。服务器启动于 http://localhost:3000。
+2026-02-01 19:00:00: 开始 Chart Studio v1.1.0 迭代开发。目标：删除流程图/思维导图/电气图，新增柱状图/折线图，增强饼图功能，优化 UI。

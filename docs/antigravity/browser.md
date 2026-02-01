@@ -1,4 +1,5 @@
 # 浏览器 (Browser)
+
 Antigravity 具有打开、读取和控制 Chrome 浏览器的能力，允许您测试开发中的网站、读取互联网数据源以及自动化各种不同的浏览器任务。
 
 通过使用[子代理](/docs/browser-subagent)，Antigravity 可以在浏览器上根据需要进行操作，并[记录其操作](/docs/browser-recordings)，并呈现选定的屏幕截图和视频作为[产物](/docs/screenshots)。

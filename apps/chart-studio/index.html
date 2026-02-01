@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Chart Studio - 专业级图表生成器">
+    <title>Chart Studio - 图表生成器</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- html2canvas for PNG export -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边工具栏 -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <span class="logo-text">Chart Studio</span>
+            </div>
+            
+            <nav class="chart-types">
+                <h3 class="nav-title">图表类型</h3>
+                <button class="nav-btn active" data-type="pie" id="btn-pie">
+                    <span class="btn-icon">🥧</span>
+                    <span>饼图/环形图</span>
+                </button>
+                <button class="nav-btn" data-type="bar" id="btn-bar">
+                    <span class="btn-icon">📊</span>
+                    <span>柱状图</span>
+                </button>
+                <button class="nav-btn" data-type="line" id="btn-line">
+                    <span class="btn-icon">📈</span>
+                    <span>折线图</span>
+                </button>
+            </nav>
+            
+            <div class="sidebar-actions">
+                <button class="action-btn" id="btn-import">
+                    <span class="btn-icon">📥</span>
+                    <span>导入数据</span>
+                </button>
+                <button class="action-btn" id="btn-export">
+                    <span class="btn-icon">📤</span>
+                    <span>导出图表</span>
+                </button>
+                <button class="action-btn primary" id="btn-quick-save">
+                    <span class="btn-icon">💾</span>
+                    <span>保存项目</span>
+                </button>
+                <button class="action-btn" id="btn-projects">
+                    <span class="btn-icon">🗂️</span>
+                    <span>已存数据管理</span>
+                </button>
+            </div>
+
+            <div class="sidebar-actions">
+                <h3 class="nav-title">存档管理</h3>
+                <button class="action-btn" id="btn-save-archive">
+                    <span class="btn-icon">💾</span>
+                    <span>导出存档</span>
+                </button>
+                <button class="action-btn" id="btn-load-archive">
+                    <span class="btn-icon">📂</span>
+                    <span>读取存档</span>
+                </button>
+            </div>
+            
+            <div class="theme-toggle">
+                <button class="theme-btn" id="btn-theme">
+                    <span class="btn-icon">🌙</span>
+                    <span>切换主题</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- 主画布区域 -->
+        <main class="canvas-area">
+            <div class="canvas-header">
+                <h1 id="chart-title">饼图编辑器</h1>
+                <div class="canvas-toolbar">
+                    <button class="toolbar-btn" id="btn-reset" title="重置">🔄</button>
+                    <button class="toolbar-btn" id="btn-fullscreen" title="全屏">⛶</button>
+                </div>
+            </div>
+            
+            <div class="canvas-container" id="canvas-container">
+                <!-- 饼图画布 -->
+                <div class="chart-wrapper" id="pie-wrapper">
+                    <canvas id="pie-canvas"></canvas>
+                </div>
+                <!-- 柱状图画布 -->
+                <div class="chart-wrapper hidden" id="bar-wrapper">
+                    <canvas id="bar-canvas"></canvas>
+                </div>
+                <!-- 折线图画布 -->
+                <div class="chart-wrapper hidden" id="line-wrapper">
+                    <canvas id="line-canvas"></canvas>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 右侧属性面板 -->
+        <aside class="properties-panel-wrapper">
+            <div class="properties-panel">
+                <h2 class="panel-title">属性设置</h2>
+                
+                <!-- 饼图属性 -->
+                <div class="panel-section" id="pie-properties">
+                    <h3 class="section-title">数据项</h3>
+                    <div class="data-list" id="pie-data-list">
+                        <!-- 动态生成 -->
+                    </div>
+                    <button class="add-btn" id="btn-add-pie-item">+ 添加数据项</button>
+                    
+                    <h3 class="section-title">常规设置</h3>
+                    <div class="form-group">
+                        <label>图表类型</label>
+                        <select id="pie-style-type">
+                            <option value="pie">饼图</option>
+                            <option value="doughnut">环形图</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>内环半径</label>
+                        <input type="range" id="pie-cutout" min="0" max="80" value="0">
+                        <span id="pie-cutout-value">0%</span>
+                    </div>
+                    <div class="form-group">
+                        <label>旋转角度</label>
+                        <input type="range" id="pie-rotation" min="0" max="360" value="0">
+                        <span id="pie-rotation-value">0°</span>
+                    </div>
+                    
+                    <h3 class="section-title">标签与图例</h3>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="pie-show-legend" checked> 显示图例</label>
+                    </div>
+                    <div class="form-group">
+                        <label>图例位置</label>
+                        <select id="pie-legend-position">
+                            <option value="top">上方</option>
+                            <option value="bottom">下方</option>
+                            <option value="left">左侧</option>
+                            <option value="right">右侧</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="pie-show-values" checked> 显示数值</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="pie-show-percentage" checked> 显示百分比</label>
+                    </div>
+                    <div class="form-group">
+                        <label>单位 (Unit)</label>
+                        <input type="text" id="pie-unit" placeholder="例如: 个, 元, %">
+                    </div>
+                    <div class="form-group">
+                        <label>图例文字颜色</label>
+                        <input type="color" id="pie-text-color" value="#F8FAFC">
+                    </div>
+
+                    <h3 class="section-title">提示框设置</h3>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="pie-show-floating" checked> 启用悬浮提示框</label>
+                    </div>
+                    <div class="form-group">
+                        <label>提示框文字大小</label>
+                        <input type="range" id="pie-label-font-size" min="10" max="24" value="13">
+                        <span id="pie-label-font-size-val">13px</span>
+                    </div>
+                    <div class="form-group">
+                        <label>提示框内边距</label>
+                        <input type="range" id="pie-label-padding" min="4" max="20" value="8">
+                        <span id="pie-label-padding-val">8px</span>
+                    </div>
+                    <div class="form-group">
+                        <label>提示框底色</label>
+                        <input type="color" id="pie-label-bg-color" value="#1E293B">
+                    </div>
+                    <div class="form-group">
+                        <label>提示框透明度</label>
+                        <input type="range" id="pie-label-bg-opacity" min="0" max="100" value="90">
+                        <span id="pie-label-bg-opacity-val">90%</span>
+                    </div>
+                </div>
+                
+                <!-- 柱状图属性 -->
+                <div class="panel-section hidden" id="bar-properties">
+                    <h3 class="section-title">样式设置</h3>
+                    <div class="form-group">
+                        <label>方向</label>
+                        <select id="bar-axis">
+                            <option value="x">纵向柱状图 (Vertical)</option>
+                            <option value="y">横向条形图 (Horizontal)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="bar-stacked"> 堆积模式</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="bar-show-values"> 显示数值</label>
+                    </div>
+                    
+                    <h3 class="section-title">数据管理</h3>
+                    <div id="bar-data-list">
+                        <p class="text-muted">（数据编辑功能开发中... 可先使用导入功能）</p>
+                    </div>
+                </div>
+                
+                <!-- 折线图属性 -->
+                <div class="panel-section hidden" id="line-properties">
+                    <h3 class="section-title">样式设置</h3>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="line-smooth" checked> 平滑曲线</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="line-area"> 面积图</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="line-stacked"> 堆积模式</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="line-points" checked> 显示数据点</label>
+                    </div>
+                </div>
+            </div>
+            <!-- 宽度调节拖拽手柄 (预留) -->
+            <div class="panel-resizer" title="调节宽度"></div>
+        </aside>
+        
+        <!-- 宽度调节按钮 -->
+        <button id="btn-toggle-panel-width" class="panel-width-toggle" title="切换面板宽度">↔</button>
+    </div>
+    
+    <!-- 弹窗部分保留 (Import/Export) -->
+    <!-- 导入数据弹窗 -->
+    <div class="modal hidden" id="import-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>导入数据</h2>
+                <button class="modal-close" id="close-import-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-tabs">
+                    <button class="tab-btn active" data-tab="json">JSON</button>
+                    <button class="tab-btn" data-tab="csv">CSV</button>
+                </div>
+                <div class="import-content">
+                    <textarea id="import-data" class="import-textarea" placeholder="在此粘贴 JSON 或 CSV 数据..."></textarea>
+                    <div class="import-actions">
+                        <input type="file" id="import-file" accept=".json,.csv" class="hidden">
+                        <button class="action-btn" id="btn-upload-file">📁 选择文件</button>
+                        <button class="action-btn primary" id="btn-apply-import">✓ 应用数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 项目管理弹窗 -->
+    <div class="modal hidden" id="projects-modal">
+        <div class="modal-content wide">
+            <div class="modal-header">
+                <h2>已保存项目管理</h2>
+                <button class="modal-close" id="close-projects-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="projects-container">
+                    <div class="projects-actions">
+                        <input type="text" id="new-project-name" placeholder="输入当前项目名称...">
+                        <button class="action-btn primary" id="btn-save-current">保存当前状态</button>
+                    </div>
+                    <div class="projects-list" id="projects-list">
+                        <!-- 动态生成的项目列表 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出弹窗 -->
+    <div class="modal hidden" id="export-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>导出图表</h2>
+                <button class="modal-close" id="close-export-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <button class="export-option-btn" id="btn-export-png">
+                        <span class="export-icon">🖼️</span>
+                        <span class="export-label">PNG 图片</span>
+                        <span class="export-desc">高清无损</span>
+                    </button>
+                    <button class="export-option-btn" id="btn-export-jpg">
+                        <span class="export-icon">📷</span>
+                        <span class="export-label">JPG 图片</span>
+                        <span class="export-desc">压缩位图，适配主题</span>
+                    </button>
+                    <button class="export-option-btn" id="btn-export-svg">
+                        <span class="export-icon">📐</span>
+                        <span class="export-label">SVG 矢量</span>
+                        <span class="export-desc">暂仅支持 SVG 渲染的图表</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

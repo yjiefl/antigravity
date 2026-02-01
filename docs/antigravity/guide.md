@@ -5,6 +5,7 @@
 ## 文档目录
 
 ### 核心概念
+
 - [首页](./home.md)
 - [入门指南](./get-started.md)
 - [智能体 (Agent)](./agent.md)
@@ -12,6 +13,7 @@
 - [智能体模式与设置](./agent-modes-settings.md)
 
 ### 高级功能
+
 - [规则与工作流](./rules-workflows.md)
 - [技能 (Skills)](./skills.md)
 - [任务组 (Task Groups)](./task-groups.md)
@@ -20,6 +22,7 @@
 - [沙箱化](./sandbox-mode.md)
 
 ### 集成与产物
+
 - [MCP 集成](./mcp.md)
 - [产物 (Artifacts)](./artifacts.md)
 - [任务列表](./task-list.md)
@@ -29,6 +32,7 @@
 - [屏幕截图](./screenshots.md)
 
 ### 编辑器 (Editor)
+
 - [知识库 (Knowledge)](./knowledge.md)
 - [编辑器概览](./editor.md)
 - [标签页与导航 (Tab)](./tab.md)
@@ -37,6 +41,7 @@
 - [编辑器中的变更审查](./review-changes-editor.md)
 
 ### 管理器 (Manager)
+
 - [智能体管理器](./agent-manager.md)
 - [工作空间 (Workspaces)](./workspaces.md)
 - [操场 (Playground)](./playground.md)
@@ -48,6 +53,7 @@
 - [变更侧边栏](./changes-sidebar.md)
 
 ### 工具与浏览器
+
 - [终端](./terminal.md)
 - [文件操作](./files.md)
 - [浏览器功能](./browser.md)
@@ -56,6 +62,7 @@
 - [独立浏览器配置文件](./separate-chrome-profile.md)
 
 ### 其他
+
 - [常见问题 (FAQ)](./faq.md)
 - [计划与配额 (Plans)](./plans.md)
 - [详细设置](./settings.md)

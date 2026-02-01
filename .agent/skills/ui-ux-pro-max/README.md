@@ -1,5 +1,5 @@
 # UI UX Pro Max
- 
+
 <p align="center">
   <a href="https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/releases"><img src="https://img.shields.io/github/v/release/nextlevelbuilder/ui-ux-pro-max-skill?style=for-the-badge&color=blue" alt="GitHub Release"></a>
   <img src="https://img.shields.io/badge/reasoning_rules-100-green?style=for-the-badge" alt="100 Reasoning Rules">
@@ -133,6 +133,7 @@ The reasoning engine includes specialized rules for:
 | **Emerging Tech** | Web3/NFT, Spatial Computing, Quantum Computing, Autonomous Systems |
 
 Each rule includes:
+
 - **Recommended Pattern** - Landing page structure
 - **Style Priority** - Best matching UI styles
 - **Color Mood** - Industry-appropriate palettes
@@ -414,11 +415,13 @@ design-system/
 ```
 
 **How hierarchical retrieval works:**
+
 1. When building a specific page (e.g., "Checkout"), first check `design-system/pages/checkout.md`
 2. If the page file exists, its rules **override** the Master file
 3. If not, use `design-system/MASTER.md` exclusively
 
 **Context-aware retrieval prompt:**
+
 ```
 I am building the [Page Name] page. Please read design-system/MASTER.md.
 Also check if design-system/pages/[page-name].md exists.
