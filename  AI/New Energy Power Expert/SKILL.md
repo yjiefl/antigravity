@@ -15,27 +15,49 @@
 
 ## 核心工作流 (Routing Algorithm)
 
-当用户提出请求时，请按以下逻辑路由：
+当用户提出请求时，请严格按以下步骤执行，确保“先核对、后分析、再存档”：
 
-1. **意图识别**:
-    * 涉及“故障、隐患、违章、整改” -> 加载 **[Safety]** 模块。
-    * 涉及“发电量、效率、损失、指标、消纳率” -> 加载 **[Operation]** 模块。
-    * 涉及“罚款、考核、调度、AVC、AGC” -> 加载 **[Grid Rules]** 模块。
-    * 涉及“电池、充放电、削峰填谷” -> 加载 **[Storage]** 模块。
-    * 涉及“准确率、合格率、短期/超短期” -> 加载 **[Forecast]** 模块。
-    * 涉及“租赁、容量分配、承租方” -> 加载 **[Commercial]** 模块。
+### 第一阶段：准确性核对 (Verification First)
 
-2. **数据验证 (Accuracy Check)**:
-    * 始终加载 `references/stations.md` (基础台账与别名)。
-    * 始终加载 `references/devices.md` (关键设备参数)。
-    * **强制步骤**: 在分析前核对报表内数据的自洽性（如：合计校验、逻辑对标）。
+**原则**：在进行任何专业分析前，必须先确保报告的基础数据与逻辑无误。
 
-3. **引用与诊断**:
-    * 若问题跨领域（例如：因“小马拉大车”导致效率低），请同时引用 [Operation] 和 [Storage] 模块。
-    * **报告必须指出原文具体位置**，并提供标准支撑。
+1. **数据源验证**：
+    * 加载 `references/stations.md`，核对报告中的场站名称、容量是否与台账一致。
+    * 加载 `references/devices.md`，核对关键设备参数（如主变容量、电池参数）。
+2. **逻辑自洽性检查**：
+    * **合计校验**：分项之和是否等于总项（如：各场站发电量之和 vs 总表发电量）。
+    * **极值校验**：是否存在违反物理常识的数据（如：负荷率为 120%，利用小时数超过 24h/天）。
+3. **若发现基础错误**：
+    * 立即停止深入分析，优先输出“基础数据错误报告”，指出矛盾点，要求用户修正后再审。
 
-4. **报告输出**:
-    * 审核完成后，**务必**调用工具将报告保存至 `output/` 文件夹下。
+### 第二阶段：意图识别与专业分析 (Analysis)
+
+若基础数据无误，根据用户意图加载对应模块：
+
+* **Safety (安全)**: 故障、隐患、违章 -> `domains/safety/audit_rules.md`
+* **Operation (运行)**: 发电量、效率、损失 -> `domains/operation/indicators.md`
+* **Grid Rules (考核)**: 两个细则、AVC/AGC -> `domains/grid_rules/assessment.md`
+* **Storage (储能)**: 充放电、效率、寿命 -> `domains/storage/battery_specs.md`
+* **Forecast (预测)**: 准确率、合格率 -> `domains/forecast/accuracy.md`
+* **Commercial (商务)**: 租赁、容量分配 -> `domains/commercial/leasing.md`
+
+### 第三阶段：引用与诊断 (Pinpointing)
+
+1. **精准定位**：
+    * 报告必须明确指出问题在原文的**具体位置**（例：“第 3 页第 2 段表格数据...”）。
+2. **依据支撑**：
+    * 每个问题点必须引用对应的标准（Standard）、逻辑（Logic）或数据（Data）作为支撑。
+    * 例：“根据 `references/threshold_benchmarks.md`，该光伏板转换效率 12% 低于基准值 19%。”
+
+### 第四阶段：数据存档与持续学习 (Archiving & Learning)
+
+1. **读取经验库**：
+    * 任务开始前，检查 `database/knowledge_base.json`，查看是否存在类似的常见错误或历史教训。
+2. **数据标准化存档**：
+    * 分析完成后，将核心指标（日期、场站、发电量、利用小时、故障数等）提取并标准化。
+    * 按 JSON 格式追加至 `database/historical_data.json`（模拟操作，请在报告附录列出准备存入的数据结构）。
+3. **经验总结**：
+    * 若发现新的典型案例或规则漏洞，生成一条“新经验”，建议用户更新到 `database/knowledge_base.json`。
 
 ## 资源索引
 
@@ -48,10 +70,13 @@
 | **Forecast** | `domains/forecast/accuracy.md` | 预测准确率达标标准 |
 | **Commercial** | `domains/commercial/leasing.md` | 租赁容量校验逻辑 |
 | **Common** | `references/stations.md` | 全场站基础信息 |
+| **Database** | `database/historical_data.json` | 历史标准化数据存档 |
+| **Knowledge**| `database/knowledge_base.json` | 经验教训与技能成长库 |
 
 ## 注意事项
 
-* **唯一真实源**: 所有场站容量以 `stations.md` 为准。
+* **先核对后分析**：切勿在错误的数据上进行精细化分析。
+* **唯一真实源**：所有场站容量以 `stations.md` 为准。
 * **计算严谨性**: 涉及电量、费用的计算，必须列出公式步骤。
 * **术语规范**: 严格区分“限电”与“受阻”、“故障停运”与“计划检修”。
-* **文件存档**: 所有分析报告必须同步至 `output/` 目录。
+* **数据存档**: 分析报告必须同步至 `output/`，标准化数据存入数据库。

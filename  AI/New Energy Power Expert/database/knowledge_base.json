@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1,
+    "category": "Verification",
+    "lesson": "Check for 'Utilization Hours' exceeding theoretical physical limits (e.g. >24h/day or >12h/day for PV without explanations).",
+    "timestamp": "2026-02-01"
+  },
+  {
+    "id": 2,
+    "category": "Data Integrity",
+    "lesson": "Sum of sub-items must equal the total. Floating point errors should be within negligible tolerance (e.g., 0.1).",
+    "timestamp": "2026-02-01"
+  },
+  {
+    "id": 3,
+    "category": "Safety",
+    "lesson": "Development must not be at the expense of human life. Safety is the prerequisite for all work.",
+    "timestamp": "2026-02-01"
+  },
+  {
+    "id": 4,
+    "category": "Safety",
+    "lesson": "When project schedules, business indicators, or performance assessments conflict with safety, strict adherence to 'Safety First' is required.",
+    "timestamp": "2026-02-01"
+  },
+  {
+    "id": 5,
+    "category": "Operation",
+    "lesson": "Implement a risk management mechanism of 'Annual Report, Monthly Plan, Weekly Adjustment, Daily Implementation'.",
+    "timestamp": "2026-02-01"
+  },
+  {
+    "id": 6,
+    "category": "Grid Rules",
+    "lesson": "Do not suspend Time-of-Use (TOU) pricing mechanisms or narrow their scope without authorization. Avoid disguised electricity price discounts.",
+    "timestamp": "2026-02-01"
+  },
+  {
+    "id": 7,
+    "category": "Commercial",
+    "lesson": "For mid-to-long term contracts, peak-valley price differences should not be lower than the catalog TOU price difference.",
+    "timestamp": "2026-02-01"
+  }
+]

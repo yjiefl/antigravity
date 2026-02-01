@@ -1,0 +1,11 @@
+[
+  {
+    "_comment": "Standardized schema for historical data. Add new entries to this list.",
+    "date": "",
+    "station_name": "",
+    "total_generation_mwh": 0,
+    "utilization_hours": 0,
+    "fault_count": 0,
+    "grid_curtailment_hours": 0
+  }
+]
