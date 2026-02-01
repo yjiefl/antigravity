@@ -5,7 +5,7 @@
 ## 目录结构
 
 - [AI/](./AI/): AI 相关技能、模型管理与工具。
-- [apps/](./apps/): 独立的功能型应用（如 `video_downloader`）。
+- [apps/](./apps/): 独立的功能型应用（如 `视频下载器`）。
 - [services/](./services/): 后端服务与核心业务逻辑。
 - [docs/antigravity/](./docs/antigravity/): Antigravity 官方文档的中文本地化版本。
 - [现场安全风险管控系统/](./现场安全风险管控系统/): 专注于现场安全管控的业务系统。
