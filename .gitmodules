@@ -1,15 +1,15 @@
-[submodule "skill_manager/skills/anthropic-skills"]
-	path = skill_manager/skills/anthropic-skills
+[submodule "AI/skill_manager/skills/anthropic-skills"]
+	path = " AI/skill_manager/skills/anthropic-skills"
 	url = https://github.com/anthropics/skills.git
-[submodule "skill_manager/skills/awesome-claude-skills"]
-	path = skill_manager/skills/awesome-claude-skills
+[submodule "AI/skill_manager/skills/awesome-claude-skills"]
+	path = " AI/skill_manager/skills/awesome-claude-skills"
 	url = https://github.com/ComposioHQ/awesome-claude-skills.git
-[submodule "weather history"]
-	path = weather history
+[submodule "services/weather history"]
+	path = "services/weather history"
 	url = https://github.com/yjiefl/guangxi-weather-history.git
-[submodule "data-analyzer"]
-	path = data-analyzer
+[submodule "services/data-analyzer"]
+	path = "services/data-analyzer"
 	url = https://github.com/yjiefl/data-analyzer.git
-[submodule "new energy monitor"]
-	path = new energy monitor
+[submodule "services/new energy monitor"]
+	path = "services/new energy monitor"
 	url = https://github.com/yjiefl/new-energy-monitor.git
