@@ -13,3 +13,4 @@ Logic:
 Verification:
 - Will run script and check file integrity.
 [2026-02-02 06:10:00] [DEBUG] Task: De-identification of 公文范本_cleaned.md. Action: Removed specific company names (CSG and subsidiaries) using python script. Result: grep check confirmed removal of keywords '南方电网', '深圳供电局' etc. Replaced with generic placeholders.
+[2026-02-02 06:40:00] [DEBUG] Task: Comprehensive De-identification of 公文范本_cleaned.md. Action: Updated de-identification script to use flexible regex (handling spaces/newlines in names). Replaced specific location names (Donglan, Hechi, etc.), project names (KVL, etc.), and station names with generic placeholders. Fixed over-replacement of verbs like 'standing'. Result: Verified line 2476, 2492 and others are clean.
