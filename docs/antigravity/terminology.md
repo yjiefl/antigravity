@@ -1,0 +1,28 @@
+# Terminology Map (EN -> CN)
+
+- Antigravity -> Antigravity
+- Agent -> 智能体
+- Artifacts -> 产物
+- Tool -> 工具
+- Terminal -> 终端
+- Workspace -> 工作空间
+- Playground -> 操场
+- Inbox -> 收件箱
+- Tab -> 标签页
+- Command -> 命令
+- Manager -> 管理器
+- Integration -> 集成
+- Model -> 模型
+- Sandboxing -> 沙箱化
+- Secure Mode -> 安全模式
+- Browser Subagent -> 浏览器子代理
+- MCP (Model Context Protocol) -> MCP (模型上下文协议)
+- Task List -> 任务列表
+- Implementation Plan -> 实现计划
+- Walkthrough -> 演示/走读
+- Conversation View -> 对话视图
+- Panes -> 窗格
+- Source Control -> 源码控制 / 版本控制
+- Chrome Extension -> Chrome 扩展程序
+- Allowlist -> 白名单
+- Denylist -> 黑名单
