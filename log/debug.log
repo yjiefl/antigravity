@@ -80,3 +80,13 @@
 - 执行 `git commit` 并 `git push` 同步至远程仓库。
 结果：
 - 项目整体已同步至 GitHub。
+
+[2026-02-03 06:55]
+任务： 解决子模块未提交变动的问题。
+原因： `services/weather history` 和 `services/new energy monitor` 是子模块，内部变动（如 `update.md` 修改及新脚本 `start.sh`/`stop.sh`）需在各自目录下先 commit，主项目才能更新其指针。
+操作：
+- 进入子模块目录分别执行 `git add` 和 `git commit`。
+- 回到根目录执行 `git add .` 更新子模块指针并提交。
+- 执行 `git push`。
+结果：
+- 所有文件已成功提交并同步，`git status` 显示工作区干净。
