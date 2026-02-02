@@ -53,4 +53,5 @@
 - 提交所有更改并推送到 GitHub 远程仓库。
 - 创建新的 Release 版本进行备份。
 结果：
-- 数据已成功备份并同步至云端。
+- 数据（含子模块 `data-analyzer` 和 `new-energy-monitor`）已成功 commit 并 push。
+- 已发布 Release `v1.0.1`： https://github.com/yjiefl/antigravity/releases/tag/v1.0.1
