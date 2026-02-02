@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高效会议的剖析：数据驱动指南</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #F8FAFC;
+            color: #1E293B;
+        }
+        
+        /* 图表容器严格样式 */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* 自定义时间轴 CSS */
+        .timeline-line {
+            position: absolute;
+            left: 50%; 
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background-color: #CBD5E1;
+            z-index: 0;
+        }
+        
+        .icon-lg { font-size: 2.5rem; line-height: 1; }
+        .icon-md { font-size: 1.5rem; line-height: 1; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- 头部 / 钩子 -->
+    <header class="bg-gradient-to-r from-indigo-600 to-cyan-500 text-white py-12 px-4 shadow-lg">
+        <div class="max-w-6xl mx-auto text-center">
+            <h1 class="text-4xl md:text-6xl font-bold mb-4">掌控会议</h1>
+            <p class="text-xl md:text-2xl font-light opacity-90 max-w-3xl mx-auto">
+                停止浪费时间。开始推动决策。一份关于如何举行高效、高影响力聚会的数据驱动指南。
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-12 space-y-16">
+
+        <!-- 第 1 部分：问题所在 -->
+        <section>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-indigo-900 mb-4 border-l-4 border-orange-500 pl-4">低效的代价</h2>
+                    <p class="text-gray-700 text-lg mb-6 leading-relaxed">
+                        会议是协作的命脉，但往往也是生产力的无声杀手。研究表明，近一半的会议被参会者认为效率低下，每年导致数十亿美元的资本损失。
+                    </p>
+                    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="block text-4xl font-bold text-indigo-600">31 小时</span>
+                                <span class="text-sm text-gray-500 uppercase tracking-wide">每月人均低效时间</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="block text-4xl font-bold text-orange-500">$370亿+</span>
+                                <span class="text-sm text-gray-500 uppercase tracking-wide">年度经济损失 (美国)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 可视化：环形图 -->
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold text-center mb-4 text-gray-800">参会者感知的会议效率</h3>
+                    <div class="chart-container">
+                        <canvas id="productivityChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center text-gray-500 mt-4 italic">数据来源：协作管理研究中心</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 2 部分：常见的挫败感 -->
+        <section class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            <h2 class="text-3xl font-bold text-indigo-900 mb-2 text-center">会议为何会失败？</h2>
+            <p class="text-center text-gray-600 max-w-2xl mx-auto mb-10">
+                了解失败的根本原因是改进的第一步。调查数据列出了员工反映的最主要挫败感。
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2">
+                    <div class="chart-container" style="max-width: 100%;">
+                        <canvas id="frustrationsChart"></canvas>
+                    </div>
+                </div>
+                <div class="flex flex-col justify-center space-y-6">
+                    <div class="p-4 bg-indigo-50 rounded-lg border-l-4 border-indigo-500">
+                        <h4 class="font-bold text-indigo-700">1. 焦点飘散</h4>
+                        <p class="text-sm text-gray-600">缺乏明确的议程是头号杀手。没有地图，讨论就会迷失方向。</p>
+                    </div>
+                    <div class="p-4 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                        <h4 class="font-bold text-orange-700">2. 技术陷阱</h4>
+                        <p class="text-sm text-gray-600">音频问题和屏幕共享失败占会议延迟时间的 15%。</p>
+                    </div>
+                    <div class="p-4 bg-cyan-50 rounded-lg border-l-4 border-cyan-500">
+                        <h4 class="font-bold text-cyan-700">3. 迟到开场</h4>
+                        <p class="text-sm text-gray-600">等待迟到者传递出时间不被尊重的信号，在正式开始前就消耗了精力。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 3 部分：战略生命周期 -->
+        <section>
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-indigo-900 mb-4">三阶段框架</h2>
+                <p class="text-gray-600">成功的会议不是一个孤立的事件；它是一个过程。请将其视为一个生命周期。</p>
+            </div>
+
+            <!-- CSS 流程图 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+                <!-- 桌面端连接线 -->
+                <div class="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10 transform -translate-y-1/2"></div>
+
+                <!-- 阶段 1 -->
+                <div class="bg-white p-6 rounded-xl shadow-md border-t-8 border-indigo-500 relative transform transition hover:-translate-y-1">
+                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl shadow-lg">1</div>
+                    <div class="text-center mt-4">
+                        <div class="icon-lg mb-2">📋</div>
+                        <h3 class="text-xl font-bold text-gray-800">准备阶段</h3>
+                        <p class="text-sm text-gray-500 mt-2">定义目标、筛选人员、分享议程</p>
+                    </div>
+                </div>
+
+                <!-- 阶段 2 -->
+                <div class="bg-white p-6 rounded-xl shadow-md border-t-8 border-cyan-500 relative transform transition hover:-translate-y-1">
+                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-cyan-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl shadow-lg">2</div>
+                    <div class="text-center mt-4">
+                        <div class="icon-lg mb-2">🗣️</div>
+                        <h3 class="text-xl font-bold text-gray-800">引导阶段</h3>
+                        <p class="text-sm text-gray-500 mt-2">管理时间、鼓励辩论、推动决策</p>
+                    </div>
+                </div>
+
+                <!-- 阶段 3 -->
+                <div class="bg-white p-6 rounded-xl shadow-md border-t-8 border-orange-500 relative transform transition hover:-translate-y-1">
+                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-orange-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl shadow-lg">3</div>
+                    <div class="text-center mt-4">
+                        <div class="icon-lg mb-2">🚀</div>
+                        <h3 class="text-xl font-bold text-gray-800">后续阶段</h3>
+                        <p class="text-sm text-gray-500 mt-2">会议纪要、行动项、问责机制</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 4 部分：准备工作的评估指标 -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center bg-indigo-50 p-8 rounded-3xl">
+            <div class="order-2 md:order-1">
+                 <div class="chart-container">
+                    <canvas id="agendaChart"></canvas>
+                </div>
+            </div>
+            <div class="order-1 md:order-2">
+                <h2 class="text-3xl font-bold text-indigo-900 mb-4">议程的优势</h2>
+                <p class="text-gray-700 text-lg mb-6">
+                    数据显示，议程详细程度与感知的会议有效性之间存在直接相关性。“骨架议程”（仅有标题）的效果仅略好于完全没有议程。
+                </p>
+                <ul class="space-y-4">
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2 font-bold">✓</span>
+                        <span class="text-gray-700"><strong>定义产出：</strong> 准确说明需要做出什么决定。</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2 font-bold">✓</span>
+                        <span class="text-gray-700"><strong>限时讨论：</strong> 为每个主题分配分钟数，而不只是排序。</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2 font-bold">✓</span>
+                        <span class="text-gray-700"><strong>预读材料：</strong> 提前 24 小时发送相关背景资料。</span>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 第 5 部分：理想的执行时间轴 -->
+        <section>
+            <div class="text-center mb-10">
+                <h2 class="text-3xl font-bold text-indigo-900">完美的 30 分钟短会</h2>
+                <p class="text-gray-600 mt-2">帕金森定律指出，工作会不断扩展，直到填满所有可用时间。缩短时间，聚焦重点。</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- 饼图表示 -->
+                <div class="md:col-span-1 bg-white p-6 rounded-xl shadow-lg flex flex-col justify-center">
+                    <h3 class="text-center font-bold text-gray-700 mb-4">时间分配明细</h3>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="timePieChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 结构化时间轴列表 -->
+                <div class="md:col-span-2 space-y-4">
+                    <!-- 步骤 1 -->
+                    <div class="flex items-center bg-white p-4 rounded-lg shadow border-l-8 border-indigo-400">
+                        <div class="bg-indigo-100 text-indigo-800 font-bold px-3 py-1 rounded mr-4 min-w-[80px] text-center">0-5 分</div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">背景设定</h4>
+                            <p class="text-sm text-gray-600">欢迎参会者，陈述会议目标并快速审阅议程。不等待迟到者。</p>
+                        </div>
+                    </div>
+                    <!-- 步骤 2 -->
+                    <div class="flex items-center bg-white p-4 rounded-lg shadow border-l-8 border-cyan-400">
+                        <div class="bg-cyan-100 text-cyan-800 font-bold px-3 py-1 rounded mr-4 min-w-[80px] text-center">5-20 分</div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">核心讨论</h4>
+                            <p class="text-sm text-gray-600">通过辩论、头脑风暴解决问题。引导者须确保听到所有人的声音，且无人主导局面。</p>
+                        </div>
+                    </div>
+                    <!-- 步骤 3 -->
+                    <div class="flex items-center bg-white p-4 rounded-lg shadow border-l-8 border-orange-400">
+                        <div class="bg-orange-100 text-orange-800 font-bold px-3 py-1 rounded mr-4 min-w-[80px] text-center">20-25 分</div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">决策时刻</h4>
+                            <p class="text-sm text-gray-600">强制达成结论。我们要做什么？如果未能达成决定，列出后续决定所需的具体数据。</p>
+                        </div>
+                    </div>
+                     <!-- 步骤 4 -->
+                     <div class="flex items-center bg-white p-4 rounded-lg shadow border-l-8 border-slate-400">
+                        <div class="bg-slate-200 text-slate-800 font-bold px-3 py-1 rounded mr-4 min-w-[80px] text-center">25-30 分</div>
+                        <div>
+                            <h4 class="font-bold text-gray-800">总结收尾</h4>
+                            <p class="text-sm text-gray-600">分配行动项 (谁，做什么，何时完成)。为会议效率评分 (1-5)。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 总结 -->
+        <footer class="bg-slate-900 text-white rounded-t-3xl p-12 text-center mt-12">
+            <h2 class="text-3xl font-bold mb-6">让每一分钟发挥价值</h2>
+            <p class="text-slate-400 max-w-2xl mx-auto mb-8">
+                伟大的会议不是偶然发生的，而是设计出来的。今天就采用这个框架，将您的组织文化从“忙碌”转变为“高效”。
+            </p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-sm">
+                <div class="bg-slate-800 p-4 rounded-lg">🚫 没议程，不开会</div>
+                <div class="bg-slate-800 p-4 rounded-lg">⏱️ 准时开始，准时结束</div>
+                <div class="bg-slate-800 p-4 rounded-lg">📱 禁止使用手机</div>
+                <div class="bg-slate-800 p-4 rounded-lg">📝 记录行动项</div>
+            </div>
+        </footer>
+
+    </main>
+
+    <script>
+        // ---------------------------------------------------------
+        // 工具：标签分割逻辑 (中文适配)
+        // ---------------------------------------------------------
+        function splitLabel(label) {
+            const MAX_LENGTH = 10; // 中文字符长度可以设小一些
+            if (label.length <= MAX_LENGTH) return label;
+
+            // 简单的按长度切分，中文通常不需要按单词切
+            const lines = [];
+            for (let i = 0; i < label.length; i += MAX_LENGTH) {
+                lines.push(label.substring(i, i + MAX_LENGTH));
+            }
+            return lines;
+        }
+
+        // ---------------------------------------------------------
+        // 工具：通用工具提示配置
+        // ---------------------------------------------------------
+        const commonTooltipOptions = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join('');
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
+
+        // ---------------------------------------------------------
+        // 图表 1：效率环形图
+        // ---------------------------------------------------------
+        const ctxProductivity = document.getElementById('productivityChart').getContext('2d');
+        new Chart(ctxProductivity, {
+            type: 'doughnut',
+            data: {
+                labels: ['高效时间', '浪费/低效时间'],
+                datasets: [{
+                    data: [53, 47],
+                    backgroundColor: ['#4F46E5', '#CBD5E1'], 
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { family: 'Inter', size: 12 } }
+                    },
+                    tooltip: commonTooltipOptions
+                }
+            }
+        });
+
+        // ---------------------------------------------------------
+        // 图表 2：挫败感柱状图
+        // ---------------------------------------------------------
+        const ctxFrustrations = document.getElementById('frustrationsChart').getContext('2d');
+        new Chart(ctxFrustrations, {
+            type: 'bar',
+            data: {
+                labels: [
+                    '缺乏明确议程',
+                    '准时性差 (开始/结束)',
+                    '参会者消极不参与',
+                    '个人强势主导讨论',
+                    '技术故障/问题'
+                ],
+                datasets: [{
+                    label: '响应者百分比 (%)',
+                    data: [67, 58, 45, 38, 25],
+                    backgroundColor: [
+                        '#F97316', 
+                        '#06B6D4',
+                        '#6366F1',
+                        '#818CF8',
+                        '#A5B4FC'
+                    ],
+                    borderRadius: 6,
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                indexAxis: 'y', 
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'Inter' } }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'Inter', size: 11 } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: commonTooltipOptions
+                }
+            }
+        });
+
+        // ---------------------------------------------------------
+        // 图表 3：议程影响力柱状图
+        // ---------------------------------------------------------
+        const ctxAgenda = document.getElementById('agendaChart').getContext('2d');
+        new Chart(ctxAgenda, {
+            type: 'bar',
+            data: {
+                labels: [
+                    '无议程',
+                    '模糊主题列表',
+                    '详细议程 + 明确目标'
+                ],
+                datasets: [{
+                    label: '效率评分 (1-10)',
+                    data: [2.5, 5.1, 8.8],
+                    backgroundColor: ['#E2E8F0', '#93C5FD', '#4F46E5'],
+                    borderRadius: 8,
+                    barThickness: 50
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10,
+                        title: { display: true, text: '有效性得分' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: commonTooltipOptions
+                }
+            }
+        });
+
+        // ---------------------------------------------------------
+        // 图表 4：时间分配饼图
+        // ---------------------------------------------------------
+        const ctxTime = document.getElementById('timePieChart').getContext('2d');
+        new Chart(ctxTime, {
+            type: 'pie',
+            data: {
+                labels: [
+                    '背景设定 (5分)',
+                    '核心讨论 (15分)',
+                    '决策时刻 (5分)',
+                    '总结收尾 (5分)'
+                ],
+                datasets: [{
+                    data: [5, 15, 5, 5],
+                    backgroundColor: [
+                        '#818CF8', 
+                        '#06B6D4', 
+                        '#F97316', 
+                        '#94A3B8'  
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { boxWidth: 12, font: { size: 11 } }
+                    },
+                    tooltip: commonTooltipOptions
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>
