@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电力监控中心 AI 工具使用指南</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0a0e1a;
+            --accent-cyan: #00f2ff;
+            --accent-blue: #0066ff;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background-color: var(--primary-bg);
+            color: #e2e8f0;
+            font-family: 'Inter', 'Microsoft YaHei', sans-serif;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+        }
+
+        .hero-gradient {
+            background: radial-gradient(circle at top right, rgba(0, 242, 255, 0.15), transparent),
+                        radial-gradient(circle at bottom left, rgba(0, 102, 255, 0.15), transparent);
+        }
+
+        .glow-hover:hover {
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+            border-color: var(--accent-cyan);
+            transition: all 0.3s ease;
+        }
+
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #21262d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+
+        .card-icon {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="hero-gradient min-h-screen">
+
+    <!-- Header / Navigation -->
+    <nav class="fixed w-full z-50 px-6 py-4 flex justify-between items-center glass border-none rounded-none bg-opacity-80">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/50">
+                <span class="text-white font-bold orbitron">AI</span>
+            </div>
+            <span class="text-xl font-bold orbitron tracking-wider text-cyan-400">POWER MONITORING</span>
+        </div>
+        <div class="hidden md:flex space-x-8 text-sm font-semibold orbitron">
+            <a href="#hero" class="hover:text-cyan-400 transition-colors">核心</a>
+            <a href="#comparison" class="hover:text-cyan-400 transition-colors">工具对比</a>
+            <a href="#scenarios" class="hover:text-cyan-400 transition-colors">应用场景</a>
+            <a href="#mindset" class="hover:text-cyan-400 transition-colors">使用思路</a>
+        </div>
+        <div class="text-sm text-cyan-400 font-mono hidden lg:block">系统状态: 运行正常 // 2026.02.02</div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="relative pt-32 pb-20 px-6 overflow-hidden">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div class="z-10">
+                <h2 class="text-cyan-500 font-bold orbitron mb-4 tracking-widest animate-pulse">SUPERVISOR RESOURCE</h2>
+                <h1 class="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+                    电力监控中心 <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">AI 工具使用指南</span>
+                </h1>
+                <p class="text-xl text-gray-400 mb-8 max-w-xl">
+                    欢迎，电力监控中心主管。本指南旨在为您提供最前沿的 AI 工具协同策略，通过整合 Gemini、Antigravity 与 NotebookLM，全面提升电网监控、隐患分析及数字化决策效率。
+                </p>
+                <div class="flex space-x-4">
+                    <a href="#comparison" class="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-full font-bold transition-all shadow-lg shadow-cyan-600/30">立即探索</a>
+                    <a href="#mindset" class="px-8 py-3 glass hover:bg-white/10 rounded-full font-bold transition-all">战略思路</a>
+                </div>
+            </div>
+            <div class="relative">
+                <div class="absolute -top-20 -right-20 w-80 h-80 bg-cyan-500/20 blur-[100px] rounded-full"></div>
+                <img src="power_monitoring_ai_hero_1770009829446.png" alt="Electricity Command Center" class="rounded-2xl shadow-2xl border border-white/10 animate-float">
+            </div>
+        </div>
+    </section>
+
+    <!-- Tool Comparison Section -->
+    <section id="comparison" class="py-20 px-6 bg-black/30">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold orbitron mb-4">核心 AI 工具矩阵</h2>
+                <div class="w-24 h-1 bg-cyan-500 mx-auto"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Antigravity -->
+                <div class="glass p-8 glow-hover group relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                        <span class="text-4xl text-cyan-400">⚡</span>
+                    </div>
+                    <div class="text-cyan-400 text-4xl mb-6">🤖</div>
+                    <h3 class="text-2xl font-bold mb-4 orbitron">Antigravity</h3>
+                    <p class="text-gray-400 mb-6 text-sm">专业级架构化 AI 伙伴，擅长代码编写、系统集成与自动化任务。</p>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-cyan-400 text-xs">适用场景</span>
+                            <span class="text-white text-xs font-semibold">监控脚本开发、系统Bug修复</span>
+                        </div>
+                        <div class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-cyan-400 text-xs">核心优势</span>
+                            <span class="text-white text-xs font-semibold">深入理解代码逻辑、Agentic 闭环执行</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gemini -->
+                <div class="glass p-8 glow-hover group relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                        <span class="text-4xl text-blue-400">✦</span>
+                    </div>
+                    <div class="text-blue-400 text-4xl mb-6">🌟</div>
+                    <h3 class="text-2xl font-bold mb-4 orbitron">Gemini (Google)</h3>
+                    <p class="text-gray-400 mb-6 text-sm">超大规模多模态模型，擅长超长文本分析、深度调研与逻辑推理。</p>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-blue-400 text-xs">适用场景</span>
+                            <span class="text-white text-xs font-semibold">规程文件解析、大规模事故调研</span>
+                        </div>
+                        <div class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-blue-400 text-xs">核心优势</span>
+                            <span class="text-white text-xs font-semibold">长达2M的Token窗口、强大的语义理解</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NotebookLM -->
+                <div class="glass p-8 glow-hover group relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                        <span class="text-4xl text-emerald-400">📓</span>
+                    </div>
+                    <div class="text-emerald-400 text-4xl mb-6">📚</div>
+                    <h3 class="text-2xl font-bold mb-4 orbitron">NotebookLM</h3>
+                    <p class="text-gray-400 mb-6 text-sm">以文档为中心的智能笔记本，完美解决“私域知识检索”难题。</p>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-emerald-400 text-xs">适用场景</span>
+                            <span class="text-white text-xs font-semibold">班组资料库汇总、运维手册查询</span>
+                        </div>
+                        <div class="flex items-center space-x-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-emerald-400 text-xs">核心优势</span>
+                            <span class="text-white text-xs font-semibold">零幻觉、支持文档溯源、自动播客总结</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scenarios Section -->
+    <section id="scenarios" class="py-20 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold orbitron mb-4">电力监控中心的 4 大 AI 应用场景</h2>
+                <p class="text-gray-500">将 AI 工具精准匹配到实际业务环节</p>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-4 mb-12">
+                <button onclick="showTab('tab1')" id="btn-tab1" class="px-6 py-2 rounded-full glass border-cyan-500/50 text-cyan-400 font-bold hover:bg-cyan-500/10 transition-all active:scale-95">异常诊断</button>
+                <button onclick="showTab('tab2')" id="btn-tab2" class="px-6 py-2 rounded-full glass border-white/20 text-gray-400 hover:text-white transition-all">自动化报表</button>
+                <button onclick="showTab('tab3')" id="btn-tab3" class="px-6 py-2 rounded-full glass border-white/20 text-gray-400 hover:text-white transition-all">运维脚本编写</button>
+                <button onclick="showTab('tab4')" id="btn-tab4" class="px-6 py-2 rounded-full glass border-white/20 text-gray-400 hover:text-white transition-all">专家知识库</button>
+            </div>
+
+            <div id="tab1" class="tab-content active glass p-10">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                    <div>
+                        <h4 class="text-2xl font-bold mb-4 text-cyan-400">场景 A：复杂电网异常诊断</h4>
+                        <p class="text-gray-400 mb-6 leading-relaxed">
+                            当监控系统发出告警，但由于系统庞大、关联因素多，难以快速锁定根本原因时。
+                        </p>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-cyan-500 text-black rounded-full px-2 text-xs font-bold mt-1">推荐工具</span>
+                                <p class="text-sm"><strong>Gemini</strong></p>
+                            </div>
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-white/10 text-gray-300 rounded-full px-2 text-xs font-bold mt-1">使用逻辑</span>
+                                <p class="text-sm text-gray-400">上传事故发生时的 SCL 文件、日志文本及历史同期数据。让 Gemini 进行全量扫描，识别多因素关联性，并给出可能的故障树模型。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-cyan-500/5 rounded-xl border border-cyan-500/20 p-6">
+                        <p class="text-sm font-mono text-cyan-300">
+                            > 输入提示词示例：<br>
+                            "分析附件中 14:02 分的系统日志，对比电力规程中关于‘非正常电压降’的处理流程，列出前 3 位可能的故障点。"
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab2" class="tab-content glass p-10">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                    <div>
+                        <h4 class="text-2xl font-bold mb-4 text-blue-400">场景 B：数字化日报/周报自动生成</h4>
+                        <p class="text-gray-400 mb-6 leading-relaxed">
+                            将各个子系统的 Excel、CSV 原始数据转化为符合电力规范的专业文字报告。
+                        </p>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-blue-500 text-black rounded-full px-2 text-xs font-bold mt-1">推荐工具</span>
+                                <p class="text-sm"><strong>Antigravity + ChatGPT</strong></p>
+                            </div>
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-white/10 text-gray-300 rounded-full px-2 text-xs font-bold mt-1">使用逻辑</span>
+                                <p class="text-sm text-gray-400">先让 <strong>Antigravity</strong> 编写数据聚合脚本（Python），自动清洗并提取关键 KPI（如 AGC 调节速率、负荷波动率）。再将 KPI 喂给 <strong>ChatGPT</strong> 生成结构化叙述文本。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-blue-500/5 rounded-xl border border-blue-500/20 p-6">
+                        <p class="text-sm font-mono text-blue-300">
+                            > 自动化链路：<br>
+                            CSV 数据 -> Antigravity (清洗处理) -> Markdown 文字 -> 主管审核
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab3" class="tab-content glass p-10">
+                <!-- Content for tab 3 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                    <div>
+                        <h4 class="text-2xl font-bold mb-4 text-orange-400">场景 C：监控系统脚本维护与修复</h4>
+                        <p class="text-gray-400 mb-6 leading-relaxed">
+                            由于系统升级导致的历史监控脚本失效，或需要新增定制化分析功能时。
+                        </p>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-orange-500 text-black rounded-full px-2 text-xs font-bold mt-1">推荐工具</span>
+                                <p class="text-sm"><strong>Antigravity</strong></p>
+                            </div>
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-white/10 text-gray-300 rounded-full px-2 text-xs font-bold mt-1">使用逻辑</span>
+                                <p class="text-sm text-gray-400">直接将报错代码与环境要求喂给 Antigravity。它不仅能修复语法错误，还能根据您的工程目录结构提供完整的修复包，并协助完成测试流程。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-orange-500/5 rounded-xl border border-orange-500/20 p-6 font-mono text-orange-300 text-xs">
+                        # Antigravity 运行记录：<br>
+                        - 识别到 /dataProcessor.js 第 42 行异常<br>
+                        - 修复异步调用冲突<br>
+                        - 更新回归测试脚本... [成功]
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab4" class="tab-content glass p-10">
+                <!-- Content for tab 4 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                    <div>
+                        <h4 class="text-2xl font-bold mb-4 text-emerald-400">场景 D：专家知识库与规程检索</h4>
+                        <p class="text-gray-400 mb-6 leading-relaxed">
+                            新入职员工或当值人员需要快速查阅某个罕见事故的处理规程、历史案例或各种安全文件。
+                        </p>
+                        <div class="space-y-4">
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-emerald-500 text-black rounded-full px-2 text-xs font-bold mt-1">推荐工具</span>
+                                <p class="text-sm"><strong>NotebookLM</strong></p>
+                            </div>
+                            <div class="flex items-start space-x-4">
+                                <span class="bg-white/10 text-gray-300 rounded-full px-2 text-xs font-bold mt-1">使用逻辑</span>
+                                <p class="text-sm text-gray-400">建立专题笔记本，上传近 10 年的所有事故调查报告。通过对话形式检索，AI 会生成带引用的摘要，确保信息的绝对准确性。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-emerald-500/5 rounded-xl border border-emerald-500/20 p-6 flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="text-3xl mb-2">📄</div>
+                            <p class="text-xs text-emerald-400 italic">"自动生成 5 分钟语音播客，总结本月运维规程更新亮点"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Strategy Section -->
+    <section id="mindset" class="py-20 px-6 glass rounded-none border-x-0">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-3xl font-bold orbitron mb-12">主管必读：AI 使用核心思路</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-left">
+                <div class="space-y-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full border border-cyan-500 flex items-center justify-center text-cyan-400 font-bold">1</div>
+                        <h5 class="text-xl font-bold">精准定义“意图”</h5>
+                    </div>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        不要问宽泛的问题。例如：“帮我分析电力数据”是无效指令；“分析附件 CSV 文件中负荷超过 5000MW 时的有功平衡趋势”是高质量指令。
+                    </p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full border border-cyan-500 flex items-center justify-center text-cyan-400 font-bold">2</div>
+                        <h5 class="text-xl font-bold">多工具协同联动</h5>
+                    </div>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        最强的策略是链式调用：Gemini 分析原理 -> Antigravity 编写实现 -> NotebookLM 验证合规性。不要期待一个工具解决所有环节。
+                    </p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full border border-cyan-500 flex items-center justify-center text-cyan-400 font-bold">3</div>
+                        <h5 class="text-xl font-bold">数据脱敏意识</h5>
+                    </div>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        在将数据喂给公网 AI 之前，确保已脱敏处理。对于敏感操作逻辑，尽量在本地环境或私有 RAG（如本地部署的 DeepSeek）中运行。
+                    </p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 rounded-full border border-cyan-500 flex items-center justify-center text-cyan-400 font-bold">4</div>
+                        <h5 class="text-xl font-bold">保持“人在回路”</h5>
+                    </div>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        AI 的输出是“草案”，不是“终审稿”。主管的价值在于利用行业经验对 AI 生成的逻辑进行最终确认和安全把关。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Footer -->
+    <footer class="py-12 px-6 border-t border-white/5 text-center">
+        <p class="text-gray-600 text-xs mb-4">电力监控中心 AI 战略套件 V1.0 // 数字化管理工具</p>
+        <div class="flex justify-center space-x-6">
+            <span class="text-cyan-500/50 hover:text-cyan-400 transition-colors cursor-pointer">隐私政策</span>
+            <span class="text-cyan-500/50 hover:text-cyan-400 transition-colors cursor-pointer">使用协议</span>
+            <span class="text-cyan-500/50 hover:text-cyan-400 transition-colors cursor-pointer">联系技术支持</span>
+        </div>
+        <p class="mt-8 text-gray-500 text-[10px] orbitron tracking-tighter">POWERING THE FUTURE WITH ARTIFICIAL INTELLIGENCE</p>
+    </footer>
+
+    <script>
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+
+            // Update button styles
+            document.querySelectorAll('button[id^="btn-tab"]').forEach(btn => {
+                btn.classList.remove('border-cyan-500/50', 'text-cyan-400', 'font-bold');
+                btn.classList.add('border-white/20', 'text-gray-400');
+            });
+            document.getElementById('btn-' + tabId).classList.add('border-cyan-500/50', 'text-cyan-400', 'font-bold');
+            document.getElementById('btn-' + tabId).classList.remove('border-white/20', 'text-gray-400');
+        }
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('py-2', 'bg-black/90');
+                nav.classList.remove('py-4', 'bg-opacity-80');
+            } else {
+                nav.classList.remove('py-2', 'bg-black/90');
+                nav.classList.add('py-4', 'bg-opacity-80');
+            }
+        });
+    </script>
+</body>
+</html>
