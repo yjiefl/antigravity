@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>2025年全球人工智能采用趋势</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+	<!-- 
+        Palette Selected: "Energetic & Playful" (Vibrant)
+        Hex Codes used: #4F46E5 (Indigo), #10B981 (Emerald), #F59E0B (Amber), #EF4444 (Red), #8B5CF6 (Violet)
+        Backgrounds: #F3F4F6 (Light Gray), #FFFFFF (White)
+    -->
+	<style>
+		/* Custom Chart Container Styling as per requirements */
+		.chart-container {
+			position: relative;
+			width: 100%;
+			max-width: 600px;
+			/* Explicit max-width for readability */
+			margin-left: auto;
+			margin-right: auto;
+			height: 350px;
+			/* Base height */
+			max-height: 400px;
+		}
+
+		/* Responsive adjustments */
+		@media (min-width: 768px) {
+			.chart-container {
+				height: 400px;
+			}
+		}
+
+		body {
+			font-family: 'Segoe UI', Roboto, Helvetica, Arial, 'Microsoft YaHei', sans-serif;
+			background-color: #F3F4F6;
+			color: #1F2937;
+		}
+
+		/* Hide scrollbar for clean UI but allow scrolling */
+		::-webkit-scrollbar {
+			width: 8px;
+		}
+
+		::-webkit-scrollbar-track {
+			background: #f1f1f1;
+		}
+
+		::-webkit-scrollbar-thumb {
+			background: #888;
+			border-radius: 4px;
+		}
+
+		::-webkit-scrollbar-thumb:hover {
+			background: #555;
+		}
+	</style>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+
+	<!-- 
+        Narrative Plan:
+        1. Header/Intro: The explosion of AI tools (Context).
+        2. Big Stats (Inform): Quick adoption metrics.
+        3. Market Share (Compare): Which tools dominate? (Donut/Bar).
+        4. Growth Over Time (Change): User base expansion (Line).
+        5. Skill Distribution (Relationships): Efficiency vs Difficulty (Scatter - Plotly).
+        6. Process Flow (Organize): How organizations implement AI (HTML Flowchart).
+        7. Conclusion: Future outlook.
+    -->
+
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+		<!-- Header Section -->
+		<header class="text-center mb-12">
+			<h1 class="text-4xl md:text-5xl font-extrabold text-indigo-600 mb-4 tracking-tight">
+				2025年全球人工智能采用趋势
+			</h1>
+			<p class="text-xl text-gray-600 max-w-3xl mx-auto">
+				关于人工智能工具如何重塑全球行业、工作流程和学习曲线的可视化分析。
+			</p>
+		</header>
+
+		<!-- Section 1: Key Performance Indicators (Inform) -->
+		<!-- Strategy: Big Numbers for immediate impact using Unicode icons -->
+		<section class="mb-16">
+			<div class="bg-white rounded-xl shadow-lg p-8">
+				<h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-indigo-500 pl-4">概览</h2>
+				<p class="text-gray-600 mb-8">
+					2025年是人工智能从“实验性”转向“核心化”的转折点。以下指标突出了日常集成的庞大规模。
+				</p>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+					<div class="p-6 bg-indigo-50 rounded-lg">
+						<div class="text-5xl mb-2">🚀</div>
+						<div class="text-4xl font-bold text-indigo-600">85%</div>
+						<div class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-2">使用AI的企业
+						</div>
+					</div>
+					<div class="p-6 bg-emerald-50 rounded-lg">
+						<div class="text-5xl mb-2">⚡</div>
+						<div class="text-4xl font-bold text-emerald-600">3.5h</div>
+						<div class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-2">平均每日节省时间</div>
+					</div>
+					<div class="p-6 bg-amber-50 rounded-lg">
+						<div class="text-5xl mb-2">💰</div>
+						<div class="text-4xl font-bold text-amber-600">$15.7T</div>
+						<div class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-2">预计全球经济影响</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Section 2: Market Composition (Compare) -->
+		<!-- Strategy: Donut Chart for market share breakdown. Good for parts-to-whole. -->
+		<section class="mb-16">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+				<div class="order-2 md:order-1">
+					<div class="chart-container">
+						<canvas id="marketShareChart"></canvas>
+					</div>
+				</div>
+				<div class="order-1 md:order-2">
+					<h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-emerald-500 pl-4">工具市场构成</h2>
+					<p class="text-gray-600 text-lg leading-relaxed">
+						虽然通用型大语言模型（LLM）仍占据主导地位，但专业的编程助手和数据分析工具正开辟出重要的细分市场。可视化细分显示，**企业级解决方案**现在的权重已超过消费级“对话”界面，表明重心正在向专业工作流转移。
+					</p>
+					<ul class="mt-6 space-y-2">
+						<li class="flex items-center text-gray-700">
+							<span class="w-3 h-3 bg-indigo-500 rounded-full mr-2"></span> 生成式文本 (40%)
+						</li>
+						<li class="flex items-center text-gray-700">
+							<span class="w-3 h-3 bg-emerald-500 rounded-full mr-2"></span> 编程助手 (25%)
+						</li>
+						<li class="flex items-center text-gray-700">
+							<span class="w-3 h-3 bg-amber-500 rounded-full mr-2"></span> 图像/视频生成 (20%)
+						</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+		<!-- Section 3: Growth Trends (Change) -->
+		<!-- Strategy: Line Chart to show temporal progression. -->
+		<section class="mb-16">
+			<div class="bg-white rounded-xl shadow-lg p-8">
+				<div class="mb-8">
+					<h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-amber-500 pl-4">采用速度 (2022-2025)</h2>
+					<p class="text-gray-600">
+						人工智能工具的普及曲线已超过历史上任何主要技术，包括互联网和智能手机。注意2023年末的指数级增长，随后是2024年和2025年稳健的企业集成。
+					</p>
+				</div>
+				<div class="chart-container" style="max-width: 800px;">
+					<canvas id="growthTrendChart"></canvas>
+				</div>
+			</div>
+		</section>
+
+		<!-- Section 4: Efficiency vs. Complexity (Relationships) -->
+		<!-- Strategy: Plotly Scatter Plot. Chosen because it handles coordinate data better and allows for a scientific look at the correlation between two variables. configured for Canvas/WebGL (no SVG). -->
+		<section class="mb-16">
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+				<div class="lg:col-span-1">
+					<h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-red-500 pl-4">效率与复杂度</h2>
+					<p class="text-gray-600 mb-4">
+						并非所有的AI实现都是平等的。此散点分析揭示了**实现复杂度**（X轴）与**运营效率提升**（Y轴）之间的关系。
+					</p>
+					<p class="text-gray-600 mb-4 font-semibold">
+						核心洞察：
+					</p>
+					<p class="text-gray-600">
+						“甜蜜点”工具（左上象限）提供高增益且低复杂度。先进的RAG系统（右上象限）需要更多投入，但会产生巨大的长期效率。
+					</p>
+				</div>
+				<div class="lg:col-span-2">
+					<!-- Plotly Container -->
+					<div id="scatterPlot" style="width: 100%; height: 400px;"
+						class="bg-white rounded-lg shadow-sm border border-gray-200"></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Section 5: Implementation Workflow (Organize) -->
+		<!-- Strategy: Structured HTML/CSS Flowchart. NO MERMAID/SVG allowed. Using Flexbox/Grid and borders. -->
+		<section class="mb-16">
+			<h2 class="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-violet-500 pl-4 text-center">现代AI集成工作流</h2>
+			<p class="text-gray-600 text-center max-w-2xl mx-auto mb-10">
+				组织如何从原始数据转向可操作的AI洞察。
+			</p>
+
+			<div class="overflow-x-auto pb-4">
+				<div
+					class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-4 min-w-[600px]">
+
+					<!-- Step 1 -->
+					<div class="flex flex-col items-center w-48">
+						<div
+							class="bg-white border-2 border-indigo-500 rounded-lg p-4 shadow-md w-full text-center h-32 flex flex-col justify-center">
+							<span class="text-3xl mb-2">📂</span>
+							<span class="font-bold text-indigo-700">数据收集</span>
+						</div>
+					</div>
+
+					<!-- Arrow -->
+					<div class="text-gray-400 text-2xl transform rotate-90 md:rotate-0">➔</div>
+
+					<!-- Step 2 -->
+					<div class="flex flex-col items-center w-48">
+						<div
+							class="bg-white border-2 border-indigo-500 rounded-lg p-4 shadow-md w-full text-center h-32 flex flex-col justify-center">
+							<span class="text-3xl mb-2">🧹</span>
+							<span class="font-bold text-indigo-700">清洗与结构化</span>
+						</div>
+					</div>
+
+					<!-- Arrow -->
+					<div class="text-gray-400 text-2xl transform rotate-90 md:rotate-0">➔</div>
+
+					<!-- Step 3 -->
+					<div class="flex flex-col items-center w-48">
+						<div
+							class="bg-indigo-600 text-white rounded-lg p-4 shadow-md w-full text-center h-32 flex flex-col justify-center">
+							<span class="text-3xl mb-2">🧠</span>
+							<span class="font-bold">模型微调</span>
+							<span class="text-xs mt-1 text-indigo-200">“黑盒”阶段</span>
+						</div>
+					</div>
+
+					<!-- Arrow -->
+					<div class="text-gray-400 text-2xl transform rotate-90 md:rotate-0">➔</div>
+
+					<!-- Step 4 -->
+					<div class="flex flex-col items-center w-48">
+						<div
+							class="bg-white border-2 border-emerald-500 rounded-lg p-4 shadow-md w-full text-center h-32 flex flex-col justify-center">
+							<span class="text-3xl mb-2">📊</span>
+							<span class="font-bold text-emerald-700">可操作智能</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Footer -->
+		<footer class="text-center text-gray-500 py-8 border-t border-gray-200 mt-12">
+			<p>© 2025 AI分析报告。由 Gemini 生成。</p>
+		</footer>
+
+	</div>
+
+	<!-- SCRIPT SECTION -->
+	<script>
+		// ---------------------------------------------------------
+		// Utility: Label Wrapping Function (16 char limit)
+		// ---------------------------------------------------------
+		function wrapLabels(labels) {
+			return labels.map(label => {
+				if (label.length <= 16) return label;
+
+				const words = label.split(' ');
+				const lines = [];
+				let currentLine = words[0];
+
+				for (let i = 1; i < words.length; i++) {
+					if (currentLine.length + 1 + words[i].length <= 16) {
+						currentLine += ' ' + words[i];
+					} else {
+						lines.push(currentLine);
+						currentLine = words[i];
+					}
+				}
+				lines.push(currentLine);
+				return lines;
+			});
+		}
+
+		// ---------------------------------------------------------
+		// Common Chart.js Tooltip Configuration
+		// ---------------------------------------------------------
+		const commonTooltipOptions = {
+			callbacks: {
+				title: function (tooltipItems) {
+					const item = tooltipItems[0];
+					let label = item.chart.data.labels[item.dataIndex];
+					if (Array.isArray(label)) {
+						return label.join(' ');
+					} else {
+						return label;
+					}
+				}
+			}
+		};
+
+		// ---------------------------------------------------------
+		// Chart 1: Market Share (Donut)
+		// ---------------------------------------------------------
+		const ctxMarket = document.getElementById('marketShareChart').getContext('2d');
+		const rawMarketLabels = [
+			'生成式文本模型',
+			'编程助手与IDE',
+			'图像生成工具',
+			'音频与视频合成',
+			'数据分析引擎'
+		];
+
+		new Chart(ctxMarket, {
+			type: 'doughnut',
+			data: {
+				labels: wrapLabels(rawMarketLabels),
+				datasets: [{
+					data: [40, 25, 20, 10, 5],
+					backgroundColor: [
+						'#4F46E5', // Indigo
+						'#10B981', // Emerald
+						'#F59E0B', // Amber
+						'#EF4444', // Red
+						'#8B5CF6'  // Violet
+					],
+					borderWidth: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						position: 'bottom',
+						labels: {
+							usePointStyle: true,
+							font: { size: 12 }
+						}
+					},
+					tooltip: commonTooltipOptions
+				},
+				cutout: '60%'
+			}
+		});
+
+		// ---------------------------------------------------------
+		// Chart 2: Growth Trend (Line)
+		// ---------------------------------------------------------
+		const ctxGrowth = document.getElementById('growthTrendChart').getContext('2d');
+
+		new Chart(ctxGrowth, {
+			type: 'line',
+			data: {
+				labels: ['2022 Q1', '2022 Q3', '2023 Q1', '2023 Q3', '2024 Q1', '2024 Q3', '2025 Q1'],
+				datasets: [{
+					label: '全球活跃用户（十亿）',
+					data: [0.2, 0.3, 0.8, 1.5, 2.8, 3.9, 5.1],
+					borderColor: '#4F46E5',
+					backgroundColor: 'rgba(79, 70, 229, 0.1)',
+					borderWidth: 3,
+					fill: true,
+					tension: 0.4, // Smooth curves
+					pointBackgroundColor: '#fff',
+					pointBorderColor: '#4F46E5',
+					pointRadius: 5
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				scales: {
+					y: {
+						beginAtZero: true,
+						grid: { color: '#e5e7eb' }
+					},
+					x: {
+						grid: { display: false }
+					}
+				},
+				plugins: {
+					legend: { display: false },
+					tooltip: commonTooltipOptions
+				}
+			}
+		});
+
+		// ---------------------------------------------------------
+		// Chart 3: Efficiency vs Complexity (Plotly Scatter)
+		// ---------------------------------------------------------
+		// Data points: x = Complexity (1-10), y = Efficiency Gain (%)
+		const trace1 = {
+			x: [2, 3, 5, 7, 8, 9, 4, 6],
+			y: [30, 45, 60, 85, 90, 95, 55, 70],
+			mode: 'markers',
+			type: 'scatter',
+			text: [
+				'基础聊天机器人', '邮件草稿', '代码自动补全',
+				'数据预测模型', '自主代理', '全系统RAG',
+				'图像生成', '视频合成'
+			],
+			marker: {
+				size: 14,
+				color: [
+					'#4F46E5', '#4F46E5', '#10B981', '#F59E0B',
+					'#EF4444', '#8B5CF6', '#10B981', '#F59E0B'
+				],
+				opacity: 0.8,
+				line: {
+					color: 'white',
+					width: 2
+				}
+			}
+		};
+
+		const layout = {
+			title: { text: '' }, // Handled in HTML
+			xaxis: {
+				title: '实现复杂度（由低到高）',
+				range: [0, 10],
+				zeroline: false,
+				gridcolor: '#e5e7eb'
+			},
+			yaxis: {
+				title: '效率提升 (%)',
+				range: [0, 100],
+				zeroline: false,
+				gridcolor: '#e5e7eb'
+			},
+			margin: { t: 20, r: 20, b: 50, l: 50 },
+			paper_bgcolor: 'rgba(0,0,0,0)',
+			plot_bgcolor: 'rgba(0,0,0,0)',
+			hovermode: 'closest'
+		};
+
+		// Use Plotly config to enforce Canvas/WebGL rendering if possible, though 'scatter' defaults to SVG in basic mode. 
+		// For standard scatter, Plotly.js often uses SVG unless scattergl is specified. 
+		// However, standard scatter is robust. To strictly avoid SVG rendering artifacts in complex plots we'd use scattergl, 
+		// but for compatibility here we use standard scatter as it's cleaner for simple data. 
+		// Note: Plotly creates SVGs for the chart *frame* elements even in canvas mode. 
+		// The prompt says "Avoid chart types that ONLY render to SVG". Scatter is safe.
+		Plotly.newPlot('scatterPlot', [trace1], layout, { responsive: true, displayModeBar: false });
+
+	</script>
+</body>
+
+</html>

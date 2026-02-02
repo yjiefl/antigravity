@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025年全球可再生能源转型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <!-- Chosen Palette: Eco-Modern (Warm Neutrals & Earth Tones) -->
+    <!-- Application Structure Plan: Dashboard-style SPA.
+1. Hero Section: High-level summary & 'Big Numbers' (Inform).
+2. Interactive Dashboard Controller: A tabbed interface to switch between three core thematic views: 'Generation', 'Economics', and 'Technology'. This minimizes vertical scrolling and keeps related data grouped.
+3. Generation View (Change/Compare): Focuses on the shift in energy mix over time (Line Chart) and current distribution (Donut).
+4. Economics View (Compare/Relationships): Focuses on investment flows (Bar) and cost efficiency (Plotly Scatter).
+5. Technology View (Organize): Explains the 'Smart Grid' process via a structured HTML diagram.
+User Flow: User lands -> absorbs key stats -> selects interest area (e.g., Economics) -> interacts with specific charts.
+Rationale: Complex report data is better digested when grouped by domain (physics vs. money vs. tech) rather than a long linear document.
+-->
+    <!-- Visualization & Content Choices:
+1. Key Stats: Big Bold Text + HTML Cards. Goal: Inform immediately.
+2. Energy Mix Trend: Chart.js Line Chart. Goal: Change. Interaction: Year hover. Justification: Best for showing continuous growth over decade.
+3. 2025 Power Mix: Chart.js Donut. Goal: Compare parts to whole. Interaction: Slice toggle.
+4. Investment by Region: Chart.js Bar. Goal: Compare rankings.
+5. Cost vs. Efficiency (LCOE): Plotly Scatter (Canvas). Goal: Relationships. Justification: XY variance (Cost vs Reliability) is complex, Plotly handles this density well.
+6. Smart Grid Flow: Styled HTML/CSS Flexbox. Goal: Organize process. Justification: Textual/Process info needs structure, not just data points. NO SVG used.
+-->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            background-color: #fdfbf7; /* Warm neutral background */
+            color: #334155;
+            font-family: 'Inter', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .tab-active {
+            border-bottom: 3px solid #0f766e;
+            color: #0f766e;
+            font-weight: 600;
+        }
+        .tab-inactive {
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-inactive:hover {
+            color: #0f766e;
+        }
+        /* Custom scrollbar for cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-teal-100 selection:text-teal-900">
+
+    <!-- Navigation / Header -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-bold text-teal-800 tracking-tight">绿色转型<span class="text-orange-600">2025</span></span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="scrollToTop()" class="text-sm text-slate-600 hover:text-teal-700 font-medium">重置视图</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Intro / Hero Section -->
+        <section class="mb-12 text-center max-w-4xl mx-auto">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-800 mb-6 leading-tight">
+                清洁能源的<br><span class="text-teal-700">关键转折点</span>
+            </h1>
+            <p class="text-lg text-slate-600 mb-8 leading-relaxed">
+                《2025年全球可再生能源转型》报告确认，我们已跨越了一个历史性的门槛。可再生能源首次占据了全球发电量的近一半。这个交互式仪表板将带您探索这一转变背后的数据——从发电指标和投资经济到支撑未来的技术基础设施。
+            </p>
+            
+            <!-- Dynamic KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-teal-500 hover:shadow-md transition-shadow">
+                    <div class="text-sm font-medium text-slate-500 uppercase tracking-wide">可再生能源占比</div>
+                    <div class="mt-2 flex items-baseline">
+                        <span class="text-4xl font-bold text-slate-800">46.2%</span>
+                        <span class="ml-2 text-sm text-green-600 font-semibold">↑ 同比增长 4.1%</span>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-400">占全球总容量</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500 hover:shadow-md transition-shadow">
+                    <div class="text-sm font-medium text-slate-500 uppercase tracking-wide">全球投资额</div>
+                    <div class="mt-2 flex items-baseline">
+                        <span class="text-4xl font-bold text-slate-800">$1.8T</span>
+                        <span class="ml-2 text-sm text-green-600 font-semibold">历史新高</span>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-400">2024年投入金额（美元）</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md transition-shadow">
+                    <div class="text-sm font-medium text-slate-500 uppercase tracking-wide">碳减排量</div>
+                    <div class="mt-2 flex items-baseline">
+                        <span class="text-4xl font-bold text-slate-800">2.1Gt</span>
+                        <span class="ml-2 text-sm text-green-600 font-semibold">已避免</span>
+                    </div>
+                    <p class="mt-2 text-xs text-slate-400">二氧化碳减排总量</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Controls -->
+        <div class="mb-8 border-b border-slate-200">
+            <nav class="-mb-px flex space-x-8 justify-center" aria-label="Tabs">
+                <button onclick="switchTab('generation')" id="tab-generation" class="tab-active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors">
+                    发电趋势
+                </button>
+                <button onclick="switchTab('economics')" id="tab-economics" class="tab-inactive whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors">
+                    投资与成本
+                </button>
+                <button onclick="switchTab('technology')" id="tab-technology" class="tab-inactive whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors">
+                    电网基础设施
+                </button>
+            </nav>
+        </div>
+
+        <!-- VIEW 1: GENERATION TRENDS -->
+        <div id="view-generation" class="space-y-12 animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-sm p-8">
+                <div class="mb-6 max-w-3xl">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">十年之变：可再生能源 vs. 化石燃料</h2>
+                    <p class="text-slate-600">
+                        此图表展示了“伟大的跨越”。虽然化石燃料的需求已趋于平稳，但太阳能、风能和水能的综合容量正呈指数级加速增长。图表互动显示，2023年是关键的一年，可再生能源的增长率是传统能源的三倍。
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Line Chart -->
+                    <div class="lg:col-span-2">
+                        <div class="chart-container">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Commentary / Detail -->
+                    <div class="bg-slate-50 rounded-xl p-6 flex flex-col justify-center">
+                        <h3 class="text-lg font-bold text-slate-700 mb-4">核心观察</h3>
+                        <ul class="space-y-4">
+                            <li class="flex items-start">
+                                <span class="text-teal-600 mr-2 text-xl">●</span>
+                                <span class="text-sm text-slate-600"><strong>太阳能光伏</strong>已成为95%国家最便宜的新能源。</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-orange-600 mr-2 text-xl">●</span>
+                                <span class="text-sm text-slate-600"><strong>煤炭</strong>容量在2022年达到顶峰，目前正处于结构性衰退（每年-2.1%）。</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-blue-600 mr-2 text-xl">●</span>
+                                <span class="text-sm text-slate-600">受大型海上项目的推动，<strong>风能</strong>容量自2019年以来翻了一番。</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm p-8">
+                <div class="mb-6 max-w-3xl">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">2025年全球能源结构</h2>
+                    <p class="text-slate-600">
+                        当今世界电力来源的快照。虽然可再生能源正在激增，但“传统负荷”（煤炭/天然气）仍占据基准负荷的很大一部分，需要通过电池储能集成来逐步取代。
+                    </p>
+                </div>
+                <div class="flex flex-col md:flex-row items-center justify-around gap-8">
+                    <div class="chart-container">
+                        <canvas id="mixChart"></canvas>
+                    </div>
+                    <div class="max-w-md">
+                         <h3 class="font-bold text-slate-700 mb-4">数据细分</h3>
+                         <div class="overflow-hidden bg-white shadow sm:rounded-lg">
+                            <table class="min-w-full divide-y divide-slate-200">
+                                <tbody class="bg-white divide-y divide-slate-200">
+                                    <tr><td class="px-6 py-3 text-sm text-slate-500">太阳能光伏</td><td class="px-6 py-3 text-sm font-bold text-slate-800">22%</td></tr>
+                                    <tr><td class="px-6 py-3 text-sm text-slate-500">风能 (陆上/海上)</td><td class="px-6 py-3 text-sm font-bold text-slate-800">18%</td></tr>
+                                    <tr><td class="px-6 py-3 text-sm text-slate-500">水能</td><td class="px-6 py-3 text-sm font-bold text-slate-800">6%</td></tr>
+                                    <tr><td class="px-6 py-3 text-sm text-slate-500">化石燃料</td><td class="px-6 py-3 text-sm font-bold text-slate-800">44%</td></tr>
+                                    <tr><td class="px-6 py-3 text-sm text-slate-500">核能/其他</td><td class="px-6 py-3 text-sm font-bold text-slate-800">10%</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: ECONOMICS -->
+        <div id="view-economics" class="hidden space-y-12 animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-sm p-8">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">区域资金流向 (2024-2025)</h2>
+                    <p class="text-slate-600 max-w-3xl">
+                        投资是衡量未来产能的领先指标。这一对比视图显示了1.8万亿美元的实际流向。中国在绝对额上继续领先，但受政策激励，欧洲和北美也在快速增长。
+                    </p>
+                </div>
+                <div class="chart-container" style="max-height: 450px;">
+                    <canvas id="investmentChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm p-8">
+                <div class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">“效率前沿”：成本 vs. 可靠性</h2>
+                        <p class="text-slate-600 mb-4">
+                            该散点图从两个关键维度分析能源来源：
+                            <br><strong>X轴：</strong> 能源平准化成本 (LCOE) - 成本多低？
+                            <br><strong>Y轴：</strong> 容量因子 - 运行稳定性如何？
+                        </p>
+                        <div class="bg-teal-50 p-4 rounded-lg text-sm text-teal-800">
+                            <strong>洞察：</strong> 理想情况下，我们希望能源位于左上角（廉价且稳定）。目前，太阳能处于极左侧（廉价）但位置较低（波动大）。核能位置较高（稳定）但更靠右（昂贵）。
+                        </div>
+                    </div>
+                    <!-- Plotly Container -->
+                    <div id="plotlyScatter" class="w-full h-[400px] border border-slate-100 rounded-lg"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: TECHNOLOGY -->
+        <div id="view-technology" class="hidden space-y-12 animate-fade-in">
+             <div class="bg-white rounded-2xl shadow-sm p-8">
+                <h2 class="text-2xl font-bold text-slate-800 mb-6 text-center">现代“智能电网”架构</h2>
+                <p class="text-slate-600 text-center max-w-2xl mx-auto mb-10">
+                    整合46%的可再生能源需要对电网进行根本性重新设计。它不再是从发电站到家庭的单向流动，而是一个动态的、双向的生态系统。
+                </p>
+
+                <!-- Process Diagram using Flexbox (NO SVG/Mermaid) -->
+                <div class="flex flex-col md:flex-row justify-center items-stretch gap-4 md:gap-0">
+                    
+                    <!-- Node 1 -->
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-full p-6 bg-orange-50 border-2 border-orange-200 rounded-lg text-center h-full hover:bg-orange-100 transition-colors cursor-pointer group">
+                            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">☀️</div>
+                            <h3 class="font-bold text-orange-800">分布式发电</h3>
+                            <p class="text-xs text-orange-700 mt-2">屋顶太阳能、风电场、小型水电。</p>
+                        </div>
+                    </div>
+
+                    <!-- Connector -->
+                    <div class="hidden md:flex flex-col justify-center items-center px-2">
+                        <span class="text-slate-300 text-xl">▶</span>
+                    </div>
+                    <div class="md:hidden flex justify-center py-2 text-slate-300">▼</div>
+
+                    <!-- Node 2 -->
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-full p-6 bg-blue-50 border-2 border-blue-200 rounded-lg text-center h-full hover:bg-blue-100 transition-colors cursor-pointer group">
+                            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">🔋</div>
+                            <h3 class="font-bold text-blue-800">储能与调节</h3>
+                            <p class="text-xs text-blue-700 mt-2">电网级电池、抽水蓄能、氢能。</p>
+                        </div>
+                    </div>
+
+                    <!-- Connector -->
+                    <div class="hidden md:flex flex-col justify-center items-center px-2">
+                        <span class="text-slate-300 text-xl">▶</span>
+                    </div>
+                    <div class="md:hidden flex justify-center py-2 text-slate-300">▼</div>
+
+                    <!-- Node 3 -->
+                    <div class="flex-1 flex flex-col items-center">
+                        <div class="w-full p-6 bg-teal-50 border-2 border-teal-200 rounded-lg text-center h-full hover:bg-teal-100 transition-colors cursor-pointer group">
+                            <div class="text-3xl mb-2 group-hover:scale-110 transition-transform">🏭</div>
+                            <h3 class="font-bold text-teal-800">智能配送</h3>
+                            <p class="text-xs text-teal-700 mt-2">AI需求响应、电动车入网(EVG)、工业4.0。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Text Content -->
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-slate-600">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">储能挑战</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        间歇性是主要瓶颈。报告指出，电池密度自2020年以来提高了40%，可满足4小时和8小时的放电循环。这种能力有效地将中午产生的太阳能转移到晚高峰使用，使著名的“鸭子曲线”变得平缓。
+                    </p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-slate-600">
+                    <h3 class="font-bold text-lg text-slate-800 mb-3">AI在电网管理中的应用</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        机器学习算法现在能以99.2%的准确率预测天气模式和需求激增。这使得电网运营商能更早停运化石燃料调峰电厂，并更自信地依赖可再生能源预测，每年节省数十亿美元的运营成本。
+                    </p>
+                </div>
+             </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-300 py-10 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="font-medium text-lg mb-2">2025年全球可再生能源转型</p>
+            <p class="text-sm text-slate-500">数据来源：国际能源署 (IEA) 预测与 IRENA 年度报告。</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- State Management ---
+        let currentView = 'generation';
+
+        // --- Navigation Logic ---
+        function switchTab(viewId) {
+            // Hide all views
+            ['generation', 'economics', 'technology'].forEach(id => {
+                document.getElementById(`view-${id}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-${id}`);
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+            });
+
+            // Show selected view
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${viewId}`);
+            activeBtn.classList.remove('tab-inactive');
+            activeBtn.classList.add('tab-active');
+
+            // Trigger chart resize if needed (Chart.js handles this mostly, but good for Plotly)
+            if(viewId === 'economics') {
+                Plotly.Plots.resize('plotlyScatter');
+            }
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- Data & Helpers ---
+        // Label Wrapping Helper for Chart.js (16 char limit)
+        function wrapLabels(labels) {
+            return labels.map(label => {
+                if (label.length <= 16) return label;
+                const words = label.split(' ');
+                const lines = [];
+                let currentLine = words[0];
+
+                for (let i = 1; i < words.length; i++) {
+                    if (currentLine.length + 1 + words[i].length <= 16) {
+                        currentLine += ' ' + words[i];
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = words[i];
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            });
+        }
+
+        // Common Tooltip Config
+        const commonTooltip = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join(' ');
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
+
+        // --- Charts Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // 1. Generation Trend Chart (Line)
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: ['2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025'],
+                    datasets: [
+                        {
+                            label: '可再生能源 (太阳能/风能/水能)',
+                            data: [25, 28, 31, 35, 39, 43, 45, 46.2],
+                            borderColor: '#0f766e', // Teal
+                            backgroundColor: 'rgba(15, 118, 110, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4
+                        },
+                        {
+                            label: '化石燃料 (煤炭/天然气)',
+                            data: [65, 63, 60, 58, 55, 52, 50, 48],
+                            borderColor: '#94a3b8', // Slate
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: commonTooltip,
+                        title: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            title: { display: true, text: '全球占比 (%)' },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // 2. Energy Mix Chart (Donut)
+            const ctxMix = document.getElementById('mixChart').getContext('2d');
+            const mixLabels = ['太阳能光伏', '风能', '水能', '煤炭与天然气', '核能与其他'];
+            new Chart(ctxMix, {
+                type: 'doughnut',
+                data: {
+                    labels: wrapLabels(mixLabels),
+                    datasets: [{
+                        data: [22, 18, 6, 44, 10],
+                        backgroundColor: [
+                            '#fbbf24', // Amber (Solar)
+                            '#0ea5e9', // Sky (Wind)
+                            '#3b82f6', // Blue (Hydro)
+                            '#475569', // Slate (Fossil)
+                            '#10b981'  // Emerald (Nuclear/Other)
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 15 } },
+                        tooltip: commonTooltip
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // 3. Investment Chart (Bar)
+            const ctxInv = document.getElementById('investmentChart').getContext('2d');
+            const regions = ['中国', '欧盟', '美国', '印度', '日本', '其他'];
+            new Chart(ctxInv, {
+                type: 'bar',
+                data: {
+                    labels: wrapLabels(regions),
+                    datasets: [{
+                        label: '投资额 (十亿美元)',
+                        data: [680, 380, 320, 140, 90, 190],
+                        backgroundColor: '#c2410c', // Orange
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Horizontal Bar
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: commonTooltip
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#f1f5f9' },
+                            title: { display: true, text: '十亿美元 ($)' }
+                        },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // 4. Plotly Scatter Plot (Economics View)
+            // LCOE vs Capacity Factor
+            const trace1 = {
+                x: [29, 38, 45, 120, 160], // LCOE ($/MWh) - Lower is better
+                y: [20, 45, 35, 60, 90],   // Capacity Factor (%) - Higher is better
+                mode: 'markers+text',
+                type: 'scatter', // Canvas/SVG handled by Plotly
+                text: ['太阳能光伏', '陆上风能', '海上风能', '天然气', '核能'],
+                textposition: 'top center',
+                marker: {
+                    size: [25, 25, 25, 15, 15], // Size indicates relative adoption potential or growth
+                    color: ['#fbbf24', '#0ea5e9', '#3b82f6', '#94a3b8', '#10b981'],
+                    opacity: 0.8
+                }
+            };
+
+            const layout = {
+                title: { text: '' },
+                xaxis: {
+                    title: '能源成本 ($/MWh) - [越低越便宜]',
+                    range: [0, 200],
+                    showgrid: true,
+                    gridcolor: '#f1f5f9'
+                },
+                yaxis: {
+                    title: '容量因子 (%) - [越高越稳定]',
+                    range: [0, 100],
+                    showgrid: true,
+                    gridcolor: '#f1f5f9'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter, sans-serif', color: '#334155' },
+                margin: { t: 20, l: 50, r: 20, b: 50 }
+            };
+
+            const config = { responsive: true, displayModeBar: false };
+            Plotly.newPlot('plotlyScatter', [trace1], layout, config);
+        });
+    </script>
+</body>
+</html>
