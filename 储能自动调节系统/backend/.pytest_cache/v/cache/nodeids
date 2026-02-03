@@ -1,0 +1,14 @@
+[
+  "tests/test_regulation.py::TestRegulationEngine::test_agc_min_limit_warning",
+  "tests/test_regulation.py::TestRegulationEngine::test_basic_calculation",
+  "tests/test_regulation.py::TestRegulationEngine::test_charge_limit_constraint",
+  "tests/test_regulation.py::TestRegulationEngine::test_charge_rate_level",
+  "tests/test_regulation.py::TestRegulationEngine::test_curtailment_detection",
+  "tests/test_regulation.py::TestRegulationEngine::test_dead_zone",
+  "tests/test_regulation.py::TestRegulationEngine::test_discharge_limit_constraint",
+  "tests/test_regulation.py::TestRegulationEngine::test_feature_code_generation",
+  "tests/test_regulation.py::TestRegulationEngine::test_soc_low_warning",
+  "tests/test_regulation.py::TestRegulationEngine::test_soc_min_stop_discharge",
+  "tests/test_regulation.py::TestTotalPowerCalculation::test_charging_scenario",
+  "tests/test_regulation.py::TestTotalPowerCalculation::test_discharging_scenario"
+]

@@ -1,0 +1,260 @@
+const express = require('express');
+const path = require('path');
+const morgan = require('morgan');
+const cors = require('cors');
+const fs = require('fs');
+const sqlite3 = require('sqlite3').verbose();
+const { exec } = require('child_process');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+const DB_PATH = path.join(__dirname, 'data.db');
+const LOG_DIR = path.join(__dirname, '../log');
+const ACCESS_LOG = path.join(LOG_DIR, 'access.log');
+const ERROR_LOG = path.join(LOG_DIR, 'error.log');
+
+// 确保日志目录存在
+if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+
+const logToError = (msg) => {
+	const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+	fs.appendFileSync(ERROR_LOG, `[${timestamp}] ERROR: ${msg}\n`);
+};
+
+// 初始化数据库
+const db = new sqlite3.Database(DB_PATH, (err) => {
+	if (err) {
+		console.error('❌ 数据库连接失败:', err.message);
+	} else {
+		console.log('✅ 已连接到 SQLite 数据库');
+		db.run(`CREATE TABLE IF NOT EXISTS snapshots (
+			id TEXT PRIMARY KEY,
+			name TEXT,
+			data TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`);
+	}
+});
+
+// 中间件
+app.use(cors());
+app.use(express.json({ limit: '50mb' })); // 支持大数据量上传
+
+// 网站访问日志记录到文件
+const accessLogStream = fs.createWriteStream(ACCESS_LOG, { flags: 'a' });
+app.use(morgan('combined', { stream: accessLogStream }));
+app.use(morgan('dev')); // 控制台也显示一份简要日志
+
+// 自定义操作日志函数 (带 30 天自动清理)
+const logAction = (req, action, details = '') => {
+	const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+	const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+	const logMessage = `[${timestamp}] IP: ${ip} | ACTION: ${action} | DETAILS: ${details}\n`;
+	fs.appendFileSync(ACCESS_LOG, logMessage);
+
+	// 简单的清理策略：每记录 20 次尝试清理一次超过 30 天的日志
+	if (Math.random() < 0.05) {
+		try {
+			const oneMonthAgo = new Date();
+			oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+			if (fs.existsSync(ACCESS_LOG)) {
+				const lines = fs.readFileSync(ACCESS_LOG, 'utf8').split('\n');
+				const filteredLines = lines.filter(line => {
+					const match = line.match(/\[(\d{4}-\d{2}-\d{2})/);
+					if (match) {
+						const logDate = new Date(match[1]);
+						return logDate > oneMonthAgo;
+					}
+					return true;
+				});
+				fs.writeFileSync(ACCESS_LOG, filteredLines.join('\n'));
+			}
+		} catch (e) { logToError('日志清理失败: ' + e.message); }
+	}
+};
+
+// --- API 接口 ---
+
+// 健康检查
+app.get('/api/health', (req, res) => {
+	logAction(req, 'Health Check');
+	res.json({ ok: true, status: 'online', time: new Date() });
+});
+
+/**
+ * 场站坐标映射表
+ * 基于用户提供的项目名称、调度名称及区域自动匹配
+ */
+const STATION_MAPPING = {
+	'守旗光伏电站': { lat: 22.6394, lon: 107.9044, region: '崇左扶绥' },
+	'守旗储能系统': { lat: 22.6394, lon: 107.9044, region: '崇左扶绥' },
+	'守旗光伏电站扶绥': { lat: 22.3734, lon: 107.3539, region: '崇左' },
+	'岑凡光伏电站扶绥': { lat: 22.3734, lon: 107.3539, region: '崇左' },
+	'弄滩光伏电站': { lat: 22.4034, lon: 107.3539, region: '崇左江州' },
+	'弄滩储能系统': { lat: 22.4034, lon: 107.3539, region: '崇左江州' },
+	'强胜光伏电站': { lat: 22.4034, lon: 107.3539, region: '崇左江州' },
+	'派岸光伏电站': { lat: 22.4034, lon: 107.3539, region: '崇左江州' },
+	'浦峙光伏电站': { lat: 22.1311, lon: 107.0734, region: '崇左宁明' },
+	'峙书光伏电站': { lat: 22.1311, lon: 107.0734, region: '崇左宁明' },
+	'康宁光伏电站': { lat: 22.1311, lon: 107.0734, region: '崇左宁明' },
+	'寨安光伏电站': { lat: 22.1311, lon: 107.0734, region: '崇左宁明' },
+	'坤山风电场': { lat: 22.1311, lon: 107.0734, region: '崇左宁明' },
+	'樟木光伏电站': { lat: 23.0970, lon: 109.5990, region: '贵港' },
+	'樟木储能系统': { lat: 23.0970, lon: 109.5990, region: '贵港' },
+	'榕木光伏电站': { lat: 23.0970, lon: 109.5990, region: '贵港' },
+	'樟木风电场': { lat: 23.0970, lon: 109.5990, region: '贵港' },
+	'驮堪光伏电站': { lat: 23.0760, lon: 107.1390, region: '崇左天等' },
+	'把荷风电场': { lat: 23.0760, lon: 107.1390, region: '崇左天等' },
+	'武安风电场': { lat: 22.8360, lon: 107.1980, region: '崇左大新' }
+};
+
+// 获取历史辐照度数据 (Open-Meteo)
+app.get('/api/weather/irradiance', async (req, res) => {
+	const { stationName, date } = req.query; // date: YYYY-MM-DD
+	if (!stationName || !date) {
+		return res.status(400).json({ error: '缺少场站名称或日期参数' });
+	}
+
+	const coords = STATION_MAPPING[stationName];
+	if (!coords) {
+		logAction(req, 'Weather Data Failed', `Mapping not found for: ${stationName}`);
+		return res.status(404).json({ error: `未找到场站 "${stationName}" 的坐标映射` });
+	}
+
+	logAction(req, 'Fetch Weather Data', `Station: ${stationName}, Date: ${date}`);
+
+	try {
+		// 历史档案 API 通常只提供小时分辨率数据，我们将通过插值实现用户要求的 15 分钟取点
+		const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${coords.lat}&longitude=${coords.lon}&start_date=${date}&end_date=${date}&hourly=shortwave_radiation&timezone=auto`;
+		const response = await fetch(url);
+		const data = await response.json();
+
+		if (data.hourly) {
+			const result = [];
+			const times = data.hourly.time;
+			const values = data.hourly.shortwave_radiation;
+
+			for (let i = 0; i < times.length; i++) {
+				const currentTime = new Date(times[i]);
+				const currentVal = values[i];
+				
+				// 寻找下一个小时的值用于插值
+				const nextVal = (i < times.length - 1) ? values[i + 1] : currentVal;
+
+				// 生成 0, 15, 30, 45 分钟四个点
+				for (let j = 0; j < 4; j++) {
+					const interpolatedTime = new Date(currentTime.getTime() + j * 15 * 60000);
+					const weight = j / 4;
+					const interpolatedVal = currentVal + (nextVal - currentVal) * weight;
+					
+					result.push({
+						time: interpolatedTime,
+						value: parseFloat(interpolatedVal.toFixed(2))
+					});
+				}
+			}
+			res.json({ stationName, date, data: result, region: coords.region });
+		} else {
+			res.status(502).json({ error: '天气 API 未返回有效的小时数据', details: data });
+		}
+	} catch (err) {
+		logToError(`Fetch Weather Error: ${err.message}`);
+		res.status(500).json({ error: '获取天气数据失败: ' + err.message });
+	}
+});
+
+// 获取所有存单
+app.get('/api/snapshots', (req, res) => {
+	logAction(req, 'Get Snapshots');
+	db.all("SELECT * FROM snapshots ORDER BY created_at DESC", [], (err, rows) => {
+		if (err) {
+			return res.status(500).json({ error: err.message });
+		}
+		const records = rows.map(row => ({
+			...JSON.parse(row.data),
+			id: row.id,
+			name: row.name,
+			internal_id: row.id // 保持兼容
+		}));
+		res.json(records);
+	});
+});
+
+// 保存存单
+app.post('/api/snapshots', (req, res) => {
+	const record = req.body;
+	const id = record.id || Date.now().toString();
+	const name = record.name || '未命名记录';
+	logAction(req, 'Save Snapshot', `Name: ${name}, ID: ${id}`);
+	const dataString = JSON.stringify(record);
+
+	db.run("INSERT OR REPLACE INTO snapshots (id, name, data) VALUES (?, ?, ?)",
+		[id, name, dataString],
+		function (err) {
+			if (err) {
+				return res.status(500).json({ error: err.message });
+			}
+			res.json({ success: true, id });
+		}
+	);
+});
+
+// 删除存单
+app.delete('/api/snapshots/:id', (req, res) => {
+	logAction(req, 'Delete Snapshot', `ID: ${req.params.id}`);
+	db.run("DELETE FROM snapshots WHERE id = ?", [req.params.id], function (err) {
+		if (err) {
+			return res.status(500).json({ error: err.message });
+		}
+		res.json({ success: true, deleted: this.changes });
+	});
+});
+
+// 删除所有存单
+app.delete('/api/snapshots', (req, res) => {
+	logAction(req, 'Clear All Snapshots');
+	db.run("DELETE FROM snapshots", [], function (err) {
+		if (err) {
+			return res.status(500).json({ error: err.message });
+		}
+		res.json({ success: true, deleted: this.changes });
+	});
+});
+
+
+// 获取访问日志
+app.get('/api/logs', (req, res) => {
+	const type = req.query.type || 'access';
+	const targetFile = type === 'error' ? ERROR_LOG : ACCESS_LOG;
+	
+	if (fs.existsSync(targetFile)) {
+		const logs = fs.readFileSync(targetFile, 'utf8').split('\n').filter(Boolean).slice(-500);
+		res.json({ logs });
+	} else {
+		res.json({ logs: [] });
+	}
+});
+
+// 生产环境下托管前端静态文件
+if (process.env.NODE_ENV === 'production') {
+	const frontendDist = path.join(__dirname, '../frontend/dist');
+	if (fs.existsSync(frontendDist)) {
+		app.use(express.static(frontendDist));
+		app.get('*', (req, res) => {
+			res.sendFile(path.join(frontendDist, 'index.html'));
+		});
+	}
+}
+
+// 全局错误处理
+app.use((err, req, res, next) => {
+	logToError(`Uncaught Exception: ${err.message}\n${err.stack}`);
+	res.status(500).json({ error: 'Internal Server Error' });
+});
+
+app.listen(PORT, () => {
+	console.log(`🚀 后端服务已启动: http://localhost:${PORT}`);
+	console.log(`📂 数据库路径: ${DB_PATH}`);
+	console.log(`📝 访问日志: ${ACCESS_LOG}`);
+	console.log(`🚨 错误日志: ${ERROR_LOG}`);
+});

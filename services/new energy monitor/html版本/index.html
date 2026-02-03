@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>光伏电站发电功率模拟器</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* 自定义字体 */
+      body {
+        font-family: "Inter", "Microsoft YaHei", sans-serif;
+      }
+
+      /* 图表容器样式 */
+      .chart-container {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: auto;
+        height: 300px;
+        max-height: 400px;
+      }
+      @media (min-width: 768px) {
+        .chart-container {
+          height: 350px;
+        }
+      }
+
+      /* 流程图样式 */
+      .flow-step {
+        position: relative;
+        z-index: 10;
+      }
+      .flow-arrow::after {
+        content: "▼";
+        position: absolute;
+        bottom: -24px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #9ca3af;
+        font-size: 1.2rem;
+      }
+      @media (min-width: 768px) {
+        .flow-arrow::after {
+          content: "▶";
+          bottom: auto;
+          right: -24px;
+          top: 50%;
+          left: auto;
+          transform: translateY(-50%);
+        }
+      }
+
+      /* 自定义范围滑块 */
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        background: transparent;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 24px;
+        width: 24px;
+        border-radius: 50%;
+        background: #ffd600;
+        border: 4px solid #f59e0b;
+        cursor: pointer;
+        margin-top: -10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      }
+      input[type="range"].temp-slider::-webkit-slider-thumb {
+        background: #ef4444;
+        border-color: #b91c1c;
+      }
+      input[type="range"].pr-slider::-webkit-slider-thumb {
+        background: #10b981;
+        border-color: #047857;
+      }
+      
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 6px;
+        cursor: pointer;
+        background: #e5e7eb;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 text-gray-800 antialiased overflow-hidden" id="mainBody">
+    <!-- 登录遮罩 (Login Modal) -->
+    <div id="loginModal" class="fixed inset-0 bg-gray-900 z-[9999] flex flex-col items-center justify-center text-white transition-opacity duration-500">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-700 text-center">
+            <div class="mb-6">
+                 <img src="favicon.png" alt="Logo" class="w-16 h-16 mx-auto mb-4">
+                 <h2 class="text-2xl font-bold mb-2">访问受限 (Access Restricted)</h2>
+                 <p class="text-gray-400 text-sm">请输入访问口令 / Enter Password</p>
+            </div>
+            
+            <input type="text" id="loginPass" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 transition-colors" placeholder="请输入口令 (支持中文)..." onkeypress="if(event.keyCode==13) checkLogin()">
+            
+            <button onclick="checkLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all transform active:scale-95 shadow-lg">
+                解锁进入
+            </button>
+            <p id="loginError" class="text-red-500 text-sm mt-3 hidden">密码错误</p>
+        </div>
+        <p class="mt-8 text-gray-500 text-xs">光伏电站发电功率模拟器 &copy; 2026</p>
+    </div>
+    <!-- 头部区域 -->
+    <header class="bg-blue-700 text-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl mb-2">
+          光伏电站发电功率模拟器
+        </h1>
+        <p class="text-blue-100 text-lg max-w-3xl">
+          支持多电站切换、环境因素模拟及截峰 (Clipping) 分析。
+        </p>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-12">
+      <!-- 第1部分：站点选择与配置 -->
+      <section>
+        <div
+          class="bg-white rounded-xl shadow-md p-6 border-l-8 border-blue-500"
+        >
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">电站配置</h2>
+            
+            <!-- 电站选择器 -->
+             <div class="mt-4 md:mt-0">
+                <label for="stationSelect" class="block text-sm font-medium text-gray-700 mr-2">选择电站:</label>
+                <select id="stationSelect" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border">
+                    <!-- Options populated by JS -->
+                </select>
+             </div>
+          </div>
+
+           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+            <div class="p-4 bg-blue-50 rounded-lg transition-all duration-300 hover:shadow-lg">
+              <div class="text-4xl mb-2">☀️</div>
+              <div
+                class="text-sm font-semibold text-blue-600 uppercase tracking-wide"
+              >
+                直流装机容量 (DC)
+              </div>
+              <div id="dcDisplay" class="text-3xl font-bold text-gray-900">140 MWp</div>
+            </div>
+
+            <div class="p-4 bg-amber-50 rounded-lg transition-all duration-300 hover:shadow-lg">
+              <div class="text-4xl mb-2">⚡</div>
+              <div
+                class="text-sm font-semibold text-amber-600 uppercase tracking-wide"
+              >
+                交流额定容量 (AC)
+              </div>
+              <div id="acDisplay" class="text-3xl font-bold text-gray-900">100 MW</div>
+            </div>
+
+            <div class="p-4 bg-purple-50 rounded-lg transition-all duration-300 hover:shadow-lg">
+              <div class="text-4xl mb-2">📊</div>
+              <div
+                class="text-sm font-semibold text-purple-600 uppercase tracking-wide"
+              >
+                容配比 (DC/AC Ratio)
+              </div>
+              <div id="ratioDisplay" class="text-3xl font-bold text-gray-900">1.40</div>
+              <div id="ageDisplay" class="text-xs text-purple-400 mt-1">运行 0.0 年 (衰减 0.0%)</div>
+            </div>
+
+            <div class="p-4 bg-teal-50 rounded-lg transition-all duration-300 hover:shadow-lg">
+              <div class="text-4xl mb-2">📍</div>
+              <div
+                class="text-sm font-semibold text-teal-600 uppercase tracking-wide"
+              >
+                地理位置 (Location)
+              </div>
+              <div id="locationDisplay" class="text-3xl font-bold text-gray-900">--</div>
+            </div>
+
+
+
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 第2部分：交互式计算器 -->
+      <section id="calculator">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">实时多因素模拟</h2>
+        <p class="text-gray-600 mb-6">
+          调整下方参数，观察不同环境因素对电站输出功率的综合影响。
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 参数控制面板 -->
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-md p-6 space-y-8">
+                
+                <!-- 辐照度控制 -->
+                <div>
+                    <label class="flex justify-between text-sm font-medium text-gray-700 mb-2">
+                        <span>辐照度 (Irradiance)</span>
+                        <span class="text-amber-600 font-bold"><span id="irradianceVal">800</span> W/m²</span>
+                    </label>
+                    <input type="range" id="irradianceRange" min="0" max="1300" step="10" value="800">
+                </div>
+
+                <!-- 系统效率控制 -->
+                <div>
+                    <label class="flex justify-between text-sm font-medium text-gray-700 mb-2">
+                        <span>系统基础效率 (PR)</span>
+                        <span class="text-emerald-600 font-bold"><span id="prVal">85</span>%</span>
+                    </label>
+                    <input type="range" id="prRange" min="50" max="95" step="1" value="85" class="pr-slider">
+                    <p class="text-xs text-gray-400 mt-1">基准线损、灰尘及逆变器效率</p>
+                </div>
+
+                <!-- 温度控制 -->
+                <div>
+                    <label class="flex justify-between text-sm font-medium text-gray-700 mb-2">
+                        <span>环境温度 (Ambient Temp)</span>
+                        <span class="text-red-600 font-bold"><span id="tempVal">25</span>°C</span>
+                    </label>
+                    <input type="range" id="tempRange" min="-20" max="50" step="1" value="25" class="temp-slider">
+                    <p class="text-xs text-gray-400 mt-1">光伏组件温度 ≈ 环境温度 + (辐照度/800)×25</p>
+                </div>
+
+                <!-- 衰减率控制 -->
+                <div>
+                    <label class="flex justify-between text-sm font-medium text-gray-700 mb-2">
+                        <span>年衰减率 (Annual Degradation)</span>
+                        <span class="text-purple-600 font-bold"><span id="degRateVal">0.5</span>%</span>
+                    </label>
+                    <input type="range" id="degRateRange" min="0" max="3" step="0.1" value="0.5" class="pr-slider">
+                    <p class="text-xs text-gray-400 mt-1">光伏组件每年性能下降比例 (默认 0.5%)</p>
+                </div>
+
+            </div>
+
+            <!-- 结果显示面板 -->
+            <div class="lg:col-span-2 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl shadow-xl p-8 text-white flex flex-col justify-center relative overflow-hidden">
+                <div
+                    id="clippingBadge"
+                    class="hidden absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded uppercase animate-pulse"
+                >
+                    ⚠️ 限功率运行 (Clipping)
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- 核心输出 -->
+                    <div>
+                        <div class="text-gray-400 text-sm mb-1 uppercase tracking-wider">当前实际输出</div>
+                        <div class="flex items-baseline gap-2">
+                            <span id="outputPowerVal" class="text-6xl font-bold tracking-tighter">95.2</span>
+                            <span class="text-2xl text-blue-400 font-medium">MW</span>
+                        </div>
+                        <div class="h-2 w-full bg-gray-700 rounded-full mt-4 overflow-hidden">
+                            <div id="powerBar" class="h-full bg-blue-500 transition-all duration-300" style="width: 50%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 损耗详情 -->
+                    <div class="space-y-4 text-sm">
+                        <div class="flex justify-between border-b border-gray-700 pb-2">
+                            <span class="text-gray-400">理论直流功率 (DC Potential)</span>
+                            <span id="debugDcPot" class="font-mono">112.0 MW</span>
+                        </div>
+                        <div class="flex justify-between border-b border-gray-700 pb-2">
+                            <span class="text-gray-400">组件温度 (Calc. Cell Temp)</span>
+                            <span id="debugCellTemp" class="font-mono text-orange-400">--°C</span>
+                        </div>
+                        <div class="flex justify-between border-b border-gray-700 pb-2">
+                            <span class="text-gray-400">温度损耗 (Temp Loss)</span>
+                            <span id="debugTempLoss" class="font-mono text-red-400">0.0%</span>
+                        </div>
+                        <div class="flex justify-between text-emerald-400">
+                             <span>最终系统效率 (Total PR)</span>
+                             <span id="debugTotalPr" class="font-bold">85.0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </section>
+
+      <!-- 第2.5部分：天气集成与预测 (New) -->
+      <section id="realtime-weather-panel">
+         <div class="flex justify-between items-center mb-4">
+             <div>
+                <h2 class="text-2xl font-bold text-gray-900">天气实况与预测 (Live & Forecast)</h2>
+                <div class="text-sm text-gray-500 mt-1 flex gap-4">
+                    <span id="weatherLocation">📍 --</span>
+                    <span id="weatherTime">🕒 --</span>
+                </div>
+             </div>
+             <button id="fetchWeatherBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded shadow transition-colors">
+                 📡 获取当地实时气象
+             </button>
+         </div>
+
+         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+             <!-- 实况数据卡片 -->
+             <div class="bg-gradient-to-br from-amber-500 to-orange-400 rounded-xl p-4 text-white shadow-lg">
+                 <div class="text-xs font-bold uppercase opacity-80 mb-1">实时辐照度 (Irradiance)</div>
+                 <div class="flex items-end gap-2">
+                     <span class="text-3xl font-bold" id="rt-irr">--</span>
+                     <span class="text-sm mb-1">W/m²</span>
+                 </div>
+                 <div class="text-xs mt-2 opacity-90">直接驱动功率计算</div>
+             </div>
+
+             <div class="bg-gradient-to-br from-sky-500 to-blue-400 rounded-xl p-4 text-white shadow-lg">
+                 <div class="text-xs font-bold uppercase opacity-80 mb-1">风速 (Wind Speed)</div>
+                 <div class="flex items-end gap-2">
+                     <span class="text-3xl font-bold" id="rt-wind">--</span>
+                     <span class="text-sm mb-1">km/h</span>
+                 </div>
+                 <div class="text-xs mt-2 opacity-90">影响组件散热效率</div>
+             </div>
+
+              <div class="bg-gradient-to-br from-red-500 to-rose-400 rounded-xl p-4 text-white shadow-lg">
+                  <div class="text-xs font-bold uppercase opacity-80 mb-1">环境温度 (Ambient)</div>
+                  <div class="flex items-end gap-2">
+                      <span class="text-3xl font-bold" id="rt-temp-val">--</span>
+                      <span class="text-sm mb-1">°C</span>
+                  </div>
+                  <div class="text-xs mt-2 opacity-90">影响组件散热效率</div>
+              </div>
+
+             <div class="bg-gray-800 rounded-xl p-4 text-white shadow-lg flex flex-col justify-center items-center">
+                 <div class="text-3xl mb-2" id="rt-icon">☁️</div>
+                 <div class="text-lg font-bold" id="rt-cond">--</div>
+             </div>
+         </div>
+
+         <!-- 预测图表 -->
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                  <div class="chart-container" style="height: 350px;">
+                      <canvas id="forecastChartToday"></canvas>
+                  </div>
+               </div>
+               <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                  <div class="chart-container" style="height: 350px;">
+                      <canvas id="forecastChartTomorrow"></canvas>
+                  </div>
+               </div>
+          </div>
+      </section>
+
+      <!-- 第3部分：计算逻辑可视化 -->
+      <section>
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">
+          计算逻辑
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-stretch">
+          <!-- 步骤 1: 理论输入 -->
+          <div
+            class="flow-step md:flow-arrow bg-white p-6 rounded-lg shadow border border-gray-200"
+          >
+            <div class="text-xs font-bold text-blue-500 uppercase mb-2">
+              DC 理论输入
+            </div>
+            <p class="text-xs text-gray-500 mb-1">Station Capacity × Irradiance</p>
+            <div class="text-lg font-bold text-gray-800" id="step1Val">-- MW</div>
+          </div>
+
+          <!-- 步骤 2: 综合效率 -->
+          <div
+            class="flow-step md:flow-arrow bg-white p-6 rounded-lg shadow border border-gray-200"
+          >
+            <div class="text-xs font-bold text-emerald-500 uppercase mb-2">
+              应用综合效率
+            </div>
+             <p class="text-xs text-gray-500 mb-1">× (Base PR - Temp Loss)</p>
+            <div class="text-lg font-bold text-gray-800" id="step2Val">-- MW</div>
+          </div>
+
+          <!-- 步骤 3: 逆变器限制 -->
+          <div
+            class="flow-step md:flow-arrow bg-white p-6 rounded-lg shadow border border-gray-200"
+          >
+            <div class="text-xs font-bold text-amber-500 uppercase mb-2">
+              逆变器限制
+            </div>
+            <p class="text-xs text-gray-500 mb-1">Limit Output to AC Capacity</p>
+            <div class="text-lg font-bold text-gray-800" id="step3Val">-- MW</div>
+          </div>
+
+          <!-- 步骤 4: 最终 -->
+          <div
+            class="bg-blue-600 text-white p-6 rounded-lg shadow-lg"
+          >
+            <div class="text-xs font-bold text-blue-200 uppercase mb-2">
+              发电功率
+            </div>
+            <div class="font-bold text-2xl" id="step4Val">-- MW</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 第4部分：图表分析 -->
+       <section class="grid grid-cols-1 gap-8">
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">功率输出曲线 (P-V Curve)</h3>
+                <div class="chart-container">
+                    <canvas id="powerCurveChart"></canvas>
+                </div>
+            </div>
+       </section>
+
+      <!-- 页脚 -->
+      <footer class="border-t border-gray-200 pt-8 mt-12 pb-8">
+        <div class="text-center text-gray-500 text-sm">
+          <p>新能源监控平台演示版 &copy; 2026</p>
+          <p class="mt-1">Designed for Demonstration Purposes</p>
+        </div>
+      </footer>
+    </main>
+
+    <!-- JavaScript 逻辑 -->
+    <script>
+      // --- 预设电站数据 (增加坐标) ---
+      // --- 预设电站数据 ---
+      // 坐标: 崇左 (22.404, 107.355), 贵港 (23.097, 109.608)
+      // --- 预设电站数据 ---
+      // 坐标: 崇左 (22.38, 107.33), 贵港 (23.11, 109.60)
+      // --- 预设电站数据 ---
+      // 坐标参考:
+      // 天等 (23.08, 107.12), 江州 (22.39, 107.41), 宁明 (22.13, 107.07), 
+      // 扶绥 (22.57, 107.90), 贵港 (23.11, 109.60)
+      const STATIONS = [
+          { name: "驮堪光伏电站", ac: 32.32, dc: 43.15, date: "2022-08-30", city: "天等", type: "PV", lat: 23.08, lon: 107.12 },
+          { name: "弄滩光伏电站", ac: 290.00, dc: 403.88, date: "2022-12-20", city: "江州", type: "PV", lat: 22.39, lon: 107.41 },
+          { name: "峙书光伏电站", ac: 100.00, dc: 141.40, date: "2022-12-23", city: "宁明", type: "PV", lat: 22.13, lon: 107.07 },
+          { name: "浦峙光伏电站", ac: 90.00, dc: 126.00, date: "2022-12-31", city: "宁明", type: "PV", lat: 22.13, lon: 107.07 },
+          { name: "康宁光伏电站", ac: 140.00, dc: 194.70, date: "2023-01-17", city: "宁明", type: "PV", lat: 22.13, lon: 107.07 },
+          { name: "强胜光伏电站", ac: 100.00, dc: 140.36, date: "2023-04-07", city: "江州", type: "PV", lat: 22.39, lon: 107.41 },
+          { name: "寨安光伏电站", ac: 50.00, dc: 69.66, date: "2023-04-09", city: "宁明", type: "PV", lat: 22.13, lon: 107.07 },
+          { name: "樟木光伏电站", ac: 337.93, dc: 473.10, date: "2023-05-19", city: "贵港", type: "PV", lat: 23.11, lon: 109.60 },
+          { name: "岑凡光伏电站", ac: 79.25, dc: 110.16, date: "2023-05-29", city: "扶绥", type: "PV", lat: 22.57, lon: 107.90 },
+          { name: "守旗光伏电站", ac: 183.5, dc: 255.07, date: "2023-05-30", city: "扶绥", type: "PV", lat: 22.57, lon: 107.90 },
+          { name: "榕木光伏电站", ac: 114.98, dc: 197.05, date: "2023-07-20", city: "贵港", type: "PV", lat: 23.11, lon: 109.60 },
+          { name: "派岸光伏电站", ac: 145.00, dc: 203.00, date: "2023-07-26", city: "江州", type: "PV", lat: 22.39, lon: 107.41 }
+      ];
+
+      // --- 全局状态 ---
+      let STATE = {
+          dc_capacity: 140,
+          ac_limit: 100,
+          irradiance: 800,
+          base_pr: 85,
+          temp: 25,
+          temp_coeff: -0.004, // -0.4% per degree
+          degradation: 0.0,   // Annual degradation factor (0-1)
+          wind_speed: 3.0,
+          stationType: 'PV',
+          stationType: 'PV',
+          currentStationIdx: 0,
+          degradation_rate: 0.5 // Default 0.5% per year
+      };
+
+      // --- DOM 元素引用 ---
+      const els = {
+          select: document.getElementById('stationSelect'),
+          dcDisp: document.getElementById('dcDisplay'),
+          acDisp: document.getElementById('acDisplay'),
+          dcDisp: document.getElementById('dcDisplay'),
+          acDisp: document.getElementById('acDisplay'),
+          acDisp: document.getElementById('acDisplay'),
+          ratioDisp: document.getElementById('ratioDisplay'),
+          ageDisp: document.getElementById('ageDisplay'),
+          locDisp: document.getElementById('locationDisplay'),
+          
+          irradianceRange: document.getElementById('irradianceRange'),
+          irradianceVal: document.getElementById('irradianceVal'),
+          
+          prRange: document.getElementById('prRange'),
+          prVal: document.getElementById('prVal'),
+          
+          tempRange: document.getElementById('tempRange'),
+          tempVal: document.getElementById('tempVal'),
+          
+          degRateRange: document.getElementById('degRateRange'),
+          degRateVal: document.getElementById('degRateVal'),
+          
+          output: document.getElementById('outputPowerVal'),
+          badge: document.getElementById('clippingBadge'),
+          powerBar: document.getElementById('powerBar'),
+          
+          debugDcPot: document.getElementById('debugDcPot'),
+          debugCellTemp: document.getElementById('debugCellTemp'),
+          debugTempLoss: document.getElementById('debugTempLoss'),
+          debugTotalPr: document.getElementById('debugTotalPr'),
+          
+          weatherLoc: document.getElementById('weatherLocation'),
+          weatherTime: document.getElementById('weatherTime'),
+          
+          s1: document.getElementById('step1Val'),
+          s2: document.getElementById('step2Val'),
+          s3: document.getElementById('step3Val'),
+          s4: document.getElementById('step4Val'),
+
+          // Weather UI (New)
+          realtimePanel: document.getElementById('realtime-weather-panel'),
+          fetchBtn: document.getElementById('fetchWeatherBtn'),
+          rtIrr: document.getElementById('rt-irr'),
+          rtWind: document.getElementById('rt-wind'),
+          rtTemp: document.getElementById('rt-temp'),
+          rtCode: document.getElementById('rt-code'),
+      };
+
+      // --- WMO Weather Codes ---
+      const weatherCodes = {
+        0: '晴朗', 1: '多云', 2: '阴', 3: '阴', 45: '雾', 48: '雾',
+        51: '毛毛雨', 53: '毛毛雨', 55: '毛毛雨', 61: '小雨', 63: '中雨',
+        65: '大雨', 71: '小雪', 73: '中雪', 75: '大雪', 80: '阵雨',
+        81: '阵雨', 82: '暴雨', 95: '雷雨', 96: '雷阵雨', 99: '雷暴'
+      };
+
+      // --- 初始化 ---
+      function init() {
+          checkSession();
+          
+          // 填充下拉框
+          STATIONS.forEach((s, idx) => {
+              const opt = document.createElement('option');
+              opt.value = idx;
+              opt.text = `${s.name}`;
+              els.select.add(opt);
+          });
+
+          // 绑定事件
+          els.select.addEventListener('change', (e) => loadStation(e.target.value));
+          els.irradianceRange.addEventListener('input', (e) => updateParam('irradiance', e.target.value));
+          els.prRange.addEventListener('input', (e) => updateParam('base_pr', e.target.value));
+          els.prRange.addEventListener('input', (e) => updateParam('base_pr', e.target.value));
+          els.tempRange.addEventListener('input', (e) => updateParam('temp', e.target.value));
+          if(els.degRateRange) els.degRateRange.addEventListener('input', (e) => updateParam('degradation_rate', e.target.value));
+          
+          if(els.fetchBtn) {
+            els.fetchBtn.addEventListener('click', fetchLiveData);
+          }
+
+          // 初始加载
+          loadStation(0);
+      }
+
+      function loadStation(idx) {
+          STATE.currentStationIdx = idx;
+          const s = STATIONS[idx];
+          STATE.dc_capacity = s.dc;
+          STATE.ac_limit = s.ac;
+          STATE.stationType = s.type;
+          
+          // Calculate Degradation
+          let age = 0;
+          let degPct = 0;
+          if (s.date && s.type === 'PV') {
+              const connectDate = new Date(s.date);
+              const now = new Date();
+              const diffTime = Math.abs(now - connectDate);
+              age = diffTime / (1000 * 60 * 60 * 24 * 365.25); 
+              degPct = age * STATE.degradation_rate; 
+          }
+          STATE.degradation = degPct / 100.0;
+
+          els.dcDisp.innerText = `${s.dc} MWp`;
+          els.acDisp.innerText = `${s.ac} MW`;
+          els.ratioDisp.innerText = (s.dc / s.ac).toFixed(2);
+          
+          if (els.ageDisp) {
+              if (s.type === 'PV') {
+                  els.ageDisp.innerText = `投运 ${s.date} | 运行 ${age.toFixed(1)} 年 (衰减 ${degPct.toFixed(2)}%)`;
+                  els.ageDisp.classList.remove('hidden');
+              } else {
+                  els.ageDisp.innerText = `投运 ${s.date} (${s.type})`;
+              }
+          }
+          
+          if (els.locDisp) {
+              els.locDisp.innerText = s.city;
+          }
+          
+          if (s.type !== 'PV') {
+              // Non-PV Logic Warning or Handling?
+              // For now we just run the loop, but it might look weird.
+              // Maybe set Irradiance to 0 conceptually? No, let user simulate "what if".
+          }
+
+          // 如果有实时数据面板，重置或自动拉取
+          // fetchLiveData(); // Optional: Auto fetch on change
+          recalc();
+      }
+
+      function updateParam(key, val) {
+          STATE[key] = parseFloat(val);
+          // Update Text Display
+          if(key === 'irradiance') els.irradianceVal.innerText = val;
+          if(key === 'base_pr') els.prVal.innerText = val;
+          if(key === 'base_pr') els.prVal.innerText = val;
+          if(key === 'temp') els.tempVal.innerText = val;
+          if(key === 'degradation_rate') {
+              if(els.degRateVal) els.degRateVal.innerText = val;
+              // Recalculate total degradation based on age
+              const s = STATIONS[STATE.currentStationIdx];
+              let age = 0;
+              if (s.date && s.type === 'PV') {
+                  const connectDate = new Date(s.date);
+                  const now = new Date();
+                  age = Math.abs(now - connectDate) / (1000 * 60 * 60 * 24 * 365.25);
+              }
+              const degPct = age * STATE.degradation_rate;
+              STATE.degradation = degPct / 100.0;
+              
+              if (els.ageDisp && s.type === 'PV') {
+                   els.ageDisp.innerText = `投运 ${s.date} | 运行 ${age.toFixed(1)} 年 (衰减 ${degPct.toFixed(2)}%)`;
+              }
+          }
+          
+          recalc();
+      }
+
+      // --- 核心计算 ---
+      // --- 核心计算 ---
+      function calculate(irr, ambTemp, basePr, dcCap, acLim) {
+          // 1. 理论 DC
+          const potentialDC = dcCap * (irr / 1000);
+          
+          // 2. 环境温度 -> 电池温度 (简化模型: T_cell = T_amb + (Irradiance/800)*25)
+          // Open-Rack Model approximation
+          const cellTemp = ambTemp + (irr / 800) * 25;
+          const deltaT = cellTemp - 25;
+          const tempLossFactor = deltaT * STATE.temp_coeff; 
+          
+          // 3. 综合效率 (含衰减)
+          const basePrDecimal = basePr / 100.0;
+          const degradationFactor = 1 - STATE.degradation; // e.g. 1 - 0.005 = 0.995
+          const totalPr = basePrDecimal * (1 + tempLossFactor) * degradationFactor;
+          
+          // 4. AC 侧潜力
+          const potentialAC = potentialDC * totalPr;
+          
+          // 5. 截峰
+          const finalAC = Math.min(Math.max(potentialAC, 0), acLim);
+          
+          return {
+              dcPot: potentialDC,
+              cellTemp: cellTemp,
+              tempLossPct: tempLossFactor * 100,
+              totalPrPct: totalPr * 100,
+              acPot: potentialAC,
+              finalAc: finalAC,
+              isClipping: potentialAC > acLim
+          };
+      }
+
+      function recalc() {
+          const res = calculate(STATE.irradiance, STATE.temp, STATE.base_pr, STATE.dc_capacity, STATE.ac_limit);
+          
+          // Update Main Display
+          els.output.innerText = res.finalAc.toFixed(1);
+          
+          // Update Progress Bar
+          const pct = Math.min((res.finalAc / STATE.ac_limit) * 100, 100);
+          if (els.powerBar) {
+              els.powerBar.style.width = `${pct}%`;
+              els.powerBar.className = res.isClipping ? 
+                  "h-full bg-red-500 transition-all duration-300" : 
+                  "h-full bg-blue-500 transition-all duration-300";
+          }
+
+          // Clipping Badge
+          if (els.badge) {
+             if (res.isClipping) els.badge.classList.remove('hidden');
+             else els.badge.classList.add('hidden');
+          }
+
+          // Debug Area
+          if(els.debugDcPot) els.debugDcPot.innerText = `${res.dcPot.toFixed(1)} MW`;
+          if(els.debugCellTemp) els.debugCellTemp.innerText = `${res.cellTemp.toFixed(1)}°C`;
+          if(els.debugTempLoss) {
+              els.debugTempLoss.innerText = `${res.tempLossPct > 0 ? '+' : ''}${res.tempLossPct.toFixed(1)}%`;
+              els.debugTempLoss.className = res.tempLossPct < 0 ? "font-mono text-red-400" : "font-mono text-emerald-400";
+          }
+          if(els.debugTotalPr) els.debugTotalPr.innerText = `${res.totalPrPct.toFixed(1)}%`;
+
+          // Steps
+          if(els.s1) els.s1.innerText = `${res.dcPot.toFixed(1)} MW`;
+          if(els.s2) els.s2.innerText = `${res.acPot.toFixed(1)} MW`;
+          if(els.s3) els.s3.innerText = `${STATE.ac_limit} MW (Max)`;
+          if(els.s4) els.s4.innerText = `${res.finalAc.toFixed(1)} MW`;
+
+          updateCharts();
+      }
+
+      // --- 图表 ---
+      let chartInstance = null;
+      let forecastChartTotal = null;
+      let forecastChartNext = null;
+      
+      function updateCharts() {
+          // Chart 1: PV Curve (Manual Simulation)
+          const labels = [];
+          const dataTheory = [];
+          const dataReal = [];
+          
+          for(let g=0; g<=1300; g+=50) {
+              labels.push(g);
+              const r = calculate(g, STATE.temp, STATE.base_pr, STATE.dc_capacity, STATE.ac_limit);
+              dataTheory.push(r.acPot.toFixed(2));
+              dataReal.push(r.finalAc.toFixed(2));
+          }
+
+          if (chartInstance) {
+              chartInstance.data.labels = labels;
+              chartInstance.data.datasets[0].data = dataReal;
+              chartInstance.data.datasets[1].data = dataTheory;
+              chartInstance.options.scales.y.suggestedMax = STATE.ac_limit * 1.3;
+              chartInstance.update();
+          } else {
+               const ctx = document.getElementById("powerCurveChart").getContext("2d");
+               chartInstance = new Chart(ctx, {
+                type: "line",
+                data: {
+                  labels: labels,
+                  datasets: [
+                    {
+                      label: "实际有功功率 (MW)",
+                      data: dataReal,
+                      borderColor: "#2563EB",
+                      backgroundColor: "rgba(37, 99, 235, 0.1)",
+                      borderWidth: 3,
+                      pointRadius: 0,
+                      tension: 0.1,
+                      fill: true,
+                    },
+                    {
+                      label: "理论潜力 (无限制)",
+                      data: dataTheory,
+                      borderColor: "#9CA3AF",
+                      borderDash: [5, 5],
+                      borderWidth: 2,
+                      pointRadius: 0,
+                      tension: 0.1,
+                      fill: false,
+                    },
+                  ],
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  animation: false, 
+                  interaction: { mode: 'index', intersect: false },
+                  plugins: {
+                    title: { display: false },
+                    tooltip: { callbacks: { title: (ctx) => `${ctx[0].label} W/m²` } }
+                  },
+                  scales: {
+                    x: { title: { display: true, text: "辐照度 (W/m²)" } },
+                    y: { 
+                        title: { display: true, text: "功率 (MW)" },
+                        suggestedMax: STATE.ac_limit * 1.3
+                    },
+                  },
+                },
+              });
+          }
+      }
+
+      // --- Open-Meteo Integration ---
+      async function fetchLiveData() {
+          const s = STATIONS[STATE.currentStationIdx];
+          const btn = document.getElementById('fetchWeatherBtn');
+          if(btn) btn.innerHTML = '🔄 获取中...';
+          
+          // 1. Fetch Current + Forecast
+          // Params: minutely_15 for high resolution (96 points/day)
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${s.lat}&longitude=${s.lon}&current=temperature_2m,wind_speed_10m,weather_code,shortwave_radiation,is_day&minutely_15=temperature_2m,shortwave_radiation,wind_speed_10m&forecast_days=2&timezone=auto`;
+
+          try {
+              const resp = await fetch(url);
+              const data = await resp.json();
+              
+              updateRealtimeUI(data);
+              updateForecastChart(data);
+              
+              if(btn) btn.innerHTML = '✅ 已更新';
+              setTimeout(() => { if(btn) btn.innerText = '📡 获取当地实时气象'; }, 2000);
+
+          } catch (e) {
+              console.error(e);
+              if(btn) btn.innerHTML = '❌ 失败';
+              alert("获取天气数据失败，请检查网络连接 (API: Open-Meteo)");
+          }
+      }
+
+      function updateRealtimeUI(data) {
+          const cur = data.current;
+          
+          // 如果是晚上，shortwave_radiation可能是0 or undefined. 
+          // Open-Meteo current shortwave_radiation depends on solar model.
+          // 如果 API 没有返回 current.shortwave_radiation (某些模型不支持)，则回退到 0
+          const irr = cur.shortwave_radiation || 0;
+          const wind = cur.wind_speed_10m || 0;
+          const temp = cur.temperature_2m || 25;
+          const code = cur.weather_code || 0;
+
+          // 更新 Dashboard
+          if(document.getElementById('rt-irr')) document.getElementById('rt-irr').innerText = irr.toFixed(0);
+          if(document.getElementById('rt-wind')) document.getElementById('rt-wind').innerText = wind.toFixed(1);
+          if(document.getElementById('rt-temp-val')) document.getElementById('rt-temp-val').innerText = temp.toFixed(1);
+          if(document.getElementById('rt-cond')) document.getElementById('rt-cond').innerText = weatherCodes[code] || '未知';
+          
+          // 同步到滑块控制 (模拟器)
+          // 让用户决定是否应用？ 或者直接应用体验更好。这里直接应用。
+          els.irradianceRange.value = irr;
+          updateParam('irradiance', irr);
+          
+          els.tempRange.value = temp;
+          updateParam('temp', temp);
+
+          // 风速目前不影响计算公式，但可以用于展示
+          STATE.wind_speed = wind;
+          
+          if(els.weatherLoc) els.weatherLoc.innerText = `📍 ${STATIONS[STATE.currentStationIdx].city}`;
+          if(els.weatherTime) els.weatherTime.innerText = `🕒 ${new Date().toLocaleTimeString()}`;
+      }
+
+      function updateForecastChart(data) {
+          // data.minutely_15.time usually starts from 00:00 today 
+          // 15 min interval = 4 * 24 = 96 points per day
+          // 0-95: Today
+          // 96-191: Tomorrow
+          
+          // Helper to process slices
+          const processSlice = (startIdx, endIdx) => {
+              const times = data.minutely_15.time.slice(startIdx, endIdx).map(t => t.substring(11, 16));
+              const irrData = data.minutely_15.shortwave_radiation.slice(startIdx, endIdx);
+              const tempData = data.minutely_15.temperature_2m.slice(startIdx, endIdx);
+              
+              const pwr = irrData.map((irr, idx) => {
+                  const t = tempData[idx];
+                  const res = calculate(irr, t, STATE.base_pr, STATE.dc_capacity, STATE.ac_limit);
+                  return res.finalAc.toFixed(2);
+              });
+              
+              return { labels: times, irr: irrData, pwr: pwr, temp: tempData };
+          };
+
+          const todayData = processSlice(0, 96);
+          const tomorrowData = processSlice(96, 192);
+          
+          renderForecastChart('forecastChartToday', '今日短期功率预测 (Today - 15min)', todayData, 'total');
+          renderForecastChart('forecastChartTomorrow', '明日短期功率预测 (Tomorrow - 15min)', tomorrowData, 'next');
+      }
+      
+      function renderForecastChart(canvasId, title, dataset, chartRefKey) {
+          const ctxC = document.getElementById(canvasId);
+          if(!ctxC) return;
+          
+          let instance;
+          if (chartRefKey === 'total') instance = forecastChartTotal;
+          else instance = forecastChartNext;
+
+          if (instance) instance.destroy();
+
+          const newChart = new Chart(ctxC.getContext('2d'), {
+              type: 'bar',
+              data: {
+                  labels: dataset.labels,
+                  datasets: [
+                      {
+                          type: 'line',
+                          label: '预测功率 (MW)',
+                          data: dataset.pwr,
+                          borderColor: '#8b5cf6',
+                          backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                          borderWidth: 2,
+                          yAxisID: 'y',
+                          fill: true,
+                          tension: 0.4
+                      },
+                      {
+                          type: 'bar',
+                          label: '辐照度 (W/m²)',
+                          data: dataset.irr,
+                          backgroundColor: 'rgba(245, 158, 11, 0.4)',
+                          yAxisID: 'y1',
+                          barPercentage: 0.5
+                      }
+                  ]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                      title: { display: true, text: title },
+                      tooltip: { mode: 'index', intersect: false }
+                  },
+                  scales: {
+                      y: {
+                          type: 'linear',
+                          display: true,
+                          position: 'left',
+                          title: { display: true, text: '功率 (MW)' },
+                          max: STATE.ac_limit * 1.1
+                      },
+                      y1: {
+                          type: 'linear',
+                          display: true,
+                          position: 'right',
+                          title: { display: true, text: '辐照度 (W/m²)' },
+                          grid: { drawOnChartArea: false }
+                      }
+                  }
+              }
+          });
+          
+          if (chartRefKey === 'total') forecastChartTotal = newChart;
+          else forecastChartNext = newChart;
+      }
+
+      // --- 客户端认证逻辑 (Hash版) ---
+      // 密码哈希值 (SHA-256 of "能建集控")
+      const APP_HASH = "6c8e72343c59bb09764fe9fc7e04777773e2a0580a0dae345cbdd3667e0af1a2";
+      
+      async function checkLogin() {
+          const input = document.getElementById('loginPass');
+          const err = document.getElementById('loginError');
+          const val = input.value;
+          
+          if(!val) return;
+
+          // 计算输入值的 Hash
+          const hash = await sha256(val);
+          
+          if(hash === APP_HASH) {
+              localStorage.setItem('pv_auth', 'true');
+              unlockUI();
+          } else {
+              err.classList.remove('hidden');
+              input.classList.add('border-red-500');
+              input.value = '';
+              input.focus();
+          }
+      }
+      
+      // SHA-256 Helper
+      async function sha256(message) {
+          const msgBuffer = new TextEncoder().encode(message);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          return hashHex;
+      }
+      
+      function checkSession() {
+          const isAuth = localStorage.getItem('pv_auth');
+          if(isAuth === 'true') {
+              unlockUI(true);
+          }
+      }
+      
+      function unlockUI(isInstant = false) {
+          const modal = document.getElementById('loginModal');
+          const body = document.getElementById('mainBody');
+          
+          if(isInstant) {
+              modal.style.display = 'none';
+              body.classList.remove('overflow-hidden');
+          } else {
+              modal.classList.add('opacity-0');
+              setTimeout(() => {
+                  modal.style.display = 'none';
+                  body.classList.remove('overflow-hidden');
+              }, 500);
+          }
+      }
+
+      // Start
+      init();
+
+    </script>
+  </body>
+</html>

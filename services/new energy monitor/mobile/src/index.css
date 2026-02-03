@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-energy-dark: #0a0a0c;
+  --color-energy-surface: #16161a;
+  --color-energy-primary: #3b82f6;
+  --color-energy-accent: #f59e0b;
+  --color-energy-success: #10b981;
+  
+  --background-image-glass-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-energy-dark text-gray-100 antialiased overflow-x-hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.glass-panel {
+  @apply bg-white/10 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl;
+}
+
+/* Custom transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Hide scrollbars */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+@media (min-width: 768px) { body { @apply overflow-hidden; } }

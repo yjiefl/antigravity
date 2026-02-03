@@ -1,13 +1,39 @@
-__pycache__/
-*.pyc
+# --- 系统与通用文件 ---
 .DS_Store
-# .agent/
-output.log
+Thumbs.db
+*.swp
 *.log
+output.log
 !log/debug.log
+
+# --- Python 开发 (用于您的汇总脚本和分析工具) ---
+__pycache__/
+*.py[cod]
+*$py.class
 .venv/
 venv/
-node_modules/
-dist/
+ENV/
 build/
+dist/
 *.spec
+
+# --- Node.js (如果您前端有用到) ---
+node_modules/
+.npm
+.eslintcache
+
+# --- AI Agent 相关 (针对 Antigravity 和 .agent 目录) ---
+# 注意：如果您想在多台电脑同步 Agent 状态，请注释掉下面两行
+# .agent/
+# .antigravity/
+
+# --- 办公与临时文件 (针对您的电力报表和操作票) ---
+~$*.xlsx
+~$*.docx
+*.tmp
+# 保护含有敏感数据的 Excel 或 CSV (可选)
+# data/*.xlsx
+# *.csv
+
+# --- Docker 相关 ---
+.docker/
