@@ -1,7 +1,7 @@
 __pycache__/
 *.pyc
 .DS_Store
-.agent/
+# .agent/
 output.log
 *.log
 !log/debug.log
