@@ -90,3 +90,19 @@
 - 执行 `git push`。
 结果：
 - 所有文件已成功提交并同步，`git status` 显示工作区干净。
+
+[2026-02-03 08:58]
+任务：将 GitHub 项目更新至本地。
+操作：
+- 通过 `curl` 验证了 GitHub 仓库 `yjiefl/antigravity` 的存在性及其克隆 URL。
+- 由于本地目录 `/Users/yangjie/code/antigravity` 为空，执行了 `git clone https://github.com/yjiefl/antigravity.git .` 进行全量同步。
+- 确认本地文件结构已同步，包括 root 目录下的 README.md、apps/、docs/、services/ 等。
+- 更新了 `docs/antigravity/update.md` 记录本次同步。
+调试情况：
+- 初始尝试发现本地目录为空，决定执行 clone 而非 pull。
+- 验证了 `git` 命令在本地环境可用。
+存在问题：
+- 无。
+验证情况：
+- 执行 `ls -la` 确认所有核心目录与文件均已到位。
+- 确认 `docs/antigravity/update.md` 已成功写入记录。
