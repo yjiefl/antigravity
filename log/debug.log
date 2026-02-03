@@ -164,3 +164,7 @@
 - 字段清洗完成，数据描述恢复简洁准确。
 - 已经重新保存文件。
 已经完成 Git Commit。
+[2026-02-03 09:48] 开始更新新能源电力专家项目库信息。
+1. 更新 references/stations.md 中的场站实际容量和区域信息。
+2. 创建 references/dispatch_stations.md 项目按调度站汇总表。
+3. 更新/补充项目 spec.md 和 README.md。
