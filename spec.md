@@ -53,4 +53,14 @@ Walk through directory:
                     finish_time = row.cells[8].text
                     Append to all_tickets
 Create DataFrame and Save to "操作票汇总表.xlsx"
-```
+## 5. 文档结构化预览与 AI 适配 (AI-Ready Document Conversion)
+- **目标**: 将电气操作管理相关的规程 (PDF)、细则 (DOC/DOCX) 转换为 Markdown 格式，提升 AI 对专业领域知识的读取效率。
+- **技术路径**:
+  - **PDF**: 使用 `PyMuPDF` (fitz) 提取文本与基础结构。
+  - **Word**: 
+    - 旧版 `.doc` 通过 `textutil` 转换为 `.docx`。
+    - `.docx` 通过 `python-docx` 提取段落与表格，转化为标准的 Markdown 语法。
+- **关键处理**: 
+  - 保留层级标题。
+  - 完整保留表格数据。
+  - 自动处理换行与列表。

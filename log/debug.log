@@ -168,3 +168,17 @@
 1. 更新 references/stations.md 中的场站实际容量和区域信息。
 2. 创建 references/dispatch_stations.md 项目按调度站汇总表。
 3. 更新/补充项目 spec.md 和 README.md。
+
+[2026-02-03 10:45]
+任务：将 `电气操作管理/电气操作` 下的 PDF 和 Word 文件转换为 Markdown 格式，便于 AI 使用。
+文件列表：
+- GB 26860-2011_电力安全工作规程_发电厂和变电站电气部分(OCR).pdf
+- GB26859-2011电力安全工作规程_电力线路部分.pdf
+- 中国南方电网有限责任公司电气操作票管理细则.doc
+- 南网电气操作导则2017.doc
+- 操作票不合格、不规范判据.docx
+
+操作：
+- 完成可行性评估：.doc 使用 textutil 转换，.docx 使用 python-docx 提取，.pdf 使用 PyMuPDF 提取。
+- 更新 spec.md 和 README.md。
+- 准备编写转换脚本 `doc_to_md.py`。
