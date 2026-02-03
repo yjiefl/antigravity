@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运维费用结算申报系统 - 2026 Q1</title>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --border-color: #ddd;
+        }
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        
+        /* 左侧：填报区域 */
+        .main-panel {
+            flex: 3;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* 右侧：汇总区域 */
+        .summary-panel {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        h2, h3 { color: #333; margin-top: 0; }
+        
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #e9ecef;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        
+        /* 输入框样式 */
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff3cd; /* 黄色背景提示填报 */
+            font-weight: bold;
+            text-align: right;
+        }
+        input[type="number"]:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            background-color: #fff;
+        }
+
+        /* 费用列高亮 */
+        .cost-col {
+            font-weight: bold;
+            color: var(--primary-color);
+            text-align: right;
+        }
+
+        .station-header {
+            background-color: #d1ecf1;
+            font-weight: bold;
+            color: #0c5460;
+        }
+
+        /* 按钮 */
+        .btn-group {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background-color: #004494; }
+        button.secondary { background-color: #6c757d; }
+        
+        .total-highlight {
+            font-size: 1.2em;
+            color: #d9534f;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>2026年第一季度 运维费用结算填报</h2>
+            <div class="btn-group">
+                <button class="secondary" onclick="alert('功能模拟：正在导出Excel...')">导出Excel</button>
+                <button onclick="saveData()">提交结算</button>
+            </div>
+        </div>
+        
+        <p style="color:#666; font-size:12px;">说明：请在黄色输入框中填写本季度实际执行数量，系统将自动计算合价。</p>
+
+        <table id="inputTable">
+            <thead>
+                <tr>
+                    <th>项目名称</th>
+                    <th>单位</th>
+                    <th>含税单价(元)</th>
+                    <th style="width: 120px;">本季度执行数量</th>
+                    <th>本季度费用(元)</th>
+                    <th>备注</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <div class="summary-panel">
+        <h3>实时汇总预览</h3>
+        <table id="summaryTable">
+            <thead>
+                <tr>
+                    <th>场站</th>
+                    <th style="text-align:right;">总费用(元)</th>
+                </tr>
+            </thead>
+            <tbody id="summaryBody">
+                </tbody>
+            <tfoot>
+                <tr style="background:#f8f9fa;">
+                    <td><strong>总计</strong></td>
+                    <td style="text-align:right;" class="total-highlight" id="grandTotal">0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+        <div style="margin-top:20px; font-size:12px; color:#888;">
+            <p>计算规则：<br>费用 = 含税单价 × 季度执行数量</p>
+        </div>
+    </div>
+
+<script>
+    // 模拟从 '场站价格汇总.csv' 读取的数据
+    const rawData = [
+        { station: "大新龙门风电场", items: [
+            { name: "站长 (人工运维)", unit: "元/人/月", price: 20882.00, defaultQty: 3 },
+            { name: "运检组长", unit: "元/人/月", price: 16960.00, defaultQty: 3 },
+            { name: "工器具配备", unit: "元/MW/年", price: 318.00, defaultQty: 0.25 } // 假设60MW * 0.25年? 这里仅作单价演示
+        ]},
+        { station: "扶绥县中原光伏项目", items: [
+            { name: "运检人员", unit: "元/人/月", price: 11660.00, defaultQty: 9 }, // 3人*3月
+            { name: "车辆使用费", unit: "元/辆/月", price: 5300.00, defaultQty: 3 },
+            { name: "备品备件供应", unit: "元/MW/年", price: 318.00, defaultQty: 25 } // 100MW * 0.25
+        ]},
+        { station: "宁明县板棍光伏项目", items: [
+            { name: "运检人员", unit: "元/人/月", price: 11660.00, defaultQty: 12 },
+            { name: "预防性试验", unit: "元/次", price: 45000.00, defaultQty: 0 }
+        ]}
+    ];
+
+    function initTable() {
+        const tbody = document.querySelector("#inputTable tbody");
+        let html = "";
+
+        rawData.forEach((station, sIndex) => {
+            // 插入场站分隔行
+            html += `<tr class="station-header"><td colspan="6">${station.station}</td></tr>`;
+            
+            station.items.forEach((item, iIndex) => {
+                const rowId = `row-${sIndex}-${iIndex}`;
+                html += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>${item.unit}</td>
+                        <td>${item.price.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                        <td>
+                            <input type="number" 
+                                   id="qty-${sIndex}-${iIndex}" 
+                                   value="${item.defaultQty}" 
+                                   oninput="calculateLine('${sIndex}', '${iIndex}', ${item.price})"
+                                   step="0.01">
+                        </td>
+                        <td class="cost-col" id="cost-${sIndex}-${iIndex}">0.00</td>
+                        <td><input type="text" placeholder="支撑材料编号" style="width:100%; border:none;"></td>
+                    </tr>
+                `;
+            });
+        });
+        tbody.innerHTML = html;
+
+        // 初始化计算一次
+        rawData.forEach((station, sIndex) => {
+            station.items.forEach((item, iIndex) => {
+                calculateLine(sIndex, iIndex, item.price);
+            });
+        });
+    }
+
+    // 单行计算逻辑
+    function calculateLine(sIndex, iIndex, price) {
+        const qtyInput = document.getElementById(`qty-${sIndex}-${iIndex}`);
+        const costCell = document.getElementById(`cost-${sIndex}-${iIndex}`);
+        
+        let qty = parseFloat(qtyInput.value) || 0;
+        let cost = qty * price;
+        
+        costCell.innerText = cost.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        costCell.dataset.value = cost; // 存储原始数值供汇总使用
+        
+        updateSummary();
+    }
+
+    // 更新右侧汇总表
+    function updateSummary() {
+        const summaryBody = document.getElementById("summaryBody");
+        const grandTotalEl = document.getElementById("grandTotal");
+        let grandTotal = 0;
+        let summaryHtml = "";
+
+        rawData.forEach((station, sIndex) => {
+            let stationTotal = 0;
+            // 遍历该场站下的所有行
+            station.items.forEach((item, iIndex) => {
+                const costCell = document.getElementById(`cost-${sIndex}-${iIndex}`);
+                stationTotal += parseFloat(costCell.dataset.value) || 0;
+            });
+
+            grandTotal += stationTotal;
+            summaryHtml += `
+                <tr>
+                    <td>${station.station}</td>
+                    <td style="text-align:right;">${stationTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+            `;
+        });
+
+        summaryBody.innerHTML = summaryHtml;
+        grandTotalEl.innerText = grandTotal.toLocaleString('zh-CN', {style: 'currency', currency: 'CNY'});
+    }
+
+    function saveData() {
+        alert("数据已提交！\n(此为原型，实际开发时将把JSON数据发送至后端服务器)");
+    }
+
+    // 页面加载完成后执行
+    window.onload = initTable;
+</script>
+</body>
+</html>
