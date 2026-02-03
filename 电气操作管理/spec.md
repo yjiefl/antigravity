@@ -5,13 +5,14 @@
 - **核心工具**: Python 3.10+
 - **关键库**:
   - `python-docx`: 用于解析 `.docx` 文件中的表格内容。
-  - `pandas`: 用于数据处理和整合。
+  - `pandas`: 用于数据处理 and 整合。
   - `openpyxl`: 用于生成 `.xlsx` 文件。
   - `textutil` (MacOS 内置): 用于将旧版的 `.doc` 文件转换为 `.docx` 格式。
 
 ## 2. 资料模型 (Data Model)
 
 汇总后的 Excel 表格结构如下：
+
 | 字段名 | 说明 |
 | :--- | :--- |
 | **所属站场** | 对应所在的文件夹名称（如：坤山风电场） |
@@ -54,3 +55,11 @@ Walk through directory:
                     Append to all_tickets
 Create DataFrame and Save to "操作票汇总表.xlsx"
 ```
+
+## 5. 样式与规范 (Style & Standards)
+
+### 5.1 Markdown 规范
+
+- 所有 Markdown 文件应符合 lint 检查，特别是表格对齐（MD060 兼容风格）。
+- 表格应使用 "aligned" 风格，即所有列的 `|` 符号应垂直对齐。
+- 对于包含中文字符的表格，应按中文字符宽度为 2 的标准进行对齐。
