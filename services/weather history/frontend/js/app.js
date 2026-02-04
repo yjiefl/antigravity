@@ -2081,6 +2081,7 @@ window.updateChartsFromToggles = updateChartsFromToggles;
 let forecastQueryState = {
   currentData: null,
   selectedFields: [],
+  activeDatasets: [], // 当前在图表中激活的 (城市-字段) 组合
   charts: {
     temperature: null,
     radiation: null,
@@ -2497,92 +2498,97 @@ function createDailyForecastItem(day) {
 }
 
 /**
- * 渲染预测图表
+ * 字段配置 (用于多坐标轴与颜色)
  */
-function renderForecastCharts(results) {
+const forecastFieldConfig = {
+  temperature_2m: { label: "温度", unit: "°C", axis: "y-temp", color: "#ff3b30", axisTitle: "温度 (°C)" },
+  shortwave_radiation: { label: "辐照度", unit: "W/m²", axis: "y-rad", color: "#ff9500", axisTitle: "辐照度 (W/m²)" },
+  wind_speed_10m: { label: "风速", unit: "m/s", axis: "y-wind", color: "#34c759", axisTitle: "风速 (m/s)" },
+  precipitation_probability: { label: "降水概率", unit: "%", axis: "y-perc", color: "#007aff", axisTitle: "概率 (%)" },
+  relative_humidity_2m: { label: "湿度", unit: "%", axis: "y-perc", color: "#5856d6", axisTitle: "湿度 (%)" },
+  precipitation: { label: "降水量", unit: "mm", axis: "y-prec", color: "#007aff", axisTitle: "降水 (mm)" }
+};
+
+/**
+ * 渲染预测图表 (多坐标轴 + Toggles)
+ */
+function renderForecastCharts(results, isUpdate = false) {
   if (!results || results.length === 0) return;
 
-  const isMultiLabels = results.length > 1;
   const selectedFields = forecastQueryState.selectedFields;
   const fieldsToShow = selectedFields.length > 0 ? selectedFields : ["shortwave_radiation", "wind_speed_10m"];
 
-  // 1. 绘制 24 小时趋势对比图
-  // 计算起止时间 (确保展示足足 24 小时，从当前小时开始)
+  // 1. 初始化活动数据集 (如果是新一轮查询)
+  if (!isUpdate) {
+    forecastQueryState.activeDatasets = [];
+    results.forEach(cityRes => {
+       fieldsToShow.forEach(field => {
+          forecastQueryState.activeDatasets.push(`${cityRes.city_name}|${field}`);
+       });
+    });
+  }
+
+  // 2. 准备数据
   const now = new Date();
-  now.setMinutes(0, 0, 0); // 对齐到整点开始看
+  now.setMinutes(0, 0, 0); 
   const startTime = now.getTime();
   const endTime = startTime + 24 * 60 * 60 * 1000;
 
-  // 颜色调色盘 (Apple Style)
   const cityColors = ["#007aff", "#ff3b30", "#34c759", "#ff9500", "#5856d6", "#af52de", "#ff2d55"];
-
   const datasets = [];
   let commonLabels = [];
 
-  // 获取第一个城市的 24h 序列作为基准 labels
+  // 获取基准 labels
   const firstCityRecords = results[0].records.filter(r => {
     const t = new Date(r.datetime).getTime();
     return t >= startTime && t <= endTime;
   });
-  
-  // 如果当前 24h 没数据，取全部数据中的前 96 个
   const displayRecordsBase = firstCityRecords.length >= 8 ? firstCityRecords : results[0].records.slice(0, 96);
   commonLabels = displayRecordsBase.map(r => {
     const dt = new Date(r.datetime);
     return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
   });
 
-  if (results.length === 1) {
-    // 单城市模式：展示多个所选字段
-    const records = displayRecordsBase;
-    const fieldConfig = {
-      temperature_2m: { label: "温度", color: "#ff3b30" },
-      shortwave_radiation: { label: "辐照度", color: "#ff9500" },
-      wind_speed_10m: { label: "风速", color: "#34c759" },
-      precipitation_probability: { label: "降水概率", color: "#007aff" }
-    };
+  const axesUsed = new Set();
 
-    fieldsToShow.forEach(field => {
-      const config = fieldConfig[field];
-      if (config) {
-        datasets.push({
-          label: config.label,
-          data: records.map(r => r[field]),
-          borderColor: config.color,
-          backgroundColor: config.color + "20",
-          borderWidth: 2,
-          tension: 0.4,
-          pointRadius: 0
-        });
-      }
-    });
-  } else {
-    // 多城市模式：展示第一个选中字段的多城市对比
-    const primaryField = fieldsToShow[0];
-    const fieldName = (appState.fields.basic?.[primaryField] || appState.fields.wind?.[primaryField] || appState.fields.radiation?.[primaryField])?.name || "数值";
+  results.forEach((cityRes, cIndex) => {
+    fieldsToShow.forEach((field, fIndex) => {
+      const datasetId = `${cityRes.city_name}|${field}`;
+      if (!forecastQueryState.activeDatasets.includes(datasetId)) return;
 
-    results.forEach((cityRes, index) => {
+      const config = forecastFieldConfig[field] || { label: field, axis: 'y', color: cityColors[cIndex % cityColors.length] };
+      axesUsed.add(config.axis);
+
       const cityRecords = cityRes.records.filter(r => {
         const t = new Date(r.datetime).getTime();
         return t >= startTime && t <= endTime;
       });
       const dataPoints = cityRecords.length >= 8 ? cityRecords : cityRes.records.slice(0, 96);
-      
+
+      // 颜色分配逻辑：确保每个 (城市-字段) 组合在多选时有辨识度
+      const colorIndex = (cIndex * fieldsToShow.length + fIndex) % cityColors.length;
+      const color = results.length > 1 || fieldsToShow.length > cityColors.length ? cityColors[colorIndex] : config.color;
+
       datasets.push({
-        label: `${cityRes.city_name} (${fieldName})`,
-        data: dataPoints.map(r => r[primaryField]),
-        borderColor: cityColors[index % cityColors.length],
-        backgroundColor: cityColors[index % cityColors.length] + "10",
+        label: results.length > 1 ? `${cityRes.city_name} ${config.label}` : config.label,
+        data: dataPoints.map(r => r[field]),
+        borderColor: color,
+        backgroundColor: color + "15",
         borderWidth: 2,
         tension: 0.4,
-        pointRadius: 0
+        pointRadius: 0,
+        yAxisID: config.axis
       });
     });
-  }
+  });
 
-  renderGenericLineChart("forecastNext24hChart", commonLabels, datasets);
+  // 3. 渲染切换按钮 (Toggles)
+  renderChartToggles(results, fieldsToShow);
 
-  // 2. 辅助图表 (风速/降水 - 展示第一个城市详情)
+  // 4. 渲染核心图表 (多坐标轴)
+  renderMultiAxisChart("forecastNext24hChart", commonLabels, datasets, axesUsed);
+
+  // 5. 辅助图表 (保持原样，展示第一个城市)
   const mainCity = results[0];
   const windLabelsSparse = mainCity.records.filter((_, i) => i % 4 === 0).map(r => {
      const dt = new Date(r.datetime);
@@ -2594,6 +2600,121 @@ function renderForecastCharts(results) {
 
   const precipData = mainCity.records.filter((_, i) => i % 4 === 0).map(r => r.precipitation || 0);
   renderForecastBarChart("forecastPrecipitationChart", windLabelsSparse, precipData, `${mainCity.city_name} 降水量 (mm)`, "#007aff");
+}
+
+/**
+ * 渲染图表切换按钮
+ */
+function renderChartToggles(results, fieldsToShow) {
+  const container = document.getElementById("forecastChartToggles");
+  if (!container) return;
+  container.innerHTML = "";
+
+  // 添加全选/全不选
+  const allIds = [];
+  results.forEach(c => fieldsToShow.forEach(f => allIds.push(`${c.city_name}|${f}`)));
+
+  const groupActions = document.createElement("div");
+  groupActions.className = "flex gap-2 mr-2 border-r pr-2";
+  
+  const selectAll = document.createElement("button");
+  selectAll.className = "chart-toggle-btn";
+  selectAll.textContent = "全选";
+  selectAll.onclick = () => {
+    forecastQueryState.activeDatasets = [...allIds];
+    renderForecastCharts(forecastQueryState.currentData, true);
+  };
+  
+  const clearAll = document.createElement("button");
+  clearAll.className = "chart-toggle-btn";
+  clearAll.textContent = "清除";
+  clearAll.onclick = () => {
+    forecastQueryState.activeDatasets = [];
+    renderForecastCharts(forecastQueryState.currentData, true);
+  };
+
+  groupActions.appendChild(selectAll);
+  groupActions.appendChild(clearAll);
+  container.appendChild(groupActions);
+
+  results.forEach(cityRes => {
+    fieldsToShow.forEach(field => {
+      const config = forecastFieldConfig[field];
+      if (!config) return;
+
+      const datasetId = `${cityRes.city_name}|${field}`;
+      const isActive = forecastQueryState.activeDatasets.includes(datasetId);
+      
+      const btn = document.createElement("button");
+      btn.className = `chart-toggle-btn ${isActive ? 'active' : ''}`;
+      btn.textContent = results.length > 1 ? `${cityRes.city_name}·${config.label}` : config.label;
+      
+      btn.onclick = () => {
+        if (forecastQueryState.activeDatasets.includes(datasetId)) {
+          forecastQueryState.activeDatasets = forecastQueryState.activeDatasets.filter(id => id !== datasetId);
+        } else {
+          forecastQueryState.activeDatasets.push(datasetId);
+        }
+        renderForecastCharts(forecastQueryState.currentData, true);
+      };
+      container.appendChild(btn);
+    });
+  });
+}
+
+/**
+ * 渲染多坐标轴图表
+ */
+function renderMultiAxisChart(canvasId, labels, datasets, axesUsed) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const existingChart = Chart.getChart(canvas);
+  if (existingChart) existingChart.destroy();
+
+  const scales = {
+    x: { ticks: { maxTicksLimit: 24 } }
+  };
+
+  // 配置被使用的 Y 轴
+  axesUsed.forEach(axisId => {
+    const config = Object.values(forecastFieldConfig).find(c => c.axis === axisId);
+    scales[axisId] = {
+      type: 'linear',
+      display: true,
+      position: axisId === 'y-temp' || axisId === 'y-rad' ? 'left' : 'right',
+      title: {
+        display: true,
+        text: config ? config.axisTitle : axisId,
+        font: { size: 10, weight: 'bold' }
+      },
+      grid: {
+        drawOnChartArea: axisId === 'y-temp' || axisId === (Array.from(axesUsed)[0]) // 仅主轴画网格线
+      }
+    };
+  });
+
+  new Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false }, // 使用自定义 Toggles
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.9)',
+          titleColor: '#1d1d1f',
+          bodyColor: '#1d1d1f',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          padding: 12
+        }
+      },
+      scales: scales
+    }
+  });
 }
 
 /**

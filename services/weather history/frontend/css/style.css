@@ -2416,3 +2416,32 @@ body {
   font-weight: 600;
   line-height: 1.4;
 }
+
+.chart-toggles-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.chart-toggle-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.chart-toggle-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.chart-toggle-btn:hover:not(.active) {
+  background: #f1f5f9;
+}

@@ -515,8 +515,11 @@
             <!-- 图表区域 -->
             <div class="charts-section">
               <div class="chart-card full-width">
-                <h3 class="chart-title">未来 24 小时预测趋势 (15分钟精度)</h3>
-                <div style="height: 350px">
+                <div class="flex-between align-center mb-4">
+                  <h3 class="chart-title mb-0">未来 24 小时预测趋势 (15分钟精度)</h3>
+                  <div id="forecastChartToggles" class="chart-toggles-container"></div>
+                </div>
+                <div style="height: 400px">
                   <canvas id="forecastNext24hChart"></canvas>
                 </div>
               </div>
