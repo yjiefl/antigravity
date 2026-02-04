@@ -1674,18 +1674,30 @@ body {
 }
 
 .forecast-list-horizontal {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  display: flex;
   gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.forecast-list-horizontal::-webkit-scrollbar {
+  height: 4px;
+}
+
+.forecast-list-horizontal::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
 }
 
 @media (max-width: 900px) {
-  .forecast-list-horizontal {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  .forecast-list-horizontal .forecast-item-h {
+    flex: 0 0 100px;
   }
 }
 
 .forecast-item-h {
+  flex: 1 0 120px;
+  min-width: 100px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -2394,4 +2406,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
