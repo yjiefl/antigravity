@@ -2319,7 +2319,7 @@ function createLiveWeatherCard(current) {
       <div class="live-card-info">
         <h4>${current.city_name}</h4>
         <div class="live-card-meta">
-          <span>坐标: ${current.longitude.toFixed(2)}, ${current.latitude.toFixed(2)}</span>
+          <span>坐标: ${current.longitude.toFixed(4)}, ${current.latitude.toFixed(4)}</span>
           <span>更新: ${current.update_time || "--"}</span>
         </div>
       </div>

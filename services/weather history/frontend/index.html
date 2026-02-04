@@ -485,16 +485,19 @@
               </button>
             </div>
 
-            <!-- 数据展示控制栏 -->
+            <!-- 1. 实时天气看板 (Live Weather) -->
+            <div id="forecastLiveHeader" class="flex-between align-center mb-4">
+              <h2 class="section-title mb-0">当前实时天气</h2>
+            </div>
+            <div id="forecastLiveWeather" class="mb-6"></div>
+
+            <!-- 2. 预测详细结果 (Forecast Results) -->
             <div id="forecastDataHeader" class="flex-between align-center mb-4">
               <h2 class="section-title mb-0">预测结果</h2>
               <div id="globalForecastInfo" class="text-sm text-gray-500">
                 预测天数: <span id="globalForecastDays">--</span>天
               </div>
             </div>
-
-            <!-- 实时天气与统计摘要 -->
-            <div id="forecastLiveWeather"></div>
 
             <!-- 统计卡片 -->
             <div class="stats-cards" id="forecastStatsCards">

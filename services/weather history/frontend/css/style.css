@@ -368,8 +368,8 @@ body {
 .city-selector-compact {
   /* max-height: 200px;  Removed to allow dropdown to overflow */
   /* overflow-y: auto;   Removed to allow dropdown to overflow */
-  overflow: visible;     /* Explicitly allow overflow */
-  min-height: auto;      /* Let content dictate height */
+  overflow: visible; /* Explicitly allow overflow */
+  min-height: auto; /* Let content dictate height */
 }
 
 .city-selector-compact::-webkit-scrollbar {
@@ -641,12 +641,9 @@ body {
   gap: 20px;
 }
 
-
 .charts-section .full-width {
   grid-column: 1 / -1;
 }
-
-
 
 .chart-card {
   background: #ffffff;
@@ -870,8 +867,8 @@ body {
 
 /* 优化后的实时天气看板 */
 .live-weather-optimized {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -916,7 +913,7 @@ body {
 
 .live-card-body {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
