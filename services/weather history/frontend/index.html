@@ -341,6 +341,7 @@
                     type="datetime-local"
                     id="forecastStartTime"
                     class="form-control"
+                    step="900"
                   />
                 </div>
 
@@ -493,7 +494,10 @@
 
             <!-- 2. 预测详细结果 (Forecast Results) -->
             <div id="forecastDataHeader" class="flex-between align-center mb-4">
-              <h2 class="section-title mb-0">预测结果</h2>
+              <div class="flex-column">
+                <h2 class="section-title mb-0">预测结果</h2>
+                <div id="forecastQueryTime" class="text-xs text-gray-400" style="margin-top: 4px"></div>
+              </div>
               <div id="globalForecastInfo" class="text-sm text-gray-500">
                 预测天数: <span id="globalForecastDays">--</span>天
               </div>
@@ -521,20 +525,6 @@
                 </div>
                 <div style="height: 400px">
                   <canvas id="forecastNext24hChart"></canvas>
-                </div>
-              </div>
-
-              <div class="chart-card">
-                <h3 class="chart-title">风速变化 (m/s)</h3>
-                <div style="height: 250px">
-                  <canvas id="forecastWindSpeedChart"></canvas>
-                </div>
-              </div>
-
-              <div class="chart-card">
-                <h3 class="chart-title">降水量 (mm)</h3>
-                <div style="height: 250px">
-                  <canvas id="forecastPrecipitationChart"></canvas>
                 </div>
               </div>
             </div>

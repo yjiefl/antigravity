@@ -358,7 +358,8 @@ def query_forecast():
             'code': 200,
             'message': '查询预测数据成功',
             'data': results,
-            'forecast_days': days
+            'forecast_days': days,
+            'query_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
         
     except Exception as e:
