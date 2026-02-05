@@ -352,32 +352,7 @@ class APIClient {
         return this.bulkExport(params, params.format || 'excel');
     }
 
-    /**
-     * 存档当前预测
-     * @param {number} cityId 
-     */
-    async archiveForecast(cityId) {
-        return this.post('/forecast/archive', { city_id: cityId });
-    }
 
-    /**
-     * 获取预测历史列表
-     * @param {number} cityId - 可选
-     * @param {number} limit 
-     */
-    async getForecastHistory(cityId = null, limit = 20) {
-        let url = `/forecast/history?limit=${limit}`;
-        if (cityId) url += `&city_id=${cityId}`;
-        return this.get(url);
-    }
-
-    /**
-     * 获取快照详情
-     * @param {number} snapshotId 
-     */
-    async getForecastSnapshot(snapshotId) {
-        return this.get(`/forecast/history/${snapshotId}`);
-    }
 
     /**
      * 获取系统日志

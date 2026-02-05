@@ -255,3 +255,18 @@
     - 电气操作管理相关表格及系统逻辑。
 - 本地工作区已更新至与 GitHub 仓库一致。
 状态：完成。
+
+[2026-02-04 11:00]
+任务：彻底移除「天气查询系统」中的「历史预测回看」功能。
+操作：
+- 识别并移除了 frontend/index.html 中的 UI 会件和相关注释。
+- 清理了 frontend/js/data-management.js 和 api.js 中的前端逻辑，移除所有历史快照 CRUD 方法。
+- 移除了后端 routes/api.py 中的 3 个历史功能路由。
+- 移除了 backend/services/weather_service.py 中的存档业务逻辑。
+- 移除了后端相关的 API 接口及数据库表结构，并手动删除了本地数据库中的 `forecast_history` 物理表，保持系统简洁。
+- 更新了服务内的 `spec.md` 和 `update.md`。
+- 最终同步推送至 GitHub 仓库。
+结果：
+- 冗余功能已彻底从项目中剥离，系统恢复简洁。
+- 已完成本地验证。
+- 已经完成 Git Commit。

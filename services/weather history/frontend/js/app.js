@@ -2081,6 +2081,7 @@ window.updateChartsFromToggles = updateChartsFromToggles;
 let forecastQueryState = {
   currentData: null,
   selectedFields: [],
+  activeDatasets: [], // 当前在图表中激活的 (城市-字段) 组合
   charts: {
     temperature: null,
     radiation: null,
@@ -2113,6 +2114,25 @@ function initForecastQueryPage() {
   const queryBtn = document.getElementById("forecastQueryBtn");
   if (queryBtn) {
     queryBtn.addEventListener("click", handleForecastQuery);
+  }
+
+  // 强制分钟为 0, 15, 30, 45
+  if (startTimeInput) {
+    startTimeInput.addEventListener("change", (e) => {
+      if (!e.target.value) return;
+      const date = new Date(e.target.value);
+      const minutes = date.getMinutes();
+      const roundedMinutes = Math.floor(minutes / 15) * 15;
+      if (minutes !== roundedMinutes) {
+        date.setMinutes(roundedMinutes);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const mins = String(roundedMinutes).padStart(2, "0");
+        e.target.value = `${year}-${month}-${day}T${hours}:${mins}`;
+      }
+    });
   }
 
   // 绑定导出按钮事件
@@ -2226,7 +2246,7 @@ async function handleForecastQuery() {
     forecastQueryState.forecastDays = response.forecast_days || days;
 
     // 渲染数据
-    renderForecastData(response.data, response.forecast_days || days);
+    renderForecastData(response.data, response.forecast_days || days, response.query_time);
 
     // 启用导出按钮
     const exportExcelBtn = document.getElementById("forecastExportExcelBtn");
@@ -2246,13 +2266,19 @@ async function handleForecastQuery() {
 /**
  * 渲染预测数据
  */
-function renderForecastData(results, forecastDays) {
+function renderForecastData(results, forecastDays, queryTime) {
   const dataDisplay = document.getElementById("forecastDataDisplay");
   if (dataDisplay) dataDisplay.style.display = "block";
 
   // 更新全局预测范围
   const daysEl = document.getElementById("globalForecastDays");
   if (daysEl) daysEl.textContent = forecastDays;
+
+  // 更新查询时间
+  const timeEl = document.getElementById("forecastQueryTime");
+  if (timeEl && queryTime) {
+    timeEl.textContent = `数据获取时间: ${queryTime}`;
+  }
 
   // 1. 渲染实时天气看板 (多城市)
   const liveContainer = document.getElementById("forecastLiveWeather");
@@ -2276,21 +2302,15 @@ function renderForecastData(results, forecastDays) {
     });
   }
 
-  // 3. 渲染7天预报概览 (取第一个城市作为代表)
-  if (results.length > 0) {
-    renderForecastDailyOverview(results[0].daily_forecast);
-  }
+  // 3. 渲染7天预报概览
+  renderForecastDailyOverview(results);
 
   // 4. 渲染图表
-  // 综合所有城市的数据，或者只展示第一个城市？
-  // 用户需求：展示 24h 曲线，数值按选择，默认辐照度和风速
   renderForecastCharts(results);
 
-  // 5. 渲染数据表格 (仅显示第一个城市详情，或合并？通常仅显示第一个或提供切换)
-  if (results.length > 0) {
-    renderForecastTable(results[0].records);
-    populateForecastFilters(results[0]);
-  }
+  // 5. 渲染数据表格
+  renderForecastTable(results);
+  populateForecastFilters(results);
 
   // 滚动到数据展示区
   setTimeout(() => {
@@ -2319,7 +2339,7 @@ function createLiveWeatherCard(current) {
       <div class="live-card-info">
         <h4>${current.city_name}</h4>
         <div class="live-card-meta">
-          <span>坐标: ${current.longitude.toFixed(2)}, ${current.latitude.toFixed(2)}</span>
+          <span>坐标: ${current.longitude.toFixed(4)}, ${current.latitude.toFixed(4)}</span>
           <span>更新: ${current.update_time || "--"}</span>
         </div>
       </div>
@@ -2439,111 +2459,274 @@ function createCityStatsGroup(data) {
 }
 
 /**
- * 渲染7天预报概览
+ * 渲染7天预报概览 (支持多城市对比或分组)
  */
-function renderForecastDailyOverview(dailyForecast) {
+function renderForecastDailyOverview(results) {
   const container = document.getElementById("forecastDailyList");
-  if (!container || !dailyForecast) return;
+  if (!container || !results || results.length === 0) return;
 
   container.innerHTML = "";
+  // 如果是多城市，改变布局或者添加标题
+  const isMultiCity = results.length > 1;
+  
+  if (isMultiCity) {
+    container.style.flexDirection = "column";
+    container.style.alignItems = "stretch";
+  } else {
+    container.style.flexDirection = "row";
+    container.style.alignItems = "start";
+  }
 
-  dailyForecast.forEach((day) => {
-    const div = document.createElement("div");
-    div.className = "forecast-item-h";
+  results.forEach((cityRes) => {
+    if (isMultiCity) {
+      const cityHeader = document.createElement("div");
+      cityHeader.className = "text-sm font-bold mb-2 mt-4 text-primary";
+      cityHeader.style.paddingLeft = "10px";
+      cityHeader.textContent = cityRes.city_name;
+      container.appendChild(cityHeader);
 
-    const dateObj = new Date(day.date);
-    const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
-    const weekDay = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dateObj.getDay()];
-    const weatherName = day.weather_name || "未知";
-
-    div.innerHTML = `
-      <div class="fi-date">${dateStr}<br/><span style="font-size:0.75rem;color:#999">${weekDay}</span></div>
-      <div class="fi-icon">${weatherCodeMap[day.weather_code]?.icon || "❓"}</div>
-      <div class="text-xs text-gray-500">${weatherName}</div>
-      <div class="fi-temps">
-        <span class="fi-min">${day.temp_min != null ? day.temp_min.toFixed(0) : "--"}°</span>
-        <span class="text-gray-300">/</span>
-        <span class="fi-max">${day.temp_max != null ? day.temp_max.toFixed(0) : "--"}°</span>
-      </div>
-    `;
-    container.appendChild(div);
+      const cityContainer = document.createElement("div");
+      cityContainer.className = "forecast-list-horizontal";
+      cityContainer.style.overflowX = "auto";
+      cityRes.daily_forecast.forEach(day => {
+        cityContainer.appendChild(createDailyForecastItem(day));
+      });
+      container.appendChild(cityContainer);
+    } else {
+      cityRes.daily_forecast.forEach((day) => {
+        container.appendChild(createDailyForecastItem(day));
+      });
+    }
   });
 }
 
+function createDailyForecastItem(day) {
+  const div = document.createElement("div");
+  div.className = "forecast-item-h";
+
+  const dateObj = new Date(day.date);
+  const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+  const weekDay = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dateObj.getDay()];
+  const weatherName = day.weather_name || "未知";
+
+  div.innerHTML = `
+    <div class="fi-date">${dateStr}<br/><span style="font-size:0.75rem;color:#999">${weekDay}</span></div>
+    <div class="fi-icon">${weatherCodeMap[day.weather_code]?.icon || "❓"}</div>
+    <div class="text-xs text-gray-500">${weatherName}</div>
+    <div class="fi-temps">
+      <span class="fi-min">${day.temp_min != null ? day.temp_min.toFixed(0) : "--"}°</span>
+      <span class="text-gray-300">/</span>
+      <span class="fi-max">${day.temp_max != null ? day.temp_max.toFixed(0) : "--"}°</span>
+    </div>
+  `;
+  return div;
+}
+
 /**
- * 渲染预测图表
+ * 字段配置 (用于多坐标轴与颜色)
  */
-function renderForecastCharts(results) {
+const forecastFieldConfig = {
+  temperature_2m: { label: "温度", unit: "°C", axis: "y-temp", color: "#ff3b30", axisTitle: "温度 (°C)" },
+  shortwave_radiation: { label: "辐照度", unit: "W/m²", axis: "y-rad", color: "#ff9500", axisTitle: "辐照度 (W/m²)" },
+  wind_speed_10m: { label: "风速", unit: "m/s", axis: "y-wind", color: "#34c759", axisTitle: "风速 (m/s)" },
+  precipitation_probability: { label: "降水概率", unit: "%", axis: "y-perc", color: "#007aff", axisTitle: "概率 (%)" },
+  relative_humidity_2m: { label: "湿度", unit: "%", axis: "y-perc", color: "#5856d6", axisTitle: "湿度 (%)" },
+  precipitation: { label: "降水量", unit: "mm", axis: "y-prec", color: "#007aff", axisTitle: "降水 (mm)" }
+};
+
+/**
+ * 渲染预测图表 (多坐标轴 + Toggles)
+ */
+function renderForecastCharts(results, isUpdate = false) {
   if (!results || results.length === 0) return;
 
-  const firstResult = results[0];
-  const records = firstResult.records;
+  const selectedFields = forecastQueryState.selectedFields;
+  const fieldsToShow = selectedFields.length > 0 ? selectedFields : ["shortwave_radiation", "wind_speed_10m"];
 
-  // 准备未来 24 小时的数据 (15分钟精度)
+  // 1. 初始化活动数据集 (如果是新一轮查询)
+  if (!isUpdate) {
+    forecastQueryState.activeDatasets = [];
+    results.forEach(cityRes => {
+       fieldsToShow.forEach(field => {
+          forecastQueryState.activeDatasets.push(`${cityRes.city_name}|${field}`);
+       });
+    });
+  }
+
+  // 2. 准备数据
   const now = new Date();
+  now.setMinutes(0, 0, 0); 
   const startTime = now.getTime();
   const endTime = startTime + 24 * 60 * 60 * 1000;
 
-  const next24hRecords = records.filter(r => {
+  const cityColors = ["#007aff", "#ff3b30", "#34c759", "#ff9500", "#5856d6", "#af52de", "#ff2d55"];
+  const datasets = [];
+  let commonLabels = [];
+
+  // 获取基准 labels
+  const firstCityRecords = results[0].records.filter(r => {
     const t = new Date(r.datetime).getTime();
     return t >= startTime && t <= endTime;
   });
-
-  // 如果没有足够数据（可能因为数据更新延迟），则取前 96 个点 (24小时 * 4)
-  const displayRecords = next24hRecords.length >= 24 ? next24hRecords : records.slice(0, 96);
-
-  const labels = displayRecords.map(r => {
+  const displayRecordsBase = firstCityRecords.length >= 8 ? firstCityRecords : results[0].records.slice(0, 96);
+  commonLabels = displayRecordsBase.map(r => {
     const dt = new Date(r.datetime);
     return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
   });
 
-  // 绘制 24 小时趋势图 (按选定字段)
-  const datasets = [];
-  const selectedFields = forecastQueryState.selectedFields;
+  const axesUsed = new Set();
 
-  // 字段配置 (颜色与标签)
-  const fieldConfig = {
-    temperature_2m: { label: "温度", color: "#ff3b30", unit: "°C" },
-    shortwave_radiation: { label: "辐照度", color: "#ff9500", unit: "W/m²" },
-    wind_speed_10m: { label: "风速", color: "#34c759", unit: "m/s" },
-    precipitation_probability: { label: "降水概率", color: "#007aff", unit: "%" }
-  };
+  results.forEach((cityRes, cIndex) => {
+    fieldsToShow.forEach((field, fIndex) => {
+      const datasetId = `${cityRes.city_name}|${field}`;
+      if (!forecastQueryState.activeDatasets.includes(datasetId)) return;
 
-  // 默认显示辐照度和风速，如果没有选择的话
-  const fieldsToShow = selectedFields.length > 0 ? selectedFields : ["shortwave_radiation", "wind_speed_10m"];
+      const config = forecastFieldConfig[field] || { label: field, axis: 'y', color: cityColors[cIndex % cityColors.length] };
+      axesUsed.add(config.axis);
 
-  fieldsToShow.forEach(field => {
-    const config = fieldConfig[field];
-    if (config) {
+      const cityRecords = cityRes.records.filter(r => {
+        const t = new Date(r.datetime).getTime();
+        return t >= startTime && t <= endTime;
+      });
+      const dataPoints = cityRecords.length >= 8 ? cityRecords : cityRes.records.slice(0, 96);
+
+      // 颜色分配逻辑：确保每个 (城市-字段) 组合在多选时有辨识度
+      const colorIndex = (cIndex * fieldsToShow.length + fIndex) % cityColors.length;
+      const color = results.length > 1 || fieldsToShow.length > cityColors.length ? cityColors[colorIndex] : config.color;
+
       datasets.push({
-        label: config.label,
-        data: displayRecords.map(r => r[field]),
-        borderColor: config.color,
-        backgroundColor: config.color + "20",
+        label: results.length > 1 ? `${cityRes.city_name} ${config.label}` : config.label,
+        data: dataPoints.map(r => r[field]),
+        borderColor: color,
+        backgroundColor: color + "15",
         borderWidth: 2,
         tension: 0.4,
-        pointRadius: 0
+        pointRadius: 0,
+        yAxisID: config.axis
       });
+    });
+  });
+
+  // 3. 渲染切换按钮 (Toggles)
+  renderChartToggles(results, fieldsToShow);
+
+  // 4. 渲染核心图表 (多坐标轴)
+  renderMultiAxisChart("forecastNext24hChart", commonLabels, datasets, axesUsed);
+}
+
+/**
+ * 渲染图表切换按钮
+ */
+function renderChartToggles(results, fieldsToShow) {
+  const container = document.getElementById("forecastChartToggles");
+  if (!container) return;
+  container.innerHTML = "";
+
+  // 添加全选/全不选
+  const allIds = [];
+  results.forEach(c => fieldsToShow.forEach(f => allIds.push(`${c.city_name}|${f}`)));
+
+  const groupActions = document.createElement("div");
+  groupActions.className = "flex gap-2 mr-2 border-r pr-2";
+  
+  const selectAll = document.createElement("button");
+  selectAll.className = "chart-toggle-btn";
+  selectAll.textContent = "全选";
+  selectAll.onclick = () => {
+    forecastQueryState.activeDatasets = [...allIds];
+    renderForecastCharts(forecastQueryState.currentData, true);
+  };
+  
+  const clearAll = document.createElement("button");
+  clearAll.className = "chart-toggle-btn";
+  clearAll.textContent = "清除";
+  clearAll.onclick = () => {
+    forecastQueryState.activeDatasets = [];
+    renderForecastCharts(forecastQueryState.currentData, true);
+  };
+
+  groupActions.appendChild(selectAll);
+  groupActions.appendChild(clearAll);
+  container.appendChild(groupActions);
+
+  results.forEach(cityRes => {
+    fieldsToShow.forEach(field => {
+      const config = forecastFieldConfig[field];
+      if (!config) return;
+
+      const datasetId = `${cityRes.city_name}|${field}`;
+      const isActive = forecastQueryState.activeDatasets.includes(datasetId);
+      
+      const btn = document.createElement("button");
+      btn.className = `chart-toggle-btn ${isActive ? 'active' : ''}`;
+      btn.textContent = results.length > 1 ? `${cityRes.city_name}·${config.label}` : config.label;
+      
+      btn.onclick = () => {
+        if (forecastQueryState.activeDatasets.includes(datasetId)) {
+          forecastQueryState.activeDatasets = forecastQueryState.activeDatasets.filter(id => id !== datasetId);
+        } else {
+          forecastQueryState.activeDatasets.push(datasetId);
+        }
+        renderForecastCharts(forecastQueryState.currentData, true);
+      };
+      container.appendChild(btn);
+    });
+  });
+}
+
+/**
+ * 渲染多坐标轴图表
+ */
+function renderMultiAxisChart(canvasId, labels, datasets, axesUsed) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const existingChart = Chart.getChart(canvas);
+  if (existingChart) existingChart.destroy();
+
+  const scales = {
+    x: { ticks: { maxTicksLimit: 24 } }
+  };
+
+  // 配置被使用的 Y 轴
+  axesUsed.forEach(axisId => {
+    const config = Object.values(forecastFieldConfig).find(c => c.axis === axisId);
+    scales[axisId] = {
+      type: 'linear',
+      display: true,
+      position: axisId === 'y-temp' || axisId === 'y-rad' ? 'left' : 'right',
+      title: {
+        display: true,
+        text: config ? config.axisTitle : axisId,
+        font: { size: 10, weight: 'bold' }
+      },
+      grid: {
+        drawOnChartArea: axisId === 'y-temp' || axisId === (Array.from(axesUsed)[0]) // 仅主轴画网格线
+      }
+    };
+  });
+
+  new Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false }, // 使用自定义 Toggles
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.9)',
+          titleColor: '#1d1d1f',
+          bodyColor: '#1d1d1f',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          padding: 12
+        }
+      },
+      scales: scales
     }
   });
-
-  renderGenericLineChart("forecastNext24hChart", labels, datasets);
-
-  // 绘制风速和降水 (历史保留的辅助图表)
-  const windLabels = records.map(r => {
-    const dt = new Date(r.datetime);
-    return `${dt.getMonth()+1}/${dt.getDate()} ${String(dt.getHours()).padStart(2,"0")}:00`;
-  });
-  const windData = records.filter((_, i) => i % 4 === 0).map(r => r.wind_speed_10m);
-  const windLabelsSparse = records.filter((_, i) => i % 4 === 0).map(r => {
-     const dt = new Date(r.datetime);
-     return `${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}h`;
-  });
-  
-  renderForecastLineChart("forecastWindSpeedChart", windLabelsSparse, windData, "风速 (m/s)", "#34c759");
-
-  const precipData = records.filter((_, i) => i % 4 === 0).map(r => r.precipitation || 0);
-  renderForecastBarChart("forecastPrecipitationChart", windLabelsSparse, precipData, "降水量 (mm)", "#007aff");
 }
 
 /**
@@ -2656,56 +2839,99 @@ function renderForecastBarChart(canvasId, labels, data, label, color) {
 }
 
 /**
- * 渲染预测数据表格
+ * 渲染预测数据表格 (支持多城市)
  */
-function renderForecastTable(records) {
+function renderForecastTable(results) {
   const thead = document.getElementById("forecastTableHead");
   const tbody = document.getElementById("forecastTableBody");
-  if (!thead || !tbody || !records || records.length === 0) return;
+  if (!thead || !tbody || !results || results.length === 0) return;
+
+  const isMultiCity = results.length > 1;
+  const selectedFields = forecastQueryState.selectedFields;
+  const fieldsToShow = selectedFields.length > 0 ? selectedFields : ["shortwave_radiation", "wind_speed_10m"];
+
+  // 获取字段头
+  const fieldHeaders = fieldsToShow.map(field => {
+    const config = forecastFieldConfig[field] || { label: field, unit: "" };
+    return `<th>${config.label} ${config.unit ? `(${config.unit})` : ""}</th>`;
+  }).join("");
 
   // 表头
   thead.innerHTML = `
     <tr>
       <th>时间</th>
-      <th>温度 (°C)</th>
-      <th>风速 (m/s)</th>
-      <th>辐照度 (W/m²)</th>
-      <th>降水概率 (%)</th>
+      ${isMultiCity ? "<th>城市</th>" : ""}
+      ${fieldHeaders}
     </tr>
   `;
 
-  // 表体（限制显示前200条，避免页面卡顿）
-  const displayRecords = records.slice(0, 200);
-  tbody.innerHTML = displayRecords.map(r => `
-    <tr>
-      <td>${r.datetime ? r.datetime.replace("T", " ") : "--"}</td>
-      <td>${r.temperature_2m != null ? r.temperature_2m.toFixed(1) : "--"}</td>
-      <td>${r.wind_speed_10m != null ? r.wind_speed_10m.toFixed(1) : "--"}</td>
-      <td>${r.shortwave_radiation != null ? r.shortwave_radiation.toFixed(0) : "--"}</td>
-      <td>${r.precipitation_probability != null ? r.precipitation_probability : "--"}</td>
-    </tr>
-  `).join("");
+  // 合并记录
+  let allRecords = [];
+  results.forEach(cityRes => {
+    cityRes.records.forEach(r => {
+      allRecords.push({ ...r, city_name: cityRes.city_name });
+    });
+  });
 
-  if (records.length > 200) {
-    tbody.innerHTML += `<tr><td colspan="5" style="text-align:center;color:#999;">仅显示前200条，共${records.length}条数据</td></tr>`;
+  // 按时间排序
+  allRecords.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+  // 表体（限制显示前 500 条）
+  const displayRecords = allRecords.slice(0, 500);
+  tbody.innerHTML = displayRecords.map(r => {
+    const fieldCells = fieldsToShow.map(field => {
+      const val = r[field];
+      const config = forecastFieldConfig[field];
+      let displayVal = "--";
+      if (val != null) {
+        if (field === 'shortwave_radiation') displayVal = val.toFixed(0);
+        else if (typeof val === 'number') displayVal = val.toFixed(1);
+        else displayVal = val;
+      }
+      return `<td>${displayVal}</td>`;
+    }).join("");
+
+    return `
+      <tr>
+        <td>${r.datetime ? r.datetime.replace("T", " ") : "--"}</td>
+        ${isMultiCity ? `<td><span class="badge" style="background:#f2f2f7;color:#333">${r.city_name}</span></td>` : ""}
+        ${fieldCells}
+      </tr>
+    `;
+  }).join("");
+
+  if (allRecords.length > 500) {
+    const colSpan = (isMultiCity ? 2 : 1) + fieldsToShow.length;
+    tbody.innerHTML += `<tr><td colspan="${colSpan}" style="text-align:center;color:#999;">仅显示前500条，共${allRecords.length}条数据</td></tr>`;
   }
 }
 
 /**
- * 填充预测筛选器
+ * 填充预测筛选器 (支持多城市)
  */
-function populateForecastFilters(data) {
+function populateForecastFilters(results) {
   const cityFilter = document.getElementById("forecastCityFilter");
   const dateFilter = document.getElementById("forecastDateFilter");
 
   if (cityFilter) {
-    cityFilter.innerHTML = `<option value="all">${data.city_name || "全部"}</option>`;
+    cityFilter.innerHTML = `<option value="all">全部城市</option>`;
+    results.forEach(cityRes => {
+      cityFilter.innerHTML += `<option value="${cityRes.city_name}">${cityRes.city_name}</option>`;
+    });
   }
 
-  if (dateFilter && data.records) {
-    const dates = [...new Set(data.records.map(r => r.datetime?.split("T")[0]).filter(Boolean))];
+  if (dateFilter && results.length > 0) {
+    // 使用所有结果中的唯一日期
+    let allDates = new Set();
+    results.forEach(cityRes => {
+      cityRes.records.forEach(r => {
+        if (r.datetime) allDates.add(r.datetime.split("T")[0]);
+      });
+    });
+    const sortedDates = [...allDates].sort();
+    
     dateFilter.innerHTML = `<option value="all">全部日期</option>`;
-    dates.forEach(date => {
+    sortedDates.forEach(date => {
       dateFilter.innerHTML += `<option value="${date}">${date}</option>`;
     });
   }
@@ -2715,53 +2941,81 @@ function populateForecastFilters(data) {
  * 处理预测筛选器变化
  */
 function handleForecastFilterChange() {
+  const cityFilter = document.getElementById("forecastCityFilter");
   const dateFilter = document.getElementById("forecastDateFilter");
-  if (!forecastQueryState.currentData || !dateFilter) return;
+  if (!forecastQueryState.currentData || !cityFilter || !dateFilter) return;
 
+  const selectedCityName = cityFilter.value;
   const selectedDate = dateFilter.value;
-  let filteredRecords = forecastQueryState.currentData.records;
+  
+  // 过滤结果集
+  let filteredResults = JSON.parse(JSON.stringify(forecastQueryState.currentData));
+
+  if (selectedCityName !== "all") {
+    filteredResults = filteredResults.filter(res => res.city_name === selectedCityName);
+  }
 
   if (selectedDate !== "all") {
-    filteredRecords = filteredRecords.filter(r => r.datetime?.startsWith(selectedDate));
+    filteredResults.forEach(res => {
+      res.records = res.records.filter(r => r.datetime?.startsWith(selectedDate));
+    });
   }
 
   // 重新渲染图表和表格
-  renderForecastCharts(filteredRecords);
-  renderForecastTable(filteredRecords);
+  renderForecastCharts(filteredResults);
+  renderForecastTable(filteredResults);
 }
 
 /**
  * 处理预测数据导出
  */
 async function handleForecastExport(format) {
-  if (!forecastQueryState.currentData) {
+  const results = forecastQueryState.currentData;
+  if (!results || results.length === 0) {
     showError("没有可导出的数据");
     return;
   }
 
   try {
-    const data = forecastQueryState.currentData;
+    const isMultiCity = results.length > 1;
+    const selectedFields = forecastQueryState.selectedFields;
+    const fieldsToShow = selectedFields.length > 0 ? selectedFields : ["shortwave_radiation", "wind_speed_10m"];
 
-    // 生成 CSV 内容
-    const headers = ["时间", "温度(°C)", "风速(m/s)", "辐照度(W/m²)", "降水概率(%)"];
-    const rows = data.records.map(r => [
-      r.datetime || "",
-      r.temperature_2m != null ? r.temperature_2m : "",
-      r.wind_speed_10m != null ? r.wind_speed_10m : "",
-      r.shortwave_radiation != null ? r.shortwave_radiation : "",
-      r.precipitation_probability != null ? r.precipitation_probability : ""
-    ]);
+    // 动态生成表头
+    const headers = ["时间", "城市"];
+    fieldsToShow.forEach(field => {
+      const config = forecastFieldConfig[field] || { label: field, unit: "" };
+      headers.push(`${config.label}${config.unit ? `(${config.unit})` : ""}`);
+    });
+    
+    let allRows = [];
+    results.forEach(cityRes => {
+      cityRes.records.forEach(r => {
+        const row = [r.datetime || "", cityRes.city_name];
+        fieldsToShow.forEach(field => {
+          row.push(r[field] != null ? r[field] : "");
+        });
+        allRows.push(row);
+      });
+    });
+
+    // 按时间排序
+    allRows.sort((a, b) => new Date(a[0]) - new Date(b[0]));
 
     let csvContent = "\ufeff" + headers.join(",") + "\n";
-    rows.forEach(row => {
-      csvContent += row.join(",") + "\n";
+    allRows.forEach(row => {
+      csvContent += row.map(cell => `"${cell}"`).join(",") + "\n";
     });
+
+    const filename = isMultiCity 
+      ? `多城市预测对比_${forecastQueryState.forecastDays}天.csv` 
+      : `${results[0].city_name}_预测数据_${forecastQueryState.forecastDays}天.csv`;
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `${data.city_name}_预测数据_${data.forecast_days}天.csv`);
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

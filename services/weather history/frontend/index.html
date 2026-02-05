@@ -64,9 +64,7 @@
               <button class="nav-btn active" data-main-tab="query">
                 历史数据查询
               </button>
-              <button class="nav-btn" data-main-tab="live">
-                天气预测查询
-              </button>
+              <button class="nav-btn" data-main-tab="live">天气预测查询</button>
 
               <button class="nav-btn" data-main-tab="management">
                 数据管理
@@ -91,8 +89,20 @@
                   <div class="flex-between align-center mb-1">
                     <label>选择城市</label>
                     <div class="mode-toggle">
-                      <button class="btn btn-tiny btn-outline" data-mode-btn="single" onclick="switchSelectorMode('query', 'single')">单选</button>
-                      <button class="btn btn-tiny btn-outline active" data-mode-btn="multi" onclick="switchSelectorMode('query', 'multi')">多选比对</button>
+                      <button
+                        class="btn btn-tiny btn-outline"
+                        data-mode-btn="single"
+                        onclick="switchSelectorMode('query', 'single')"
+                      >
+                        单选
+                      </button>
+                      <button
+                        class="btn btn-tiny btn-outline active"
+                        data-mode-btn="multi"
+                        onclick="switchSelectorMode('query', 'multi')"
+                      >
+                        多选比对
+                      </button>
                     </div>
                   </div>
                   <div
@@ -301,18 +311,38 @@
                   <div class="flex-between align-center mb-1">
                     <label>选择城市</label>
                     <div class="mode-toggle">
-                      <button class="btn btn-tiny btn-outline" data-mode-btn-live="single" onclick="switchSelectorMode('live', 'single')">单选</button>
-                      <button class="btn btn-tiny btn-outline active" data-mode-btn-live="multi" onclick="switchSelectorMode('live', 'multi')">多选比对</button>
+                      <button
+                        class="btn btn-tiny btn-outline"
+                        data-mode-btn-live="single"
+                        onclick="switchSelectorMode('live', 'single')"
+                      >
+                        单选
+                      </button>
+                      <button
+                        class="btn btn-tiny btn-outline active"
+                        data-mode-btn-live="multi"
+                        onclick="switchSelectorMode('live', 'multi')"
+                      >
+                        多选比对
+                      </button>
                     </div>
                   </div>
-                  <div class="field-selector city-selector-compact" id="liveCitySelect">
+                  <div
+                    class="field-selector city-selector-compact"
+                    id="liveCitySelect"
+                  >
                     <p style="color: var(--text-muted)">加载中...</p>
                   </div>
                 </div>
 
                 <div class="form-group">
                   <label for="forecastStartTime">预测起始时间</label>
-                  <input type="datetime-local" id="forecastStartTime" class="form-control" />
+                  <input
+                    type="datetime-local"
+                    id="forecastStartTime"
+                    class="form-control"
+                    step="900"
+                  />
                 </div>
 
                 <div class="form-group">
@@ -337,20 +367,52 @@
 
               <div class="form-actions">
                 <button id="forecastQueryBtn" class="btn btn-primary">
-                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor" />
+                  <svg
+                    class="btn-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                      fill="currentColor"
+                    />
                   </svg>
                   查询预测数据
                 </button>
-                <button id="forecastExportExcelBtn" class="btn btn-secondary" disabled>
-                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z" fill="currentColor" />
+                <button
+                  id="forecastExportExcelBtn"
+                  class="btn btn-secondary"
+                  disabled
+                >
+                  <svg
+                    class="btn-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"
+                      fill="currentColor"
+                    />
                   </svg>
                   导出Excel
                 </button>
-                <button id="forecastExportCsvBtn" class="btn btn-secondary" disabled>
-                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z" fill="currentColor" />
+                <button
+                  id="forecastExportCsvBtn"
+                  class="btn btn-secondary"
+                  disabled
+                >
+                  <svg
+                    class="btn-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"
+                      fill="currentColor"
+                    />
                   </svg>
                   导出CSV
                 </button>
@@ -359,49 +421,88 @@
           </section>
 
           <!-- 加载状态 -->
-          <div id="forecastLoadingIndicator" class="loading-indicator" style="display: none">
+          <div
+            id="forecastLoadingIndicator"
+            class="loading-indicator"
+            style="display: none"
+          >
             <div class="spinner"></div>
             <p>正在获取预测数据...</p>
           </div>
 
           <!-- 数据展示区 -->
-          <section id="forecastDataDisplay" class="data-display" style="display: none">
+          <section
+            id="forecastDataDisplay"
+            class="data-display"
+            style="display: none"
+          >
             <!-- 数据筛选器 -->
             <div class="filter-bar" id="forecastFilterBar">
               <div class="filter-group">
                 <label for="forecastCityFilter">
-                  <svg class="btn-icon-tiny" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
+                  <svg
+                    class="btn-icon-tiny"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                      fill="currentColor"
+                    />
                   </svg>
                   切换城市:
                 </label>
-                <select id="forecastCityFilter" class="form-control-sm"></select>
+                <select
+                  id="forecastCityFilter"
+                  class="form-control-sm"
+                ></select>
               </div>
               <div class="filter-group">
                 <label for="forecastDateFilter">
-                  <svg class="btn-icon-tiny" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z" fill="currentColor" />
+                  <svg
+                    class="btn-icon-tiny"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"
+                      fill="currentColor"
+                    />
                   </svg>
                   查看单日:
                 </label>
-                <select id="forecastDateFilter" class="form-control-sm"></select>
+                <select
+                  id="forecastDateFilter"
+                  class="form-control-sm"
+                ></select>
               </div>
-              <button id="forecastResetFilterBtn" class="btn btn-tiny btn-secondary">
+              <button
+                id="forecastResetFilterBtn"
+                class="btn btn-tiny btn-secondary"
+              >
                 显示全部结果
               </button>
             </div>
 
-            <!-- 数据展示控制栏 -->
+            <!-- 1. 实时天气看板 (Live Weather) -->
+            <div id="forecastLiveHeader" class="flex-between align-center mb-4">
+              <h2 class="section-title mb-0">当前实时天气</h2>
+            </div>
+            <div id="forecastLiveWeather" class="mb-6"></div>
+
+            <!-- 2. 预测详细结果 (Forecast Results) -->
             <div id="forecastDataHeader" class="flex-between align-center mb-4">
-              <h2 class="section-title mb-0">预测结果</h2>
+              <div class="flex-column">
+                <h2 class="section-title mb-0">预测结果</h2>
+                <div id="forecastQueryTime" class="text-xs text-gray-400" style="margin-top: 4px"></div>
+              </div>
               <div id="globalForecastInfo" class="text-sm text-gray-500">
                 预测天数: <span id="globalForecastDays">--</span>天
               </div>
             </div>
 
-            <!-- 实时天气与统计摘要 -->
-            <div id="forecastLiveWeather"></div>
-            
             <!-- 统计卡片 -->
             <div class="stats-cards" id="forecastStatsCards">
               <!-- 动态生成 -->
@@ -418,23 +519,12 @@
             <!-- 图表区域 -->
             <div class="charts-section">
               <div class="chart-card full-width">
-                <h3 class="chart-title">未来 24 小时预测趋势 (15分钟精度)</h3>
-                <div style="height: 350px">
+                <div class="flex-between align-center mb-4">
+                  <h3 class="chart-title mb-0">未来 24 小时预测趋势 (15分钟精度)</h3>
+                  <div id="forecastChartToggles" class="chart-toggles-container"></div>
+                </div>
+                <div style="height: 400px">
                   <canvas id="forecastNext24hChart"></canvas>
-                </div>
-              </div>
-
-              <div class="chart-card">
-                <h3 class="chart-title">风速变化 (m/s)</h3>
-                <div style="height: 250px">
-                  <canvas id="forecastWindSpeedChart"></canvas>
-                </div>
-              </div>
-
-              <div class="chart-card">
-                <h3 class="chart-title">降水量 (mm)</h3>
-                <div style="height: 250px">
-                  <canvas id="forecastPrecipitationChart"></canvas>
                 </div>
               </div>
             </div>
@@ -456,79 +546,6 @@
           </section>
         </div>
 
-
-                        <h2 class="section-title mb-0">历史预测回看</h2>
-                        <span id="reviewSnapshotInfo" class="text-sm text-gray-500">存档时间: --</span>
-                    </div>
-                    
-                    <div class="dashboard-content">
-                        <!-- Top Row -->
-                        <div class="dashboard-header-row">
-                            <div class="live-card current-card-compact">
-                                <div class="header-section">
-                                    <h3 id="cityNameReview" class="text-xl font-bold text-gray-800">--</h3>
-                                    <span class="live-status-badge" style="background: var(--color-secondary);">历史快照</span>
-                                </div>
-                                <div class="main-weather-row">
-                                    <div class="temp-section">
-                                        <span id="tempReview" class="current-temp-large">--</span>
-                                        <span class="unit">°C</span>
-                                    </div>
-                                    <div class="icon-section">
-                                        <div id="iconReview" class="weather-icon-huge"></div>
-                                        <div id="weatherNameReview" class="weather-text">--</div>
-                                    </div>
-                                    <div class="details-section">
-                                        <div class="detail-pill">风速: <span id="windReview">-- m/s</span></div>
-                                        <div class="detail-pill">辐射: <span id="radiationReview">-- W/m²</span></div>
-                                        <div class="text-xs text-gray-400">预测生成时间: <span id="updateTimeReview">--:--</span></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="chart-controls-panel">
-                                <h4 class="sidebar-title" style="padding-left:0">数据项显示</h4>
-                                <div class="toggles-grid">
-                                    <label class="toggle-label"><input type="checkbox" class="chart-toggle-review" value="temp" checked> 气温趋势</label>
-                                    <label class="toggle-label"><input type="checkbox" class="chart-toggle-review" value="rain" checked> 降水概率</label>
-                                    <label class="toggle-label"><input type="checkbox" class="chart-toggle-review" value="wind"> 阵风/风速</label>
-                                    <label class="toggle-label"><input type="checkbox" class="chart-toggle-review" value="radiation"> 太阳辐射</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Charts -->
-                        <div class="trend-grid">
-                            <div class="day-chart-section">
-                                <div class="chart-header">
-                                    <h4 class="font-bold">预测当日趋势 (15min)</h4>
-                                </div>
-                                <div class="chart-container" style="height: 220px; width: 100%">
-                                    <canvas id="todayChartReview"></canvas>
-                                </div>
-                            </div>
-                            <div class="day-chart-section">
-                                <div class="chart-header">
-                                    <h4 class="font-bold">预测次日展望</h4>
-                                </div>
-                                <div class="chart-container" style="height: 220px; width: 100%">
-                                    <canvas id="tomorrowChartReview"></canvas>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 7-Day Forecast (Snapshot view) -->
-                        <div class="live-card forecast-section">
-                            <h4 class="font-bold mb-4">存档的 7 天预测</h4>
-                            <div class="forecast-list-horizontal" id="forecastListReview">
-                                <!-- JS Populated -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-
         <!-- 数据管理标签页 -->
         <div id="main-tab-management" class="main-tab-content">
           <section id="management-panel">
@@ -541,9 +558,10 @@
                 <button class="tab-btn" data-tab="download">批量下载</button>
                 <button class="tab-btn" data-tab="check">完整性检查</button>
                 <button class="tab-btn" data-tab="stats">数据统计</button>
-                <!-- Forecast History moved to top level -->
                 <button class="tab-btn" data-tab="system-logs">访问日志</button>
-                <button class="tab-btn" data-tab="system-alerts">系统告警</button>
+                <button class="tab-btn" data-tab="system-alerts">
+                  系统告警
+                </button>
                 <button
                   class="tab-btn"
                   data-tab="delete"
@@ -648,85 +666,119 @@
                 </div>
               </div>
 
-              <!-- 预测复盘标签页 (Moved to top level) -->
-
               <!-- 系统日志标签页 -->
               <div class="tab-content" id="system-logs-tab">
-                  <div class="query-form">
-                        <div class="form-actions mb-4">
-                            <button id="refreshLogsBtn" class="btn btn-primary">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M23 4v6h-6"></path>
-                                    <path d="M1 20v-6h6"></path>
-                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                                </svg>
-                                刷新日志
-                            </button>
-                        </div>
-                        
-                        <div class="result-box">
-                            <h4 class="font-bold mb-2">最近系统访问日志 (Last 100)</h4>
-                             <div class="table-container" style="max-height: 500px; overflow-y: auto;">
-                                <table class="data-table" id="systemLogsTable">
-                                    <thead>
-                                        <tr>
-                                            <th>时间</th>
-                                            <th>METHOD</th>
-                                            <th>路径</th>
-                                            <th>状态</th>
-                                            <th>耗时(ms)</th>
-                                            <th>机器名</th>
-                                            <th>IP</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Populated by JS -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                <div class="query-form">
+                  <div class="form-actions mb-4">
+                    <button id="refreshLogsBtn" class="btn btn-primary">
+                      <svg
+                        class="btn-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path
+                          d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                        ></path>
+                      </svg>
+                      刷新日志
+                    </button>
                   </div>
+
+                  <div class="result-box">
+                    <h4 class="font-bold mb-2">最近系统访问日志 (Last 100)</h4>
+                    <div
+                      class="table-container"
+                      style="max-height: 500px; overflow-y: auto"
+                    >
+                      <table class="data-table" id="systemLogsTable">
+                        <thead>
+                          <tr>
+                            <th>时间</th>
+                            <th>METHOD</th>
+                            <th>路径</th>
+                            <th>状态</th>
+                            <th>耗时(ms)</th>
+                            <th>机器名</th>
+                            <th>IP</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <!-- Populated by JS -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- 系统告警标签页 -->
               <div class="tab-content" id="system-alerts-tab">
-                  <div class="query-form">
-                        <div class="form-actions mb-4" style="justify-content: space-between;">
-                            <div>
-                                <button id="refreshEventsBtn" class="btn btn-primary">
-                                    刷新告警
-                                </button>
-                                <button id="testEventBtn" class="btn btn-tiny btn-secondary">
-                                    发送测试告警
-                                </button>
-                            </div>
-                            <div class="rate-limit-config" style="display: flex; gap: 10px; align-items: center;">
-                                <label style="font-size: 0.9rem;">API频率限制 (次/分):</label>
-                                <input type="number" id="apiRateLimitInput" class="form-control" style="width: 80px;" value="60">
-                                <button id="saveRateLimitBtn" class="btn btn-tiny btn-secondary">保存设置</button>
-                            </div>
-                        </div>
-                        
-                        <div class="result-box">
-                            <h4 class="font-bold mb-2">系统事件与告警日志</h4>
-                             <div class="table-container" style="max-height: 500px; overflow-y: auto;">
-                                <table class="data-table" id="eventLogsTable">
-                                    <thead>
-                                        <tr>
-                                            <th>时间</th>
-                                            <th>级别</th>
-                                            <th>来源</th>
-                                            <th>消息</th>
-                                            <th>详情</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Populated by JS -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                <div class="query-form">
+                  <div
+                    class="form-actions mb-4"
+                    style="justify-content: space-between"
+                  >
+                    <div>
+                      <button id="refreshEventsBtn" class="btn btn-primary">
+                        刷新告警
+                      </button>
+                      <button
+                        id="testEventBtn"
+                        class="btn btn-tiny btn-secondary"
+                      >
+                        发送测试告警
+                      </button>
+                    </div>
+                    <div
+                      class="rate-limit-config"
+                      style="display: flex; gap: 10px; align-items: center"
+                    >
+                      <label style="font-size: 0.9rem"
+                        >API频率限制 (次/分):</label
+                      >
+                      <input
+                        type="number"
+                        id="apiRateLimitInput"
+                        class="form-control"
+                        style="width: 80px"
+                        value="60"
+                      />
+                      <button
+                        id="saveRateLimitBtn"
+                        class="btn btn-tiny btn-secondary"
+                      >
+                        保存设置
+                      </button>
+                    </div>
                   </div>
+
+                  <div class="result-box">
+                    <h4 class="font-bold mb-2">系统事件与告警日志</h4>
+                    <div
+                      class="table-container"
+                      style="max-height: 500px; overflow-y: auto"
+                    >
+                      <table class="data-table" id="eventLogsTable">
+                        <thead>
+                          <tr>
+                            <th>时间</th>
+                            <th>级别</th>
+                            <th>来源</th>
+                            <th>消息</th>
+                            <th>详情</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <!-- Populated by JS -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <!-- 城市管理标签页 (Item 29) -->
@@ -757,30 +809,96 @@
                   </div>
 
                   <!-- 自定义坐标添加 (New) -->
-                  <div class="form-row" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                      <div class="form-group full-width">
-                          <label>或添加自定义坐标地点</label>
-                          <div class="custom-city-form" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-                              <div style="flex: 2; min-width: 150px;">
-                                  <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">地点名称</label>
-                                  <input type="text" id="customCityName" class="form-control" placeholder="例如: 某观测站">
-                              </div>
-                              <div style="flex: 1; min-width: 100px;">
-                                  <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">经度 (Lon)</label>
-                                  <input type="number" step="0.0001" id="customCityLon" class="form-control" placeholder="108.xxx">
-                              </div>
-                              <div style="flex: 1; min-width: 100px;">
-                                  <label style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">纬度 (Lat)</label>
-                                  <input type="number" step="0.0001" id="customCityLat" class="form-control" placeholder="22.xxx">
-                              </div>
-                              <button id="addCustomCityBtn" class="btn btn-secondary" style="height: 38px; margin-bottom: 2px;">
-                                  <svg class="btn-icon-tiny" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                      <path d="M12 5v14M5 12h14"></path>
-                                  </svg>
-                                  添加坐标
-                              </button>
-                          </div>
+                  <div
+                    class="form-row"
+                    style="
+                      margin-top: 15px;
+                      border-top: 1px dashed var(--border-color);
+                      padding-top: 15px;
+                    "
+                  >
+                    <div class="form-group full-width">
+                      <label>或添加自定义坐标地点</label>
+                      <div
+                        class="custom-city-form"
+                        style="
+                          display: flex;
+                          gap: 10px;
+                          align-items: flex-end;
+                          flex-wrap: wrap;
+                        "
+                      >
+                        <div style="flex: 2; min-width: 150px">
+                          <label
+                            style="
+                              font-size: 0.8rem;
+                              color: var(--text-secondary);
+                              margin-bottom: 4px;
+                              display: block;
+                            "
+                            >地点名称</label
+                          >
+                          <input
+                            type="text"
+                            id="customCityName"
+                            class="form-control"
+                            placeholder="例如: 某观测站"
+                          />
+                        </div>
+                        <div style="flex: 1; min-width: 100px">
+                          <label
+                            style="
+                              font-size: 0.8rem;
+                              color: var(--text-secondary);
+                              margin-bottom: 4px;
+                              display: block;
+                            "
+                            >经度 (Lon)</label
+                          >
+                          <input
+                            type="number"
+                            step="0.0001"
+                            id="customCityLon"
+                            class="form-control"
+                            placeholder="108.xxx"
+                          />
+                        </div>
+                        <div style="flex: 1; min-width: 100px">
+                          <label
+                            style="
+                              font-size: 0.8rem;
+                              color: var(--text-secondary);
+                              margin-bottom: 4px;
+                              display: block;
+                            "
+                            >纬度 (Lat)</label
+                          >
+                          <input
+                            type="number"
+                            step="0.0001"
+                            id="customCityLat"
+                            class="form-control"
+                            placeholder="22.xxx"
+                          />
+                        </div>
+                        <button
+                          id="addCustomCityBtn"
+                          class="btn btn-secondary"
+                          style="height: 38px; margin-bottom: 2px"
+                        >
+                          <svg
+                            class="btn-icon-tiny"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <path d="M12 5v14M5 12h14"></path>
+                          </svg>
+                          添加坐标
+                        </button>
                       </div>
+                    </div>
                   </div>
 
                   <div class="form-row" style="margin-top: 20px">
@@ -975,50 +1093,69 @@
     </main>
     <!-- 趋势详情模态框 -->
     <div id="trendDetailModal" class="weather-modal">
-        <div class="modal-content large-modal">
-            <div class="modal-header">
-                <h3 id="trendModalTitle" class="section-title mb-0">趋势详情</h3>
-                <button class="modal-close" onclick="closeTrendModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="chart-container-large">
-                    <canvas id="trendDetailChart"></canvas>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="exportTrendData()">
-                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                        </svg>
-                        导出数据
-                    </button>
-                    <!-- Future: Add more actions or filters -->
-                </div>
-                <div class="table-container mt-4" style="max-height: 350px; overflow-y: auto;">
-                    <table class="data-table" id="trendDetailTable">
-                        <thead>
-                            <tr>
-                                <th>时间</th>
-                                <th>温度 (°C)</th>
-                                <th>降水 (mm)</th>
-                                <th>风速 (m/s)</th>
-                                <th>辐照度 (W/m²)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Data populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+      <div class="modal-content large-modal">
+        <div class="modal-header">
+          <h3 id="trendModalTitle" class="section-title mb-0">趋势详情</h3>
+          <button class="modal-close" onclick="closeTrendModal()">
+            &times;
+          </button>
         </div>
+        <div class="modal-body">
+          <div class="chart-container-large">
+            <canvas id="trendDetailChart"></canvas>
+          </div>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary btn-sm"
+              onclick="exportTrendData()"
+            >
+              <svg
+                class="btn-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              导出数据
+            </button>
+            <!-- Future: Add more actions or filters -->
+          </div>
+          <div
+            class="table-container mt-4"
+            style="max-height: 350px; overflow-y: auto"
+          >
+            <table class="data-table" id="trendDetailTable">
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>温度 (°C)</th>
+                  <th>降水 (mm)</th>
+                  <th>风速 (m/s)</th>
+                  <th>辐照度 (W/m²)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 底部信息栏 -->
     <footer class="footer">
-        <div class="container">
-            <p>© 2026 天气查询系统 | 数据来源: Open-Meteo API | 版本: v2026.02.03.1732 | 作者: yjiefl</p>
-            <p class="footer-note">数据仅供参考，不作为官方气象数据使用</p>
-        </div>
+      <div class="container">
+        <p>
+          © 2026 天气查询系统 | 数据来源: Open-Meteo API | 版本:
+          v2026.02.03.1732 | 作者: yjiefl
+        </p>
+        <p class="footer-note">数据仅供参考，不作为官方气象数据使用</p>
+      </div>
     </footer>
 
     <!-- JavaScript -->

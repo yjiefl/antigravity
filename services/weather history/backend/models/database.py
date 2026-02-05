@@ -148,17 +148,7 @@ class DatabaseManager:
                 )
             ''')
             
-            # 创建预测历史存档表
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS forecast_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    city_id INTEGER NOT NULL,
-                    forecast_date TEXT NOT NULL,
-                    raw_data TEXT NOT NULL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (city_id) REFERENCES city_config(id)
-                )
-            ''')
+
 
             # 创建系统日志表 (访问日志)
             cursor.execute('''
@@ -423,46 +413,7 @@ class DatabaseManager:
             return dict(result[0])
         return {'count': 0, 'start_date': None, 'end_date': None}
 
-    def save_forecast_history(self, city_id: int, forecast_date: str, raw_data: str) -> int:
-        """
-        保存预测历史快照
-        """
-        sql = "INSERT INTO forecast_history (city_id, forecast_date, raw_data) VALUES (?, ?, ?)"
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute(sql, (city_id, forecast_date, raw_data))
-            conn.commit()
-            return cursor.lastrowid
-        except sqlite3.Error as e:
-            logger.error(f"保存预测历史失败: {e}")
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
 
-    def get_forecast_history(self, city_id: int = None, limit: int = 20) -> List[Dict[str, Any]]:
-        """
-        获取预测历史列表
-        """
-        sql = "SELECT id, city_id, forecast_date, created_at FROM forecast_history"
-        params = []
-        if city_id:
-            sql += " WHERE city_id = ?"
-            params.append(city_id)
-        
-        sql += " ORDER BY created_at DESC LIMIT ?"
-        params.append(limit)
-        
-        return self.execute_query(sql, tuple(params))
-
-    def get_forecast_snapshot(self, snapshot_id: int) -> Optional[Dict[str, Any]]:
-        """
-        获取单条预测快照详情
-        """
-        sql = "SELECT * FROM forecast_history WHERE id = ?"
-        result = self.execute_query(sql, (snapshot_id,))
-        return result[0] if result else None
 
     def log_request(self, ip: str, ua: str, path: str, method: str, status: int, latency: float, host_name: str = None):
         """
