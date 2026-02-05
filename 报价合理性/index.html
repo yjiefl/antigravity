@@ -286,15 +286,74 @@
              
              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <!-- 结论 1 -->
-                 <div class="bg-amber-50 p-6 rounded-lg border border-amber-200">
-                     <h4 class="font-bold text-amber-800 text-lg mb-2">⚠️ 二次安防 (成本最高)</h4>
-                     <p class="text-slate-700 text-sm mb-3">
-                         <strong>成本：</strong> 32 万元。<br>
-                         包括入侵检测（天融信）、加密机（南瑞）和防火墙（迪普）。
-                     </p>
-                     <p class="text-xs text-amber-900 bg-amber-100 p-2 rounded">
-                         <strong>要求：</strong> 必须满足“安全分区、网络专用、横向隔离、纵向认证”。包含强制性的态势感知资产注册。
-                     </p>
+                 <div class="bg-amber-50 p-6 rounded-lg border border-amber-200 md:col-span-2">
+                     <div class="flex flex-col md:flex-row justify-between items-start mb-4">
+                         <div>
+                             <h4 class="font-bold text-amber-800 text-lg mb-2">⚠️ 二次安防与态势感知 (成本明细)</h4>
+                             <p class="text-slate-700 text-sm">
+                                 <strong>总计：</strong> 32 万元（两站合并设备服务费合计）。
+                             </p>
+                         </div>
+                         <div class="mt-2 md:mt-0 px-3 py-1 bg-amber-200 text-amber-900 text-xs font-bold rounded-full uppercase">
+                             最高成本驱动项
+                         </div>
+                     </div>
+                     
+                     <!-- 详细清单表格 -->
+                     <div class="overflow-x-auto mt-4 rounded-lg border border-amber-200 bg-white">
+                         <table class="min-w-full text-xs text-left">
+                             <thead class="bg-amber-100 text-amber-900 uppercase">
+                                 <tr>
+                                     <th class="px-4 py-2 border-b">事项或设备</th>
+                                     <th class="px-2 py-2 border-b text-center">单位</th>
+                                     <th class="px-2 py-2 border-b text-center">数量</th>
+                                     <th class="px-4 py-2 border-b text-right">单价 (元)</th>
+                                     <th class="px-4 py-2 border-b text-right">总价 (元)</th>
+                                     <th class="px-4 py-2 border-b">说明</th>
+                                 </tr>
+                             </thead>
+                             <tbody class="divide-y divide-amber-100 text-slate-700">
+                                 <tr>
+                                     <td class="px-4 py-2">A 网加密机</td><td class="text-center">台</td><td class="text-center">2</td><td class="text-right">25,000</td><td class="text-right font-semibold">50,000</td><td></td>
+                                 </tr>
+                                 <tr>
+                                     <td class="px-4 py-2">B 网加密机</td><td class="text-center">台</td><td class="text-center">2</td><td class="text-right">25,000</td><td class="text-right font-semibold">50,000</td><td></td>
+                                 </tr>
+                                 <tr>
+                                     <td class="px-4 py-2">PMU 专线加密机</td><td class="text-center">台</td><td class="text-center">2</td><td class="text-right">25,000</td><td class="text-right font-semibold">50,000</td><td></td>
+                                 </tr>
+                                 <tr class="text-rose-600 font-medium">
+                                     <td class="px-4 py-2">功率预测专线加密机</td><td class="text-center">台</td><td class="text-center">2</td><td class="text-right">25,000</td><td class="text-right font-semibold">50,000</td><td>核心安全组件</td>
+                                 </tr>
+                                 <tr>
+                                     <td class="px-4 py-2">1 区光纤收发器</td><td class="text-center">台</td><td class="text-center">6</td><td class="text-right">1,000</td><td class="text-right font-semibold">6,000</td><td></td>
+                                 </tr>
+                                 <tr>
+                                     <td class="px-4 py-2">2 区光纤收发器</td><td class="text-center">台</td><td class="text-center">2</td><td class="text-right">1,000</td><td class="text-right font-semibold">2,000</td><td></td>
+                                 </tr>
+                                 <tr class="opacity-50">
+                                     <td class="px-4 py-2">光伏区数据加密机</td><td class="text-center">台</td><td class="text-center">0</td><td class="text-right">25,000</td><td class="text-right font-semibold">0</td><td>已核减</td>
+                                 </tr>
+                                 <tr>
+                                     <td class="px-4 py-2">设备安装调试及态势感知调试</td><td class="text-center">项</td><td class="text-center">1</td><td class="text-right">50,000</td><td class="text-right font-semibold">50,000</td><td class="text-[10px] leading-tight text-slate-500">含态势感知升级、端口扫描、入侵检测、堡垒机、日志审计等接入调试</td>
+                                 </tr>
+                                 <tr class="bg-indigo-50/50">
+                                     <td class="px-4 py-2 font-bold">等保测评</td><td class="text-center">项</td><td class="text-center">1</td><td class="text-right">60,000</td><td class="text-right font-semibold text-indigo-700">60,000</td><td>三级标保测评</td>
+                                 </tr>
+                             </tbody>
+                             <tfoot class="bg-amber-100/50 font-bold text-amber-900">
+                                 <tr>
+                                     <td colspan="4" class="px-4 py-2 text-right uppercase tracking-wider">两站合并设备服务费合计</td>
+                                     <td class="px-4 py-2 text-right text-lg underline decoration-double">¥320,000</td>
+                                     <td>(32.0 万元)</td>
+                                 </tr>
+                             </tfoot>
+                         </table>
+                     </div>
+
+                     <div class="mt-4 p-3 bg-white/60 rounded border border-amber-200 text-xs text-amber-900">
+                         <strong>要求：</strong> 必须满足“安全分区、网络专用、横向隔离、纵向认证”。包含强制性的态势感知系统升级及各节点（入侵、堡垒机、日志审计）的实用化接入。
+                     </div>
                  </div>
 
                  <!-- 结论 2 -->
