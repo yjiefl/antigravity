@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运维合同结算管理系统 - Demo</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-body: #f8fafc;
+            --bg-card: rgba(255, 255, 255, 0.8);
+            --sidebar-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            text-decoration: none;
+            color: var(--text-muted);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background-color: #f1f5f9;
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        /* Main Content */
+        .main {
+            flex-grow: 1;
+            padding: 32px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+        }
+
+        /* Dashboard View */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            padding: 24px;
+            border-radius: var(--radius);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Selection Controls */
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        select, input[type="text"], input[type="number"] {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: white;
+            font-family: inherit;
+            color: var(--text-main);
+        }
+
+        button.btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button.btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        /* Settlement Table */
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: left;
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .qty-input {
+            width: 80px;
+            text-align: center;
+        }
+
+        .adjust-input {
+            width: 100px;
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .lump-sum-tag {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .reason-cell {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .total-row {
+            background: #f8fafc;
+            font-weight: 700;
+        }
+
+        .total-row td {
+            font-size: 16px;
+            color: var(--primary);
+        }
+
+        /* Sticky Footer for actions */
+        .action-bar {
+            margin-top: 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Modal / Overlay */
+        #adjustmentModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: var(--radius);
+            width: 400px;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        /* Notifications */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--text-main);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></aside>
+        <div class="nav-links" style="margin-top: 20px;">
+            <div class="nav-link active" onclick="switchView('dashboard')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                工作仪表盘
+            </div>
+            <div class="nav-link" onclick="switchView('settlement')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                季度结算申报
+            </div>
+            <div class="nav-link" onclick="switchView('library')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                合同标段库
+            </div>
+            <div class="nav-link" onclick="switchView('history')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                结算历史记录
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <header>
+            <h1 id="pageTitle">工作仪表盘</h1>
+            <div class="user-profile">
+                <div style="width: 32px; height: 32px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--primary);">甲</div>
+                <span style="font-size: 14px; font-weight: 600;">甲方管理员</span>
+            </div>
+        </header>
+
+        <!-- View: Dashboard -->
+        <section id="dashboard" class="view-section active">
+            <div class="stats-grid">
+                <div class="card">
+                    <div class="stat-label">本季度已结算场站</div>
+                    <div class="stat-value">12 / 18</div>
+                </div>
+                <div class="card">
+                    <div class="stat-label">待审核申报</div>
+                    <div class="stat-value">3</div>
+                </div>
+                <div class="card">
+                    <div class="stat-label">本年已结算总额</div>
+                    <div class="stat-value">¥ 4,250,300.20</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 style="margin-top: 0;">最近任务</h3>
+                <p style="color: var(--text-muted); font-size: 14px;">暂无紧急任务，所有标段运行正常。</p>
+            </div>
+        </section>
+
+        <!-- View: Settlement -->
+        <section id="settlement" class="view-section">
+            <div class="controls">
+                <select id="stationSelect" onchange="loadSettlementData()">
+                    <option value="">-- 选择申报场站 --</option>
+                    <option value="S001" data-lot="L001">大新龙门风电场 (标段 A)</option>
+                    <option value="S002" data-lot="L002">扶绥中原光伏项目 (标段 B)</option>
+                    <option value="S003" data-lot="L001">宁明板棍光伏项目 (标段 A)</option>
+                    <option value="S004" data-lot="L003">天等把荷风电场 (标段 C)</option>
+                </select>
+                <select id="periodSelect" onchange="loadSettlementData()">
+                    <option value="2026Q1">2026 第一季度 (Q1)</option>
+                    <option value="2026Q2">2026 第二季度 (Q2)</option>
+                    <option value="2026Q3">2026 第三季度 (Q3)</option>
+                    <option value="2026Q4">2026 第四季度 (Q4)</option>
+                </select>
+                <button class="btn-primary" onclick="loadSettlementData()">刷新数据</button>
+            </div>
+
+            <div id="settlementTableArea" style="display: none;">
+                <div class="table-container">
+                    <table id="settlementTable">
+                        <thead>
+                            <tr>
+                                <th width="60">序号</th>
+                                <th>项目名称</th>
+                                <th>单位</th>
+                                <th>合同年合价</th>
+                                <th>本次结算数量</th>
+                                <th>理论结算额</th>
+                                <th>费用调整额</th>
+                                <th>实际结算额</th>
+                                <th>调整备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlementBody">
+                            <!-- JS dynamic rows -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="7" style="text-align: right;">本年度累计合价 / 本季度总结算额：</td>
+                                <td id="footerTotal">¥ 0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="action-bar">
+                    <button style="background: white; border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 8px; cursor: pointer;">保存草稿</button>
+                    <button class="btn-primary" onclick="submitFinal()">确认并提交单据</button>
+                </div>
+            </div>
+
+            <div id="noDataMessage" style="text-align: center; padding: 60px; color: var(--text-muted); background: white; border-radius: var(--radius); border: 2px dashed var(--border-color);">
+                请从上方选择一个“场站”开始本季度的填写工作
+            </div>
+        </section>
+
+        <!-- View: Library -->
+        <section id="library" class="view-section">
+            <div class="card">
+                <h3>标段对照库 (Lot Library)</h3>
+                <p style="color: var(--text-muted);">系统根据此处维护的单价模板自动通过场站容量计算各分项费用。</p>
+                <!-- Simplified library view -->
+                <div class="table-container" style="margin-top: 20px;">
+                    <table>
+                        <thead>
+                            <tr style="background: #f1f5f9;">
+                                <th>标段编号</th>
+                                <th>标段名称</th>
+                                <th>场站数量</th>
+                                <th>主要结算方式</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>L001</td>
+                                <td>2026-南宁及凭祥片区运维标</td>
+                                <td>3</td>
+                                <td>固定单价 + 包干</td>
+                                <td><span style="color: var(--success);">● 执行中</span></td>
+                            </tr>
+                            <tr>
+                                <td>L002</td>
+                                <td>2026-崇左光伏专项运维标</td>
+                                <td>1</td>
+                                <td>固定单价</td>
+                                <td><span style="color: var(--success);">● 执行中</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        
+        <section id="history" class="view-section">
+            <div class="card" style="text-align: center; padding: 100px 0;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <p style="margin-top: 16px; color: #64748b;">历史功能模块正在开发中...</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Adjustment Modal -->
+    <div id="adjustmentModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">费用调整原因</h3>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">根据规则：手动调整费用项目必须填写情况说明或依据。</p>
+            <textarea id="modalReason" rows="4" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-color); padding: 12px; font-family: inherit;" placeholder="请输入调整原因，例如：因工器具损坏导致本季度追加购置..."></textarea>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button onclick="closeModal()" style="background: #f1f5f9; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">取消</button>
+                <button onclick="confirmAdjustment()" class="btn-primary">保存说明</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">操作成功</div>
+
+    <script>
+        // Data Structure based on the table provided
+        const priceTemplate = [
+            { id: "1.1", name: "站长", unit: "元/人/月", defaultQty: 0, price: 21200, isLumpSum: false },
+            { id: "1.2", name: "运检组长", unit: "元/人/月", price: 14840, isLumpSum: false },
+            { id: "1.3", name: "运检人员", unit: "元/人/月", defaultQty: 36, price: 11660, isLumpSum: false },
+            { id: "2.1", name: "工器具配备", unit: "元/MW/年", defaultQty: 65, price: 318, isLumpSum: true },
+            { id: "2.2", name: "仪器仪表配备", unit: "元/MW/年", defaultQty: 65, price: 318, isLumpSum: true },
+            { id: "2.3", name: "备品备件供应", unit: "元/MW/年", defaultQty: 65, price: 318, isLumpSum: false },
+            { id: "2.4", name: "消耗品供应", unit: "元/MW/年", defaultQty: 65, price: 233.2, isLumpSum: true },
+            { id: "3.3", name: "建构筑物维护费", unit: "元/站/年", defaultQty: 1, price: 10600, isLumpSum: true },
+            { id: "4.8", name: "防雷检测", unit: "元/次", defaultQty: 1, price: 60950, isLumpSum: false },
+            { id: "6.1", name: "交通费/车辆运行", unit: "元/辆/年", defaultQty: 1, price: 116600, isLumpSum: false },
+            { id: "9.1", name: "预留暂列金", unit: "项", defaultQty: 1, price: 334000, isLumpSum: false, method: "据实结算" }
+        ];
+
+        let currentActiveItem = null;
+        let settlementData = [];
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(v => v.classList.remove('active'));
+            
+            document.getElementById(viewId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            const titles = {
+                dashboard: "工作仪表盘",
+                settlement: "季度结算申报",
+                library: "合同标段库",
+                history: "结算历史记录"
+            };
+            document.getElementById('pageTitle').innerText = titles[viewId];
+        }
+
+        function loadSettlementData() {
+            const station = document.getElementById('stationSelect').value;
+            if (!station) {
+                document.getElementById('settlementTableArea').style.display = 'none';
+                document.getElementById('noDataMessage').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('settlementTableArea').style.display = 'block';
+            document.getElementById('noDataMessage').style.display = 'none';
+
+            // Generate rows from template
+            const body = document.getElementById('settlementBody');
+            body.innerHTML = '';
+            
+            settlementData = priceTemplate.map(item => {
+                // Calculation logic:
+                // If LumpSum: Theory = (Price * DefaultQty) / 4 (for quarter)
+                // Else: Theory = Price * CurrentQty (user entered)
+                let annualTotal = item.price * item.defaultQty;
+                let theory = item.isLumpSum ? (annualTotal / 4) : 0;
+                let currentQty = item.isLumpSum ? 0.25 : 0; // for person-month we'll assume 0 initially
+
+                return {
+                    ...item,
+                    annualTotal: annualTotal,
+                    qty: currentQty,
+                    theory: theory,
+                    adjust: 0,
+                    actual: theory,
+                    reason: ""
+                };
+            });
+
+            renderTable();
+        }
+
+        function renderTable() {
+            const body = document.getElementById('settlementBody');
+            body.innerHTML = '';
+            let grandTotal = 0;
+
+            settlementData.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                
+                // Lump sum items have read-only qty if automated, but we let them be edited if "fixed unit price"
+                const qtyHtml = row.isLumpSum 
+                    ? `<span class="lump-sum-tag">包干 (0.25)</span>` 
+                    : `<input type="number" class="qty-input" value="${row.qty}" onchange="updateQty(${index}, this.value)">`;
+
+                const theoryVal = row.isLumpSum ? row.theory : (row.qty * row.price);
+                const actual = theoryVal + row.adjust;
+                grandTotal += actual;
+
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td><div style="font-weight:600">${row.name}</div><div style="font-size:11px; color:#94a3b8">${row.isLumpSum ? '季度包干结算' : '按实计算'}</div></td>
+                    <td>${row.unit}</td>
+                    <td>¥ ${row.annualTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                    <td>${qtyHtml}</td>
+                    <td>¥ ${theoryVal.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                    <td><input type="number" class="adjust-input" value="${row.adjust}" onchange="updateAdjust(${index}, this.value)"></td>
+                    <td style="font-weight:700; color:var(--text-main)">¥ ${actual.toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                    <td class="reason-cell" onclick="openAdjustmentModal(${index})">${row.reason || (row.adjust != 0 ? '<span style="color:var(--danger)">! 需填写原因</span>' : '-')}</td>
+                `;
+                body.appendChild(tr);
+            });
+
+            document.getElementById('footerTotal').innerText = `¥ ${grandTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2})}`;
+        }
+
+        function updateQty(index, val) {
+            settlementData[index].qty = parseFloat(val) || 0;
+            renderTable();
+        }
+
+        function updateAdjust(index, val) {
+            const newVal = parseFloat(val) || 0;
+            settlementData[index].adjust = newVal;
+            if (newVal !== 0 && !settlementData[index].reason) {
+                openAdjustmentModal(index);
+            }
+            renderTable();
+        }
+
+        function openAdjustmentModal(index) {
+            currentActiveItem = index;
+            document.getElementById('modalTitle').innerText = `调整原因: ${settlementData[index].name}`;
+            document.getElementById('modalReason').value = settlementData[index].reason;
+            document.getElementById('adjustmentModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('adjustmentModal').style.display = 'none';
+        }
+
+        function confirmAdjustment() {
+            const reason = document.getElementById('modalReason').value;
+            if (settlementData[currentActiveItem].adjust !== 0 && !reason.trim()) {
+                alert("手动调整费用必须填写原因！");
+                return;
+            }
+            settlementData[currentActiveItem].reason = reason;
+            closeModal();
+            renderTable();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = '1';
+            t.style.transform = 'translateY(0)';
+            setTimeout(() => {
+                t.style.opacity = '0';
+                t.style.transform = 'translateY(100px)';
+            }, 3000);
+        }
+
+        function submitFinal() {
+            // Validate if all adjustments have reasons
+            const missingReason = settlementData.some(d => d.adjust !== 0 && !d.reason.trim());
+            if (missingReason) {
+                alert("检测到有项目进行了金额调整但未说明原因，请完善后再提交。");
+                return;
+            }
+            showToast("结算单已成功提交，进入甲方初审环节。");
+        }
+
+        // Initialize
+        window.onclick = function(event) {
+            const modal = document.getElementById('adjustmentModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
