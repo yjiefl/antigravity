@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* OLED Dark Palette */
+            /* OLED Dark Palette (Default) */
             --color-primary: #0F172A;
             --color-secondary: #1E293B;
             --color-cta: #22C55E;
@@ -26,6 +26,7 @@
             --space-md: 16px;
             --space-lg: 24px;
             --space-xl: 32px;
+            --space-2xl: 48px;
             
             /* Effects */
             --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
@@ -36,7 +37,24 @@
             --glass-border: rgba(255, 255, 255, 0.05);
             --radius: 12px;
             
+            --main-gradient: radial-gradient(circle at top right, #0f172a 0%, #020617 100%);
             --transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.light-mode {
+            --color-primary: #ffffff;
+            --color-secondary: #f1f5f9;
+            --color-background: #f8fafc;
+            --color-text: #0f172a;
+            --color-text-muted: #64748b;
+            --color-border: #e2e8f0;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.05);
+            --shadow-xl: 0 20px 25px rgba(0,0,0,0.1);
+            --main-gradient: radial-gradient(circle at top right, #f1f5f9 0%, #f8fafc 100%);
         }
 
         * {
@@ -135,7 +153,7 @@
             padding: var(--space-xl) var(--space-2xl);
             overflow-y: auto;
             position: relative;
-            background: radial-gradient(circle at top right, #0f172a 0%, #020617 100%);
+            background: var(--main-gradient);
         }
 
         header {
@@ -154,7 +172,7 @@
             font-size: 32px;
             margin: 0;
             font-weight: 700;
-            background: linear-gradient(to right, #fff, #94a3b8);
+            background: linear-gradient(to right, var(--color-text), var(--color-text-muted));
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -460,11 +478,16 @@
     <main class="main">
         <header>
             <h1 id="pageTitle">工作仪表盘</h1>
-            <div class="user-profile">
-                <div style="width: 36px; height: 36px; background: var(--color-cta); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white;">甲</div>
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-size: 14px; font-weight: 600;">甲方管理员</span>
-                    <span style="font-size: 11px; color: var(--color-text-muted);">权限: 综合部/审计</span>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <button id="themeToggle" onclick="toggleTheme()" style="background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--color-text); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); box-shadow: var(--shadow-md);">
+                    <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+                </button>
+                <div class="user-profile">
+                    <div style="width: 36px; height: 36px; background: var(--color-cta); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white;">甲</div>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 14px; font-weight: 600;">甲方管理员</span>
+                        <span style="font-size: 11px; color: var(--color-text-muted);">权限: 综合部/审计</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -817,6 +840,33 @@
             }
             showToast("成功！结算凭证已下推至甲方综合部复核。");
         }
+
+        // Theme Toggle Logic
+        function toggleTheme() {
+            const body = document.body;
+            const isLight = body.classList.toggle('light-mode');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const isLight = document.body.classList.contains('light-mode');
+            const icon = document.getElementById('themeIcon');
+            if (isLight) {
+                icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'; // Moon for light mode (means switch to dark)
+            } else {
+                icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>'; // Sun for dark mode (means switch to light)
+            }
+        }
+
+        // Initialize Theme
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+            }
+            updateThemeIcon();
+        })();
 
         // Initialize modal behavior
         window.onclick = function(event) {
