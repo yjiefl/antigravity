@@ -64,3 +64,9 @@
 - 待补充
 - 增加指标库
 -
+
+### 7. 2026-02-05 15:40: 文档格式优化与冗余清理 ✅
+
+- [x] 美化 `calculation_details.md`, `curtailment_judgment.md` 等文档格式。
+- [x] 删除根目录下已完成任务的临时脚本及 Excel 文件，保持仓库整洁。
+- [x] 同步最新数据至 GitHub 仓库。
