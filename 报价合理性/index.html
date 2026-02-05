@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>光伏站集成：预算与技术审核</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 自定义字体导入 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        body {
+            font-family: 'Inter', "Microsoft YaHei", sans-serif;
+            background-color: #f0f4f8; /* 浅蓝灰色背景 */
+            color: #1e293b;
+        }
+
+        /* 调色板定义（充满活力的专业风格）
+           主要：靛蓝色-500 (#6366f1)
+           次要：青色-500 (#14b8a6)
+           深色：板岩色-800 (#1e293b)
+           浅色：板岩色-50 (#f8fafc)
+           强调：琥珀色-500 (#f59e0b)
+        */
+
+        /* 图表容器规则 - 必须项 */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px; /* 默认高度 */
+            max-height: 450px;
+        }
+
+        /* 图表的响应式调整 */
+        @media (min-width: 1024px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+
+        /* HTML图表的连接线 */
+        .connector-vertical {
+            width: 2px;
+            background-color: #cbd5e1;
+            margin: 0 auto;
+            height: 20px;
+        }
+        
+        .connector-horizontal {
+            height: 2px;
+            background-color: #cbd5e1;
+            width: 100%;
+            position: relative;
+            top: 50%;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+    <!-- 
+    源材料分析与计划：
+    1. 主题：岑凡和守旗光伏站的集成，重点在于预算审核和技术数据整合。
+    2. 叙述：
+       - 亮点：通过审核实现了显著的预算削减（节省 39%）。
+       - 数据概览：按技术专业划分的成本细分（自动化是最大的成本项）。
+       - 深度剖析：针对特定高成本项（安防、AGC/AVC）。
+       - 架构：可视化“延伸”策略，即岑凡接入守旗。
+    3. 可视化：
+       - KPI 卡片：顶层数据。
+       - 柱状图（对比）：按类别列出原始报价与审核价格。
+       - 环形图（组成）：最终预算的资金流向。
+       - 条形图（排名）：最昂贵的 5 个单项。
+       - HTML 流程图（过程）：岑凡 -> 守旗 -> 调度的业务流。
+    4. 不使用 SVG / 不使用 MERMAID：所有图标均使用 unicode 或 CSS 形状。所有图表均为 Canvas (Chart.js)。
+    -->
+</head>
+<body class="antialiased">
+
+    <!-- 页眉 / 英雄区 -->
+    <header class="bg-gradient-to-r from-indigo-600 to-teal-500 text-white p-8 shadow-lg">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h1 class="text-4xl font-extrabold tracking-tight mb-2">项目审核报告</h1>
+                    <h2 class="text-xl font-light text-indigo-100">岑凡 & 守旗光伏站集成与改造</h2>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm opacity-75">生成对象</div>
+                    <div class="font-bold text-lg">项目管理办公室 (PMO)</div>
+                    <div class="text-xs mt-1 bg-white/20 px-2 py-1 rounded inline-block">状态：预算审查已完成</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8 space-y-12">
+
+        <!-- 第 1 节：执行财务摘要 -->
+        <section>
+            <div class="mb-6">
+                <h3 class="text-2xl font-bold text-slate-800 border-l-4 border-indigo-500 pl-4">执行财务摘要</h3>
+                <p class="mt-2 text-slate-600 max-w-3xl">
+                    技术改造提案已通过严格的成本评估。
+                    初始报价 <strong>188.3 万元</strong> 已优化至 <strong>114.5 万元</strong>，
+                    通过技术手段对齐（如使用延伸通道代替新硬件）和监管调整，实现了大幅削减。
+                </p>
+            </div>
+
+            <!-- KPI 卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <!-- 卡片 1 -->
+                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-slate-400">
+                    <div class="text-slate-500 text-sm font-semibold uppercase tracking-wider">原始报价</div>
+                    <div class="mt-2 flex items-baseline">
+                        <span class="text-4xl font-extrabold text-slate-700">188.3</span>
+                        <span class="ml-2 text-slate-500">万元</span>
+                    </div>
+                    <div class="mt-2 text-xs text-slate-400">原始厂商提交</div>
+                </div>
+                
+                <!-- 卡片 2 -->
+                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-teal-500">
+                    <div class="text-teal-600 text-sm font-semibold uppercase tracking-wider">审核最终价</div>
+                    <div class="mt-2 flex items-baseline">
+                        <span class="text-4xl font-extrabold text-teal-600">114.5</span>
+                        <span class="ml-2 text-teal-500">万元</span>
+                    </div>
+                    <div class="mt-2 text-xs text-teal-500">批准预算</div>
+                </div>
+
+                <!-- 卡片 3 -->
+                <div class="bg-white rounded-xl shadow-md p-6 border-t-4 border-amber-500">
+                    <div class="text-amber-600 text-sm font-semibold uppercase tracking-wider">总节省</div>
+                    <div class="mt-2 flex items-baseline">
+                        <span class="text-4xl font-extrabold text-amber-600">39.2%</span>
+                        <span class="ml-2 text-amber-500">(-73.8W)</span>
+                    </div>
+                    <div class="mt-2 text-xs text-amber-500">通过优化与删减</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 2 节：各专业分析 -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 左侧：介绍与背景 -->
+            <div class="flex flex-col justify-center">
+                <h3 class="text-2xl font-bold text-slate-800 border-l-4 border-indigo-500 pl-4 mb-4">按专业成本分析</h3>
+                <p class="text-slate-600 mb-6">
+                    该项目涵盖五个主要技术专业。<strong>调度自动化</strong>占预算的最大部分，包括二次安防、AGC/AVC 系统和远动延伸等关键基础设施。
+                    <br><br>
+                    在<strong>调度管理</strong>和<strong>水调/新能源</strong>领域实现了显著削减，消除了行政费用和重复建模成本（例如，删除了“两个细则”系统中的重复建模费）。
+                </p>
+                <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                    <h4 class="font-bold text-indigo-700 mb-2">关键洞察</h4>
+                    <ul class="list-disc list-inside text-sm text-indigo-800 space-y-1">
+                        <li><strong>自动化：</strong> 约占审核总成本的 83%。</li>
+                        <li><strong>继电保护：</strong> 约占审核总成本的 12%。</li>
+                        <li><strong>管理/其他：</strong> 已最小化至 <5%。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 右侧：图表 -->
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h4 class="text-lg font-bold text-slate-700 mb-4">报价与审核价对比 (按类别)</h4>
+                <div class="chart-container">
+                    <canvas id="categoryComparisonChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 3 节：技术集成策略 -->
+        <section class="bg-white rounded-xl shadow-md p-8">
+            <h3 class="text-2xl font-bold text-slate-800 border-l-4 border-teal-500 pl-4 mb-6">系统集成架构</h3>
+            <p class="text-slate-600 mb-8 max-w-4xl">
+                降低成本的关键驱动因素是 <strong>“延伸策略”</strong>。岑凡站不建立独立的传输通道，其数据通过守旗站的现有基础设施进行路由。这为调度目的创建了一个统一的“逻辑电站”，同时保持了物理上的独立。
+            </p>
+
+            <!-- 自定义 HTML 流程图（不使用 SVG/Mermaid） -->
+            <div class="flex flex-col md:flex-row justify-center items-stretch gap-4 md:gap-8 overflow-x-auto p-4 bg-slate-50 rounded-lg border border-slate-200">
+                
+                <!-- 第 1 列：来源 -->
+                <div class="flex flex-col items-center min-w-[200px]">
+                    <div class="font-bold text-slate-400 mb-4 uppercase tracking-widest text-xs">数据源</div>
+                    
+                    <!-- 盒子 -->
+                    <div class="bg-white border-2 border-indigo-200 p-4 rounded-lg shadow-sm w-full text-center relative hover:border-indigo-500 transition-colors">
+                        <div class="text-2xl mb-1">☀️</div>
+                        <div class="font-bold text-indigo-700">岑凡光伏站</div>
+                        <div class="text-xs text-slate-500 mt-2">PMU 单元</div>
+                        <div class="text-xs text-slate-500">站控层</div>
+                    </div>
+                    
+                    <!-- 垂直线 -->
+                    <div class="h-8 w-0.5 bg-indigo-300"></div>
+                    <div class="text-indigo-500 text-xl leading-none">▼</div>
+                </div>
+
+                <!-- 第 2 列：聚合 -->
+                <div class="flex flex-col items-center min-w-[200px]">
+                    <div class="font-bold text-slate-400 mb-4 uppercase tracking-widest text-xs">汇聚中心</div>
+                    
+                    <!-- 盒子 -->
+                    <div class="bg-white border-2 border-teal-200 p-4 rounded-lg shadow-sm w-full text-center relative hover:border-teal-500 transition-colors">
+                        <div class="text-2xl mb-1">🏭</div>
+                        <div class="font-bold text-teal-700">守旗光伏站</div>
+                        <div class="text-xs text-slate-500 mt-2">数据集中器</div>
+                        <div class="text-xs text-slate-500">统一 AGC/AVC</div>
+                        <div class="text-xs text-teal-600 font-semibold mt-1">网关节点</div>
+                    </div>
+
+                    <!-- 垂直线 -->
+                    <div class="h-8 w-0.5 bg-teal-300"></div>
+                    <div class="text-teal-500 text-xl leading-none">▼</div>
+                </div>
+
+                <!-- 第 3 列：目的地 -->
+                <div class="flex flex-col items-center min-w-[200px]">
+                    <div class="font-bold text-slate-400 mb-4 uppercase tracking-widest text-xs">电网调度</div>
+                    
+                    <!-- 盒子 -->
+                    <div class="bg-slate-800 text-white p-4 rounded-lg shadow-md w-full text-center">
+                        <div class="text-2xl mb-1">📡</div>
+                        <div class="font-bold">电网调度中心</div>
+                        <div class="text-xs text-slate-400 mt-2">WAMS 主站</div>
+                        <div class="text-xs text-slate-400">OCS 主站</div>
+                        <div class="text-xs text-slate-400">功率预测系统</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="flex items-start">
+                    <span class="text-teal-500 font-bold mr-2">✓</span>
+                    <p class="text-slate-600"><strong>PMU 数据：</strong> 岑凡单元上传至守旗集中器，守旗向 WAMS 主站发送统一的数据流。</p>
+                </div>
+                <div class="flex items-start">
+                    <span class="text-teal-500 font-bold mr-2">✓</span>
+                    <p class="text-slate-600"><strong>AGC/AVC：</strong> 岑凡控制层延伸至守旗。守旗系统对两者进行统一调节。岑凡原有的硬件转为冗余备用。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 4 节：主要成本驱动因素与构成 -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- 环形图：构成 -->
+            <div class="bg-white p-6 rounded-xl shadow-md lg:col-span-1">
+                <h4 class="text-lg font-bold text-slate-700 mb-4">审核后预算构成</h4>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="compositionChart"></canvas>
+                </div>
+                <div class="mt-4 text-xs text-slate-500 text-center">
+                    由于高安全级别的硬件和专业控制软件，自动化专业在预算中占主导地位。
+                </div>
+            </div>
+
+            <!-- 横向柱状图：主要项 -->
+            <div class="bg-white p-6 rounded-xl shadow-md lg:col-span-2">
+                <h4 class="text-lg font-bold text-slate-700 mb-2">前 5 项最高成本项 (审核后)</h4>
+                <p class="text-sm text-slate-500 mb-4">安防合规和调频功能是主要的资金支出点。</p>
+                <div class="chart-container">
+                    <canvas id="topItemsChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 第 5 节：关键问题与厂商备注 -->
+        <section class="mb-12">
+             <h3 class="text-2xl font-bold text-slate-800 border-l-4 border-amber-500 pl-4 mb-6">关键审核结论</h3>
+             
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <!-- 结论 1 -->
+                 <div class="bg-amber-50 p-6 rounded-lg border border-amber-200">
+                     <h4 class="font-bold text-amber-800 text-lg mb-2">⚠️ 二次安防 (成本最高)</h4>
+                     <p class="text-slate-700 text-sm mb-3">
+                         <strong>成本：</strong> 32 万元。<br>
+                         包括入侵检测（天融信）、加密机（南瑞）和防火墙（迪普）。
+                     </p>
+                     <p class="text-xs text-amber-900 bg-amber-100 p-2 rounded">
+                         <strong>要求：</strong> 必须满足“安全分区、网络专用、横向隔离、纵向认证”。包含强制性的态势感知资产注册。
+                     </p>
+                 </div>
+
+                 <!-- 结论 2 -->
+                 <div class="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+                     <h4 class="font-bold text-indigo-800 text-lg mb-2">ℹ️ PMU 系统硬件</h4>
+                     <p class="text-slate-700 text-sm mb-3">
+                         <strong>成本：</strong> 12 万元（从 16 万元削减）。
+                     </p>
+                     <p class="text-xs text-indigo-900 bg-indigo-100 p-2 rounded">
+                         <strong>技术备注：</strong> 关于将 110kV 四方 PMU 单元更换为国电南瑞单元仍存疑。是否可以在不更换的情况下实现互操作？这是一个潜在的进一步节省空间或技术风险点。
+                     </p>
+                 </div>
+                 
+                 <!-- 结论 3 -->
+                 <div class="bg-teal-50 p-6 rounded-lg border border-teal-200">
+                     <h4 class="font-bold text-teal-800 text-lg mb-2">✅ 远动优化</h4>
+                     <p class="text-slate-700 text-sm mb-3">
+                         <strong>成本：</strong> 5 万元（从 10.5 万元削减）。
+                     </p>
+                     <p class="text-xs text-teal-900 bg-teal-100 p-2 rounded">
+                         <strong>策略：</strong> 利用现有光纤进行站控层接入，而非铺设新电缆。数据在守旗站汇总后再转发。
+                     </p>
+                 </div>
+
+                 <!-- 结论 4 -->
+                 <div class="bg-slate-100 p-6 rounded-lg border border-slate-300">
+                     <h4 class="font-bold text-slate-800 text-lg mb-2">📉 调度管理删减</h4>
+                     <p class="text-slate-700 text-sm mb-3">
+                         <strong>削减：</strong> 调度管理费用从 11.5 万降至 0。
+                     </p>
+                     <p class="text-xs text-slate-600 bg-slate-200 p-2 rounded">
+                         <strong>原因：</strong> 重新签署协议和“两个细则”系统数据删除的行政成本被认为是不可收费的或极低的内部成本。
+                     </p>
+                 </div>
+             </div>
+        </section>
+
+        <!-- 页脚 -->
+        <footer class="text-center text-slate-400 text-sm pb-8">
+            <p>&copy; 2024 工程与审计部。所有数据均源自内部报价评估。</p>
+        </footer>
+
+    </main>
+
+    <!-- CHART.JS 逻辑 -->
+    <script>
+        // --- 工具：标签换行 (16 字符) ---
+        function wrapLabel(str, maxChars = 16) {
+            if (str.length <= maxChars) return str;
+            const words = str.split(' ');
+            const lines = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                if ((currentLine + " " + words[i]).length <= maxChars) {
+                    currentLine += " " + words[i];
+                } else {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        // --- 工具：工具提示配置 (多行支持) ---
+        const commonTooltipOptions = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join(' ');
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
+
+        // --- 数据准备 ---
+        const categories = [
+            "继电保护", 
+            "调度自动化", 
+            "调度中心通信", 
+            "水调/新能源", 
+            "调度专业管理"
+        ];
+        
+        // 分别来自源表格的汇总数据
+        const quoteData = [21.3, 153.5, 4.0, 7.0, 2.5];
+        const checkData = [14.0, 95.5, 4.0, 1.0, 0.0];
+
+        // 前 5 项最高单项（审核后价格）
+        // 1. 安防安防：32
+        // 2. AGC/AVC 系统：25
+        // 3. 一次调频：22.5
+        // 4. PMU 设备：12
+        // 5. 功率预测：8
+        const topItemsLabels = [
+            "二次安防防护系统",
+            "AGC/AVC 控制系统",
+            "一次调频功能改造",
+            "PMU 装置集成",
+            "功率预测系统"
+        ].map(l => wrapLabel(l));
+
+        const topItemsValues = [32, 25, 22.5, 12, 8];
+
+        // --- 图表 1：专业类别对比 (分组柱状图) ---
+        const ctxCategory = document.getElementById('categoryComparisonChart').getContext('2d');
+        new Chart(ctxCategory, {
+            type: 'bar',
+            data: {
+                labels: categories.map(l => wrapLabel(l)),
+                datasets: [
+                    {
+                        label: '原始报价 (万元)',
+                        data: quoteData,
+                        backgroundColor: '#94a3b8', // 板岩色-400
+                        borderRadius: 4
+                    },
+                    {
+                        label: '审核价格 (万元)',
+                        data: checkData,
+                        backgroundColor: '#14b8a6', // 青色-500
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: commonTooltipOptions,
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#e2e8f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // --- 图表 2：构成 (环形图) ---
+        const ctxComposition = document.getElementById('compositionChart').getContext('2d');
+        new Chart(ctxComposition, {
+            type: 'doughnut',
+            data: {
+                labels: categories.map(l => wrapLabel(l)),
+                datasets: [{
+                    data: checkData, // 使用审核后数据
+                    backgroundColor: [
+                        '#6366f1', // 靛蓝色
+                        '#14b8a6', // 青色
+                        '#f59e0b', // 琥珀色
+                        '#3b82f6', // 蓝色
+                        '#ef4444'  // 红色（尽管值为 0，不会显示）
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    tooltip: commonTooltipOptions,
+                    legend: { 
+                        position: 'bottom', 
+                        labels: { boxWidth: 12, padding: 15 } 
+                    }
+                }
+            }
+        });
+
+        // --- 图表 3：前 5 高成本项 (横向柱状图) ---
+        const ctxTopItems = document.getElementById('topItemsChart').getContext('2d');
+        new Chart(ctxTopItems, {
+            type: 'bar',
+            data: {
+                labels: topItemsLabels,
+                datasets: [{
+                    label: '审核后成本 (万元)',
+                    data: topItemsValues,
+                    backgroundColor: [
+                        '#6366f1', // 靛蓝色-500
+                        '#818cf8', // 靛蓝色-400
+                        '#a5b4fc', // 靛蓝色-300
+                        '#c7d2fe', // 靛蓝色-200
+                        '#e0e7ff'  // 靛蓝色-100
+                    ],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y', // 横向
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: commonTooltipOptions,
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: '#e2e8f0' }
+                    },
+                    y: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>
