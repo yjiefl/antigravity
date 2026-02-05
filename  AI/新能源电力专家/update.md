@@ -70,3 +70,10 @@
 - [x] 美化 `calculation_details.md`, `curtailment_judgment.md` 等文档格式。
 - [x] 删除根目录下已完成任务的临时脚本及 Excel 文件，保持仓库整洁。
 - [x] 同步最新数据至 GitHub 仓库。
+
+### 8. 2026-02-05 20:55: 建立可研项目数据库 ✅
+
+- [x] 提取 `learn.md` 中 15 个项目的 25 年可研利用小时与发电量数据。
+- [x] 建立 `database/feasibility_data.json` 标准化存储可研指标。
+- [x] `spec.md`: 新增可研数据模型说明，完善专家库架构。
+- [x] 清理任务临时脚本。

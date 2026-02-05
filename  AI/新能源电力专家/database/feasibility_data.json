@@ -1,0 +1,2018 @@
+[
+  {
+    "project_name": "江州区板崇光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1173.62,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1161.88,
+        "generation_mwh": 25899.78
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1147.51,
+        "generation_mwh": 25579.31
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1142.23,
+        "generation_mwh": 25461.58
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1136.94,
+        "generation_mwh": 25343.85
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1131.66,
+        "generation_mwh": 25226.13
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1126.38,
+        "generation_mwh": 25108.4
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1121.1,
+        "generation_mwh": 24990.68
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1115.82,
+        "generation_mwh": 24872.95
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1110.54,
+        "generation_mwh": 24755.22
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1105.26,
+        "generation_mwh": 24637.5
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1099.98,
+        "generation_mwh": 24519.77
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1094.69,
+        "generation_mwh": 24402.04
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1089.41,
+        "generation_mwh": 24284.32
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1084.13,
+        "generation_mwh": 24166.59
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1078.85,
+        "generation_mwh": 24048.87
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1073.57,
+        "generation_mwh": 23931.14
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1068.29,
+        "generation_mwh": 23813.41
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1063.01,
+        "generation_mwh": 23695.69
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1057.73,
+        "generation_mwh": 23577.96
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1052.44,
+        "generation_mwh": 23460.23
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1047.16,
+        "generation_mwh": 23342.51
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1041.88,
+        "generation_mwh": 23224.78
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1036.6,
+        "generation_mwh": 23107.05
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1031.32,
+        "generation_mwh": 22989.33
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1026.04,
+        "generation_mwh": 22871.6
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27244.41,
+        "generation_mwh": 607310.7
+      },
+      "25年平均": {
+        "utilization_hours": 1089.78,
+        "generation_mwh": 24292.43
+      }
+    }
+  },
+  {
+    "project_name": "江州区渠母光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1192.7,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1180.79,
+        "generation_mwh": 16574.15
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1165.88,
+        "generation_mwh": 16364.88
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1159.92,
+        "generation_mwh": 16281.18
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1153.95,
+        "generation_mwh": 16197.47
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1147.99,
+        "generation_mwh": 16113.76
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1142.03,
+        "generation_mwh": 16030.05
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1136.06,
+        "generation_mwh": 15946.35
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1130.1,
+        "generation_mwh": 15862.64
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1124.14,
+        "generation_mwh": 15778.93
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1118.17,
+        "generation_mwh": 15695.22
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1112.21,
+        "generation_mwh": 15611.51
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1106.25,
+        "generation_mwh": 15527.81
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1100.28,
+        "generation_mwh": 15444.1
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1094.32,
+        "generation_mwh": 15360.39
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1088.35,
+        "generation_mwh": 15276.68
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1082.39,
+        "generation_mwh": 15192.97
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1076.43,
+        "generation_mwh": 15109.27
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1070.46,
+        "generation_mwh": 15025.56
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1064.5,
+        "generation_mwh": 14941.85
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1058.54,
+        "generation_mwh": 14858.14
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1052.57,
+        "generation_mwh": 14774.44
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1046.61,
+        "generation_mwh": 14690.73
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1040.65,
+        "generation_mwh": 14607.02
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1034.68,
+        "generation_mwh": 14523.31
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1028.72,
+        "generation_mwh": 14439.6
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27516.0,
+        "generation_mwh": 386228.01
+      },
+      "25年平均": {
+        "utilization_hours": 1100.64,
+        "generation_mwh": 15449.12
+      }
+    }
+  },
+  {
+    "project_name": "宁明县寨安光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1201.43,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1189.42,
+        "generation_mwh": 8285.48
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1174.7,
+        "generation_mwh": 8182.95
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1169.29,
+        "generation_mwh": 8145.29
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1163.89,
+        "generation_mwh": 8107.63
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1158.48,
+        "generation_mwh": 8069.97
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1153.07,
+        "generation_mwh": 8032.31
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1147.67,
+        "generation_mwh": 7994.65
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1142.26,
+        "generation_mwh": 7956.99
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1136.85,
+        "generation_mwh": 7919.33
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1131.45,
+        "generation_mwh": 7881.66
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1126.04,
+        "generation_mwh": 7844.0
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1120.63,
+        "generation_mwh": 7806.34
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1115.23,
+        "generation_mwh": 7768.68
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1109.82,
+        "generation_mwh": 7731.02
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1104.42,
+        "generation_mwh": 7693.36
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1099.01,
+        "generation_mwh": 7655.7
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1093.6,
+        "generation_mwh": 7618.04
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1088.2,
+        "generation_mwh": 7580.37
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1082.79,
+        "generation_mwh": 7542.71
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1077.38,
+        "generation_mwh": 7505.05
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1071.98,
+        "generation_mwh": 7467.39
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1066.57,
+        "generation_mwh": 7429.73
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1061.16,
+        "generation_mwh": 7392.07
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1055.76,
+        "generation_mwh": 7354.41
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1050.35,
+        "generation_mwh": 7316.75
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27890.02,
+        "generation_mwh": 194281.87
+      },
+      "25年平均": {
+        "utilization_hours": 1115.6,
+        "generation_mwh": 7771.27
+      }
+    }
+  },
+  {
+    "project_name": "扶绥县南部光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1203.45,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1191.42,
+        "generation_mwh": 38201.02
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1176.68,
+        "generation_mwh": 37728.33
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1171.26,
+        "generation_mwh": 37554.69
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1165.85,
+        "generation_mwh": 37381.05
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1160.43,
+        "generation_mwh": 37207.41
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1155.01,
+        "generation_mwh": 37033.76
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1149.6,
+        "generation_mwh": 36860.12
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1144.18,
+        "generation_mwh": 36686.48
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1138.77,
+        "generation_mwh": 36512.84
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1133.35,
+        "generation_mwh": 36339.2
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1127.94,
+        "generation_mwh": 36165.56
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1122.52,
+        "generation_mwh": 35991.92
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1117.11,
+        "generation_mwh": 35818.28
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1111.69,
+        "generation_mwh": 35644.64
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1106.27,
+        "generation_mwh": 35471.0
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1100.86,
+        "generation_mwh": 35297.35
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1095.44,
+        "generation_mwh": 35123.71
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1090.03,
+        "generation_mwh": 34950.07
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1084.61,
+        "generation_mwh": 34776.43
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1079.2,
+        "generation_mwh": 34602.79
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1073.78,
+        "generation_mwh": 34429.15
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1068.37,
+        "generation_mwh": 34255.51
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1062.95,
+        "generation_mwh": 34081.87
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1057.53,
+        "generation_mwh": 33908.23
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1052.12,
+        "generation_mwh": 33734.59
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27936.96,
+        "generation_mwh": 895755.98
+      },
+      "25年平均": {
+        "utilization_hours": 1117.48,
+        "generation_mwh": 35830.24
+      }
+    }
+  },
+  {
+    "project_name": "扶绥县中原光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1207.9,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1195.82,
+        "generation_mwh": 16634.33
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1181.02,
+        "generation_mwh": 16428.51
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1175.59,
+        "generation_mwh": 16352.9
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1170.15,
+        "generation_mwh": 16277.28
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1164.72,
+        "generation_mwh": 16201.67
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1159.28,
+        "generation_mwh": 16126.06
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1153.85,
+        "generation_mwh": 16050.45
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1148.41,
+        "generation_mwh": 15974.84
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1142.97,
+        "generation_mwh": 15899.23
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1137.54,
+        "generation_mwh": 15823.62
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1132.1,
+        "generation_mwh": 15748.01
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1126.67,
+        "generation_mwh": 15672.4
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1121.23,
+        "generation_mwh": 15596.79
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1115.8,
+        "generation_mwh": 15521.18
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1110.36,
+        "generation_mwh": 15445.57
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1104.93,
+        "generation_mwh": 15369.96
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1099.49,
+        "generation_mwh": 15294.35
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1094.05,
+        "generation_mwh": 15218.74
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1088.62,
+        "generation_mwh": 15143.13
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1083.18,
+        "generation_mwh": 15067.51
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1077.75,
+        "generation_mwh": 14991.9
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1072.31,
+        "generation_mwh": 14916.29
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1066.88,
+        "generation_mwh": 14840.68
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1061.44,
+        "generation_mwh": 14765.07
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1056.01,
+        "generation_mwh": 14689.46
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 28040.17,
+        "generation_mwh": 390049.94
+      },
+      "25年平均": {
+        "utilization_hours": 1121.61,
+        "generation_mwh": 15602.0
+      }
+    }
+  },
+  {
+    "project_name": "江州区六留光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1212.63,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1200.5,
+        "generation_mwh": 10871.5
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1185.65,
+        "generation_mwh": 10736.98
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1180.19,
+        "generation_mwh": 10687.56
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1174.73,
+        "generation_mwh": 10638.15
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1169.28,
+        "generation_mwh": 10588.73
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1163.82,
+        "generation_mwh": 10539.31
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1158.36,
+        "generation_mwh": 10489.9
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1152.91,
+        "generation_mwh": 10440.48
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1147.45,
+        "generation_mwh": 10391.07
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1141.99,
+        "generation_mwh": 10341.65
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1136.54,
+        "generation_mwh": 10292.23
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1131.08,
+        "generation_mwh": 10242.82
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1125.62,
+        "generation_mwh": 10193.4
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1120.16,
+        "generation_mwh": 10143.99
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1114.71,
+        "generation_mwh": 10094.57
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1109.25,
+        "generation_mwh": 10045.16
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1103.79,
+        "generation_mwh": 9995.74
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1098.34,
+        "generation_mwh": 9946.32
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1092.88,
+        "generation_mwh": 9896.91
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1087.42,
+        "generation_mwh": 9847.49
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1081.97,
+        "generation_mwh": 9798.08
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1076.51,
+        "generation_mwh": 9748.66
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1071.05,
+        "generation_mwh": 9699.24
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1065.6,
+        "generation_mwh": 9649.83
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1060.14,
+        "generation_mwh": 9600.41
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 28149.93,
+        "generation_mwh": 254920.18
+      },
+      "25年平均": {
+        "utilization_hours": 1126.0,
+        "generation_mwh": 10196.81
+      }
+    }
+  },
+  {
+    "project_name": "宁明县板棍光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1196.78,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1184.81,
+        "generation_mwh": 23068.18
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1170.15,
+        "generation_mwh": 22782.74
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1164.76,
+        "generation_mwh": 22677.89
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1159.38,
+        "generation_mwh": 22573.03
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1153.99,
+        "generation_mwh": 22468.18
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1148.61,
+        "generation_mwh": 22363.32
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1143.22,
+        "generation_mwh": 22258.46
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1137.83,
+        "generation_mwh": 22153.61
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1132.45,
+        "generation_mwh": 22048.75
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1127.06,
+        "generation_mwh": 21943.9
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1121.68,
+        "generation_mwh": 21839.04
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1116.29,
+        "generation_mwh": 21734.19
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1110.91,
+        "generation_mwh": 21629.33
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1105.52,
+        "generation_mwh": 21524.48
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1100.14,
+        "generation_mwh": 21419.62
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1094.75,
+        "generation_mwh": 21314.77
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1089.37,
+        "generation_mwh": 21209.91
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1083.98,
+        "generation_mwh": 21105.06
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1078.59,
+        "generation_mwh": 21000.2
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1073.21,
+        "generation_mwh": 20895.34
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1067.82,
+        "generation_mwh": 20790.49
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1062.44,
+        "generation_mwh": 20685.63
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1057.05,
+        "generation_mwh": 20580.78
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1051.67,
+        "generation_mwh": 20475.92
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1046.28,
+        "generation_mwh": 20371.07
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27781.96,
+        "generation_mwh": 540913.89
+      },
+      "25年平均": {
+        "utilization_hours": 1111.28,
+        "generation_mwh": 21636.56
+      }
+    }
+  },
+  {
+    "project_name": "江州区江南光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1194.27,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1182.33,
+        "generation_mwh": 24121.85
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1167.7,
+        "generation_mwh": 23823.37
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1162.33,
+        "generation_mwh": 23713.72
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1156.95,
+        "generation_mwh": 23604.08
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1151.58,
+        "generation_mwh": 23494.43
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1146.21,
+        "generation_mwh": 23384.79
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1140.83,
+        "generation_mwh": 23275.14
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1135.46,
+        "generation_mwh": 23165.5
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1130.08,
+        "generation_mwh": 23055.85
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1124.71,
+        "generation_mwh": 22946.21
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1119.33,
+        "generation_mwh": 22836.57
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1113.96,
+        "generation_mwh": 22726.92
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1108.59,
+        "generation_mwh": 22617.28
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1103.21,
+        "generation_mwh": 22507.63
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1097.84,
+        "generation_mwh": 22397.99
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1092.46,
+        "generation_mwh": 22288.34
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1087.09,
+        "generation_mwh": 22178.7
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1081.71,
+        "generation_mwh": 22069.05
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1076.34,
+        "generation_mwh": 21959.41
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1070.97,
+        "generation_mwh": 21849.76
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1065.59,
+        "generation_mwh": 21740.12
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1060.22,
+        "generation_mwh": 21630.47
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1054.85,
+        "generation_mwh": 21520.83
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1049.47,
+        "generation_mwh": 21411.18
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1044.09,
+        "generation_mwh": 21301.54
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27723.9,
+        "generation_mwh": 565620.73
+      },
+      "25年平均": {
+        "utilization_hours": 1108.96,
+        "generation_mwh": 22624.83
+      }
+    }
+  },
+  {
+    "project_name": "驮堪乡牛舍光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1030.84,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1020.53,
+        "generation_mwh": 5678.42
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1007.65,
+        "generation_mwh": 5606.72
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1002.5,
+        "generation_mwh": 5578.04
+      },
+      {
+        "year": "4",
+        "utilization_hours": 997.34,
+        "generation_mwh": 5549.36
+      },
+      {
+        "year": "5",
+        "utilization_hours": 992.19,
+        "generation_mwh": 5520.69
+      },
+      {
+        "year": "6",
+        "utilization_hours": 987.03,
+        "generation_mwh": 5492.01
+      },
+      {
+        "year": "7",
+        "utilization_hours": 981.88,
+        "generation_mwh": 5463.33
+      },
+      {
+        "year": "8",
+        "utilization_hours": 976.72,
+        "generation_mwh": 5434.65
+      },
+      {
+        "year": "9",
+        "utilization_hours": 971.57,
+        "generation_mwh": 5405.97
+      },
+      {
+        "year": "10",
+        "utilization_hours": 966.42,
+        "generation_mwh": 5377.29
+      },
+      {
+        "year": "11",
+        "utilization_hours": 961.26,
+        "generation_mwh": 5348.61
+      },
+      {
+        "year": "12",
+        "utilization_hours": 956.11,
+        "generation_mwh": 5319.93
+      },
+      {
+        "year": "13",
+        "utilization_hours": 950.95,
+        "generation_mwh": 5291.25
+      },
+      {
+        "year": "14",
+        "utilization_hours": 945.8,
+        "generation_mwh": 5262.58
+      },
+      {
+        "year": "15",
+        "utilization_hours": 940.64,
+        "generation_mwh": 5233.9
+      },
+      {
+        "year": "16",
+        "utilization_hours": 935.49,
+        "generation_mwh": 5205.22
+      },
+      {
+        "year": "17",
+        "utilization_hours": 930.34,
+        "generation_mwh": 5176.54
+      },
+      {
+        "year": "18",
+        "utilization_hours": 925.18,
+        "generation_mwh": 5147.86
+      },
+      {
+        "year": "19",
+        "utilization_hours": 920.03,
+        "generation_mwh": 5119.18
+      },
+      {
+        "year": "20",
+        "utilization_hours": 914.87,
+        "generation_mwh": 5090.5
+      },
+      {
+        "year": "21",
+        "utilization_hours": 909.72,
+        "generation_mwh": 5061.82
+      },
+      {
+        "year": "22",
+        "utilization_hours": 904.57,
+        "generation_mwh": 5033.14
+      },
+      {
+        "year": "23",
+        "utilization_hours": 899.41,
+        "generation_mwh": 5004.47
+      },
+      {
+        "year": "24",
+        "utilization_hours": 894.26,
+        "generation_mwh": 4975.79
+      },
+      {
+        "year": "25",
+        "utilization_hours": 889.1,
+        "generation_mwh": 4947.11
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 23781.56,
+        "generation_mwh": 132324.38
+      },
+      "25年平均": {
+        "utilization_hours": 951.2624,
+        "generation_mwh": 5292.9752
+      }
+    }
+  },
+  {
+    "project_name": "宁明县那小光伏项目",
+    "annual_projections": [
+      {
+        "year": "无衰减",
+        "utilization_hours": 1208.77,
+        "generation_mwh": null
+      },
+      {
+        "year": "1",
+        "utilization_hours": 1196.68,
+        "generation_mwh": 10836.92
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1181.57,
+        "generation_mwh": 10700.09
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1175.53,
+        "generation_mwh": 10645.36
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1169.49,
+        "generation_mwh": 10590.63
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1163.44,
+        "generation_mwh": 10535.89
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1157.4,
+        "generation_mwh": 10481.16
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1151.35,
+        "generation_mwh": 10426.43
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1145.31,
+        "generation_mwh": 10371.7
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1139.27,
+        "generation_mwh": 10316.97
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1133.22,
+        "generation_mwh": 10262.23
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1127.18,
+        "generation_mwh": 10207.5
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1121.13,
+        "generation_mwh": 10152.77
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1115.09,
+        "generation_mwh": 10098.04
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1109.05,
+        "generation_mwh": 10043.31
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1103.0,
+        "generation_mwh": 9988.58
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1096.96,
+        "generation_mwh": 9933.84
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1090.92,
+        "generation_mwh": 9879.11
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1084.87,
+        "generation_mwh": 9824.38
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1078.83,
+        "generation_mwh": 9769.65
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1072.78,
+        "generation_mwh": 9714.92
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1066.74,
+        "generation_mwh": 9660.18
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1060.7,
+        "generation_mwh": 9605.45
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1054.65,
+        "generation_mwh": 9550.72
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1048.61,
+        "generation_mwh": 9495.99
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1042.56,
+        "generation_mwh": 9441.26
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27886.34,
+        "generation_mwh": 252533.08
+      },
+      "25年平均": {
+        "utilization_hours": 1115.45,
+        "generation_mwh": 10101.32
+      }
+    }
+  },
+  {
+    "project_name": "贵港覃塘北1区（一期）",
+    "annual_projections": [
+      {
+        "year": "1",
+        "utilization_hours": 1280.62,
+        "generation_mwh": 62623.91
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1264.77,
+        "generation_mwh": 61849.02
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1258.95,
+        "generation_mwh": 61564.37
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1253.13,
+        "generation_mwh": 61279.71
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1247.31,
+        "generation_mwh": 60995.06
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1241.49,
+        "generation_mwh": 60710.4
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1235.67,
+        "generation_mwh": 60425.75
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1229.85,
+        "generation_mwh": 60141.1
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1224.03,
+        "generation_mwh": 59856.44
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1218.2,
+        "generation_mwh": 59571.79
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1212.38,
+        "generation_mwh": 59287.13
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1206.56,
+        "generation_mwh": 59002.48
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1200.74,
+        "generation_mwh": 58717.83
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1194.92,
+        "generation_mwh": 58433.17
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1189.1,
+        "generation_mwh": 58148.52
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1183.28,
+        "generation_mwh": 57863.86
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1177.46,
+        "generation_mwh": 57579.21
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1171.64,
+        "generation_mwh": 57294.55
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1165.82,
+        "generation_mwh": 57009.9
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1159.99,
+        "generation_mwh": 56725.25
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1154.17,
+        "generation_mwh": 56440.59
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1148.35,
+        "generation_mwh": 56155.94
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1142.53,
+        "generation_mwh": 55871.28
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1136.71,
+        "generation_mwh": 55586.63
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1130.89,
+        "generation_mwh": 55301.98
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 30028.55,
+        "generation_mwh": 1468435.88
+      },
+      "25年平均": {
+        "utilization_hours": 1201.14,
+        "generation_mwh": 58737.44
+      }
+    }
+  },
+  {
+    "project_name": "贵港覃塘南区（一期）",
+    "annual_projections": [
+      {
+        "year": "1",
+        "utilization_hours": 1282.75,
+        "generation_mwh": 26806.96
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1266.88,
+        "generation_mwh": 26475.26
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1261.05,
+        "generation_mwh": 26353.41
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1255.22,
+        "generation_mwh": 26231.56
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1249.39,
+        "generation_mwh": 26109.71
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1243.56,
+        "generation_mwh": 25987.86
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1237.73,
+        "generation_mwh": 25866.01
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1231.9,
+        "generation_mwh": 25744.16
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1226.07,
+        "generation_mwh": 25622.31
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1220.23,
+        "generation_mwh": 25500.46
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1214.4,
+        "generation_mwh": 25378.61
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1208.57,
+        "generation_mwh": 25256.76
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1202.74,
+        "generation_mwh": 25134.91
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1196.91,
+        "generation_mwh": 25013.06
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1191.08,
+        "generation_mwh": 24891.21
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1185.25,
+        "generation_mwh": 24769.36
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1179.42,
+        "generation_mwh": 24647.51
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1173.59,
+        "generation_mwh": 24525.66
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1167.76,
+        "generation_mwh": 24403.81
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1161.93,
+        "generation_mwh": 24281.96
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1156.1,
+        "generation_mwh": 24160.11
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1150.27,
+        "generation_mwh": 24038.26
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1144.44,
+        "generation_mwh": 23916.41
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1138.6,
+        "generation_mwh": 23794.56
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1132.77,
+        "generation_mwh": 23672.71
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 30078.6,
+        "generation_mwh": 628582.57
+      },
+      "25年平均": {
+        "utilization_hours": 1203.14,
+        "generation_mwh": 25143.3
+      }
+    }
+  },
+  {
+    "project_name": "宁明县北江光伏项目",
+    "annual_projections": [
+      {
+        "year": "1",
+        "utilization_hours": 1189.0,
+        "generation_mwh": 149822.6
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1174.3,
+        "generation_mwh": 147968.7
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1168.9,
+        "generation_mwh": 147287.7
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1163.5,
+        "generation_mwh": 146606.7
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1158.1,
+        "generation_mwh": 145925.7
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1152.7,
+        "generation_mwh": 145244.6
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1147.3,
+        "generation_mwh": 144563.6
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1141.9,
+        "generation_mwh": 143882.6
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1136.5,
+        "generation_mwh": 143201.6
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1131.1,
+        "generation_mwh": 142520.6
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1125.6,
+        "generation_mwh": 141839.6
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1120.2,
+        "generation_mwh": 141158.6
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1114.8,
+        "generation_mwh": 140477.6
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1109.4,
+        "generation_mwh": 139796.6
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1104.0,
+        "generation_mwh": 139115.5
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1098.6,
+        "generation_mwh": 138434.5
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1093.2,
+        "generation_mwh": 137733.5
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1082.4,
+        "generation_mwh": 136391.5
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1077.0,
+        "generation_mwh": 135710.5
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1071.6,
+        "generation_mwh": 135029.5
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1066.2,
+        "generation_mwh": 134348.5
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1060.8,
+        "generation_mwh": 133667.5
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1055.4,
+        "generation_mwh": 132986.4
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1050.0,
+        "generation_mwh": 132305.4
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27880.3,
+        "generation_mwh": 3513092.1
+      },
+      "25年平均": {
+        "utilization_hours": 1115.26,
+        "generation_mwh": 140522.5
+      }
+    }
+  },
+  {
+    "project_name": "宁明县北江光伏停运项",
+    "annual_projections": [
+      {
+        "year": "18",
+        "utilization_hours": 1087.8,
+        "generation_mwh": 137072.5
+      }
+    ],
+    "summaries": {}
+  },
+  {
+    "project_name": "宁明县峙书光伏项目",
+    "annual_projections": [
+      {
+        "year": "1",
+        "utilization_hours": 1181.2,
+        "generation_mwh": 167029.5
+      },
+      {
+        "year": "2",
+        "utilization_hours": 1175.8,
+        "generation_mwh": 166262.5
+      },
+      {
+        "year": "3",
+        "utilization_hours": 1170.4,
+        "generation_mwh": 165495.5
+      },
+      {
+        "year": "4",
+        "utilization_hours": 1164.9,
+        "generation_mwh": 164728.6
+      },
+      {
+        "year": "5",
+        "utilization_hours": 1159.5,
+        "generation_mwh": 163961.6
+      },
+      {
+        "year": "6",
+        "utilization_hours": 1154.1,
+        "generation_mwh": 163194.6
+      },
+      {
+        "year": "7",
+        "utilization_hours": 1148.7,
+        "generation_mwh": 162427.6
+      },
+      {
+        "year": "8",
+        "utilization_hours": 1143.2,
+        "generation_mwh": 161660.7
+      },
+      {
+        "year": "9",
+        "utilization_hours": 1137.8,
+        "generation_mwh": 160893.7
+      },
+      {
+        "year": "10",
+        "utilization_hours": 1132.4,
+        "generation_mwh": 160126.7
+      },
+      {
+        "year": "11",
+        "utilization_hours": 1127.0,
+        "generation_mwh": 159359.8
+      },
+      {
+        "year": "12",
+        "utilization_hours": 1121.6,
+        "generation_mwh": 158592.8
+      },
+      {
+        "year": "13",
+        "utilization_hours": 1116.1,
+        "generation_mwh": 157825.8
+      },
+      {
+        "year": "14",
+        "utilization_hours": 1110.7,
+        "generation_mwh": 157058.8
+      },
+      {
+        "year": "15",
+        "utilization_hours": 1105.3,
+        "generation_mwh": 156291.9
+      },
+      {
+        "year": "16",
+        "utilization_hours": 1099.9,
+        "generation_mwh": 155524.9
+      },
+      {
+        "year": "17",
+        "utilization_hours": 1094.4,
+        "generation_mwh": 154757.9
+      },
+      {
+        "year": "18",
+        "utilization_hours": 1089.0,
+        "generation_mwh": 153991.0
+      },
+      {
+        "year": "19",
+        "utilization_hours": 1083.6,
+        "generation_mwh": 153224.0
+      },
+      {
+        "year": "20",
+        "utilization_hours": 1078.2,
+        "generation_mwh": 152457.0
+      },
+      {
+        "year": "21",
+        "utilization_hours": 1072.7,
+        "generation_mwh": 151690.0
+      },
+      {
+        "year": "22",
+        "utilization_hours": 1067.3,
+        "generation_mwh": 150923.1
+      },
+      {
+        "year": "23",
+        "utilization_hours": 1061.9,
+        "generation_mwh": 150156.1
+      },
+      {
+        "year": "24",
+        "utilization_hours": 1056.5,
+        "generation_mwh": 149389.1
+      },
+      {
+        "year": "25",
+        "utilization_hours": 1051.0,
+        "generation_mwh": 148622.1
+      }
+    ],
+    "summaries": {
+      "25年总量": {
+        "utilization_hours": 27903.2,
+        "generation_mwh": 3945645.3
+      },
+      "25年平均": {
+        "utilization_hours": 1116.1,
+        "generation_mwh": 157825.8
+      }
+    }
+  }
+]

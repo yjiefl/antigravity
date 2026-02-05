@@ -21,6 +21,7 @@
   | 区域 | 行政区域划分 |
 
 - **历史数据 (`database/historical_data.json`)**: 存储标准化后的运行指标。
+- **可研数据 (`database/feasibility_data.json`)**: 存储项目各年份的可研利用小时与发电量预测。
 - **经验库 (`database/knowledge_base.json`)**: 存储从案例中提取的审核规则与教训。
 
 ## 3. 关键流程 (Key Workflow)
