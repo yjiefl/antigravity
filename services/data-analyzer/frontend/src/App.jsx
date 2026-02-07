@@ -20,13 +20,19 @@ function App() {
 
 			// 如果是 series，需要将字符串日期恢复为 Date 对象
 			if (key === 'series' && Array.isArray(parsed)) {
-				return parsed.map(s => ({
-					...s,
-					data: s.data.map(d => ({
-						...d,
-						time: new Date(d.time)
-					}))
-				}));
+				return parsed.map(s => {
+					if (!s || !Array.isArray(s.data)) return null;
+					return { ...s, data: s.data.map(d => ({ ...d, time: new Date(d.time) })) };
+				}).filter(Boolean);
+			}
+
+			// 特殊处理 rangeConfig，确保嵌套对象存在
+			if (key === 'rangeConfig' && parsed) {
+				return {
+					hour: parsed.hour || { start: 0, end: 23 },
+					day: parsed.day || { start: 1, end: 31 },
+					month: parsed.month || { start: 1, end: 12 }
+				};
 			}
 			return parsed;
 		} catch { return defaultVal; }
@@ -58,8 +64,20 @@ function App() {
 	const [historySearchTerm, setHistorySearchTerm] = useState(''); // 新增：存单搜索
 	const [customMetricColors, setCustomMetricColors] = useState(() => getInitialState('customMetricColors', {}));
 	const [useDefaultLimits, setUseDefaultLimits] = useState(() => getInitialState('useDefaultLimits', true));
-	const [systemVersion] = useState('v1.4.0');
+
+	// 限电分析设置
+	const [showCurtailmentAnalysis, setShowCurtailmentAnalysis] = useState(() => getInitialState('showCurtailmentAnalysis', false));
+	const [curtailmentIrrThreshold, setCurtailmentIrrThreshold] = useState(() => getInitialState('curtailmentIrrThreshold', 20));
+	const [curtailmentDiffThreshold, setCurtailmentDiffThreshold] = useState(() => getInitialState('curtailmentDiffThreshold', 3));
+	const [curtailmentColor, setCurtailmentColor] = useState(() => getInitialState('curtailmentColor', '#ff4646'));
+	const [curtailmentOpacity, setCurtailmentOpacity] = useState(() => getInitialState('curtailmentOpacity', 0.3));
+	const [isShowAllGroups, setIsShowAllGroups] = useState(() => getInitialState('isShowAllGroups', false));
+
+	const [systemVersion] = useState('v1.5.0');
 	const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+	const [availableStations, setAvailableStations] = useState([]);
+	const [isStationModalOpen, setIsStationModalOpen] = useState(false);
+	const [stationSearchTerm, setStationSearchTerm] = useState('');
 
 	// 新增 UI 状态
 	const [theme, setTheme] = useState(() => getInitialState('theme', 'dark'));
@@ -67,6 +85,8 @@ function App() {
 	const [isCompareOverlap, setIsCompareOverlap] = useState(() => getInitialState('isCompareOverlap', false)); // 多日期重叠对比
 	const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 	const [isSidebarWide, setIsSidebarWide] = useState(false);
+	const [isStationManagerOpen, setIsStationManagerOpen] = useState(false);
+	const [stationBatchInput, setStationBatchInput] = useState('');
 	const [granularity, setGranularity] = useState(() => getInitialState('granularity', 'hour')); // hour | day | month
 	const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 	const [accessLogs, setAccessLogs] = useState([]);
@@ -84,12 +104,27 @@ function App() {
 	const [editingDataText, setEditingDataText] = useState('');
 
 	const activeSeries = series.filter(s => {
-		const dateMatch = selectedDates.includes(s.date);
-		const dimMatch = activeDimension ? selectedDimensionValues.includes(s.dimensions[activeDimension]) : true;
+		if (!s) return false;
+		const dateMatch = (selectedDates || []).includes(s.date);
+		if (isShowAllGroups) return dateMatch;
+		const dimMatch = activeDimension ? (s.dimensions && selectedDimensionValues.includes(s.dimensions[activeDimension])) : true;
 		return dateMatch && dimMatch;
+	}).map(s => {
+		// 在显示所有分组模式下，动态构造唯一名称以便于 legend 区分
+		if (isShowAllGroups && s.dimensions) {
+			const dimVals = Object.values(s.dimensions).filter(Boolean).join('/');
+			if (dimVals) {
+				return { ...s, displayName: `${s.metricName || s.name.split(' (')[0]} (${dimVals})` };
+			}
+		}
+		return { ...s, displayName: s.metricName || s.name.split(' (')[0] };
 	});
 
-	const uniqueMetrics = [...new Set(activeSeries.map(s => s.metricName || s.name.split(' (')[0]))];
+	const uniqueMetrics = [...new Set(activeSeries.map(s => {
+		if (!s) return null;
+		const name = s.metricName || s.name || '';
+		return name.split(' (')[0];
+	}).filter(Boolean))];
 
 	// 1. 生命周期管理：初始化与销毁
 	useEffect(() => {
@@ -103,7 +138,8 @@ function App() {
 				// 鼠标移动监听：用于切换左侧纵坐标
 				chartInstance.current.on('mouseover', (params) => {
 					if (params.seriesName) {
-						const metric = params.seriesName.split(' (')[0];
+						const sFound = activeSeries.find(s => s.displayName === params.seriesName);
+						const metric = sFound ? (sFound.metricName || sFound.name.split(' (')[0]) : params.seriesName;
 						setHoveredMetric(metric);
 					}
 				});
@@ -115,7 +151,8 @@ function App() {
 				// 点击圆点切换纵坐标（满足用户 64 行建议）
 				chartInstance.current.on('click', (params) => {
 					if (params.seriesName) {
-						const metric = params.seriesName.split(' (')[0];
+						const sFound = activeSeries.find(s => s.displayName === params.seriesName);
+						const metric = sFound ? (sFound.metricName || sFound.name.split(' (')[0]) : params.seriesName;
 						setHoveredMetric(metric);
 					}
 				});
@@ -167,6 +204,13 @@ function App() {
 		}
 	};
 
+	useEffect(() => {
+		fetch('/api/stations')
+			.then(res => res.json())
+			.then(data => setAvailableStations(data))
+			.catch(err => console.error('Failed to fetch stations:', err));
+	}, []);
+
 	/**
 	 * 模拟检测后端
 	 */
@@ -191,19 +235,21 @@ function App() {
 
 		const isLight = theme === 'light';
 
-		const legendItems = [...new Set(activeSeries.map(s => {
-			const nameWithoutDate = s.name.split(' (')[0];
-			return nameWithoutDate;
-		}))];
+		const legendItems = [...new Set(activeSeries.map(s => s.displayName))];
 
 		const yAxisConfig = uniqueMetrics.map((metric, index) => {
 			const customRange = axisRanges[metric] || {};
-			const firstVisibleMetric = uniqueMetrics.find(m => legendSelected[m] !== false) || uniqueMetrics[0];
-			const isActive = (hoveredMetric && legendSelected[hoveredMetric] !== false)
+			// 修正：检查该指标下的所有 displayName 是否有任意一个在图例中是可见的
+			const isMetricVisible = (m) => {
+				const sameMetricDisplayNames = activeSeries.filter(s => (s.metricName || s.name.split(' (')[0]) === m).map(s => s.displayName);
+				return sameMetricDisplayNames.some(dn => legendSelected[dn] !== false);
+			};
+			const firstVisibleMetric = uniqueMetrics.find(m => isMetricVisible(m)) || uniqueMetrics[0];
+			const isActive = (hoveredMetric && isMetricVisible(hoveredMetric))
 				? (metric === hoveredMetric)
 				: (metric === firstVisibleMetric);
 
-			const isIrradiance = metric.includes('辐照度') || metric.toLowerCase().includes('irradiance');
+			const isIrradiance = metric.includes('辐照度') || metric.includes('短波') || metric.includes('辐射') || metric.toLowerCase().includes('irradiance') || metric.toLowerCase().includes('radiation');
 			const factor = parseFloat(axisAdjustmentFactor) || 1.0;
 
 			let finalMin = customRange.min !== '' && customRange.min !== undefined ? parseFloat(customRange.min) : null;
@@ -299,6 +345,110 @@ function App() {
 				return [date, info.sum / info.count];
 			}).sort((a, b) => a[0] - b[0]);
 		};
+
+
+		// 自动识别当前的“场站/分组”维度
+		const groupDim = activeDimension || (() => {
+			const possibleKeys = ['场站', '电站', '名称', '调度名称', 'item', 'station', '项目'];
+			const sample = series.find(s => s && s.dimensions);
+			return sample ? possibleKeys.find(k => sample.dimensions[k]) : null;
+		})();
+
+		// 3. 计算限电分析区间
+		let curtailmentRanges = {}; // 按 groupKey 分组存放
+		if (showCurtailmentAnalysis) {
+			const relevantSeries = series.filter(s => s && (selectedDates || []).includes(s.date));
+			
+			const dimensionGroups = {};
+			relevantSeries.forEach(s => {
+				if (!s) return;
+				const dimVal = (groupDim && s.dimensions) ? s.dimensions[groupDim] : 'default';
+				const groupKey = `${s.date}_${dimVal}`;
+				if (!dimensionGroups[groupKey]) dimensionGroups[groupKey] = [];
+				dimensionGroups[groupKey].push(s);
+			});
+
+			Object.entries(dimensionGroups).forEach(([groupKey, groupSeries]) => {
+				const irrad = groupSeries.find(s => {
+					const m = (s.metricName || s.name).toLowerCase();
+					return m.includes('辐照度') || m.includes('短波') || m.includes('irradiance') || m.includes('radiation');
+				});
+				const agc = groupSeries.find(s => {
+					const m = (s.metricName || s.name).toLowerCase();
+					return m.includes('agc') || m.includes('指令');
+				});
+				const power = groupSeries.find(s => {
+					const m = (s.metricName || s.name).toLowerCase();
+					// 修正：power 优先匹配实际功率，但也应匹配包含 power 的项（排除可用和预测）
+					return (m.includes('实际功率') || m.includes('功率') || m.includes('power') || m.includes('load') || m.includes('output')) && !m.includes('agc') && !m.includes('可用') && !m.includes('预测');
+				});
+
+				if (irrad && agc && power) {
+					if (!curtailmentRanges[groupKey]) curtailmentRanges[groupKey] = [];
+					const timeMap = {};
+					const addToMap = (s, type) => {
+						s.data.forEach(d => {
+							const t = new Date(d.time).getTime();
+							if (!timeMap[t]) timeMap[t] = {};
+							timeMap[t][type] = d.value;
+						});
+					};
+					addToMap(irrad, 'irrad');
+					addToMap(agc, 'agc');
+					addToMap(power, 'power');
+
+					const times = Object.keys(timeMap).map(Number).sort((a, b) => a - b);
+					let startRange = null;
+
+					const pushRange = (start, end) => {
+						let s = start, e = end;
+						if (isCompareOverlap) {
+							const mapTime = (ts) => {
+								const dTime = new Date(ts);
+								const baseDate = new Date(2000, 0, 1);
+								if (granularity === 'hour') baseDate.setHours(dTime.getHours(), dTime.getMinutes(), dTime.getSeconds());
+								else if (granularity === 'day') baseDate.setDate(dTime.getDate());
+								else if (granularity === 'month') baseDate.setMonth(dTime.getMonth());
+								return baseDate.getTime();
+							};
+							s = mapTime(start); e = mapTime(end);
+						}
+						curtailmentRanges[groupKey].push([
+							{ xAxis: new Date(s) },
+							{ xAxis: new Date(e), itemStyle: { color: hexToRgba(curtailmentColor, curtailmentOpacity) } }
+						]);
+					};
+
+					times.forEach((t) => {
+						const v = timeMap[t];
+						if (v.irrad !== undefined && v.agc !== undefined && v.power !== undefined) {
+							const diff = Math.abs(v.agc - v.power);
+							const isCurtailment = (v.irrad > curtailmentIrrThreshold) && (v.agc < v.power || diff < curtailmentDiffThreshold);
+							if (isCurtailment) { if (startRange === null) startRange = t; }
+							else { if (startRange !== null) { pushRange(startRange, t); startRange = null; } }
+						} else if (startRange !== null) { pushRange(startRange, t); startRange = null; }
+					});
+					if (startRange !== null) pushRange(startRange, times[times.length - 1]);
+				}
+			});
+		}
+
+		function hexToRgba(hex, opacity) {
+			let r = 255, g = 70, b = 70;
+			if (hex && typeof hex === 'string' && hex.startsWith('#')) {
+				const h = hex.replace('#', '');
+				if (h.length === 3) {
+					r = parseInt(h[0] + h[0], 16);
+					g = parseInt(h[1] + h[1], 16);
+					b = parseInt(h[2] + h[2], 16);
+				} else if (h.length === 6) {
+					r = parseInt(h.substring(0, 2), 16);
+					g = parseInt(h.substring(2, 4), 16);
+					b = parseInt(h.substring(4, 6), 16);
+				}
+			}
+			return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+		}
 
 		const option = {
 			backgroundColor: 'transparent',
@@ -414,11 +564,10 @@ function App() {
 				splitLine: { show: false }
 			},
 			yAxis: yAxisConfig,
-			series: activeSeries.map((s) => {
-				const nameWithoutDate = s.name.split(' (')[0];
-				const metricKey = s.metricName || nameWithoutDate;
+			series: activeSeries.map((s, index) => {
+				const metricKey = s.metricName || s.name.split(' (')[0];
 				const axisIndex = uniqueMetrics.indexOf(metricKey);
-				const color = customMetricColors[metricKey] || getUserColor(axisIndex);
+				const color = customMetricColors[metricKey] || getUserColor(axisIndex, metricKey);
 				const type = chartTypes[metricKey] || 'line';
 				const sameMetricSeries = activeSeries.filter(as => (as.metricName || as.name.split(' (')[0]) === metricKey);
 				const metricIdx = sameMetricSeries.findIndex(as => as.id === s.id);
@@ -442,7 +591,7 @@ function App() {
 				}
 
 				return {
-					name: nameWithoutDate,
+					name: s.displayName,
 					type: type,
 					yAxisIndex: axisIndex,
 					smooth: type === 'line',
@@ -451,6 +600,14 @@ function App() {
 					symbol: 'circle',
 					symbolSize: 8,
 					data: plotData,
+					markArea: (() => {
+						const dimVal = (groupDim && s.dimensions) ? s.dimensions[groupDim] : 'default';
+						const groupKey = `${s.date}_${dimVal}`;
+						const ranges = curtailmentRanges[groupKey] || [];
+						// 只有在是“实际功率”相关的指标上才显示 markArea，避免每个系列都画背景导致颜色过深
+						const isMainPower = (s.displayName.includes('实际功率') || s.displayName.includes('功率') || s.displayName.includes('Power')) && !s.displayName.includes('可用');
+						return (isMainPower && ranges.length > 0) ? { silent: true, data: ranges } : undefined;
+					})(),
 					lineStyle: {
 						width: 2.5,
 						type: isDashed ? 'dashed' : 'solid'
@@ -486,14 +643,14 @@ function App() {
 		const stateToSave = {
 			series, selectedDates, axisRanges, chartTypes,
 			activeDimension, selectedDimensionValues, theme, showIntegral,
-			historyRecords, isFocusMode, isCompareOverlap, granularity, legendSelected, rangeConfig, axisAdjustmentFactor
+			historyRecords, isFocusMode, isCompareOverlap, granularity, legendSelected, rangeConfig, axisAdjustmentFactor,
+			useDefaultLimits, showCurtailmentAnalysis, curtailmentIrrThreshold, curtailmentDiffThreshold, curtailmentColor, curtailmentOpacity, isShowAllGroups
 		};
 		Object.entries(stateToSave).forEach(([key, val]) => {
 			localStorage.setItem(`da_${key}`, JSON.stringify(val));
 		});
-		localStorage.setItem('da_useDefaultLimits', JSON.stringify(useDefaultLimits));
 		updateChart();
-	}, [series, selectedDates, axisRanges, hoveredMetric, activeDimension, selectedDimensionValues, theme, chartTypes, legendSelected, showIntegral, historyRecords, isFocusMode, isCompareOverlap, granularity, rangeConfig, axisAdjustmentFactor, customMetricColors, useDefaultLimits]);
+	}, [series, selectedDates, axisRanges, hoveredMetric, activeDimension, selectedDimensionValues, theme, chartTypes, legendSelected, showIntegral, historyRecords, isFocusMode, isCompareOverlap, granularity, rangeConfig, axisAdjustmentFactor, customMetricColors, useDefaultLimits, showCurtailmentAnalysis, curtailmentIrrThreshold, curtailmentDiffThreshold, curtailmentColor, curtailmentOpacity, isShowAllGroups]);
 
 	// 3. 自动同步可用日期列表
 	useEffect(() => {
@@ -668,8 +825,10 @@ function App() {
 
 	const exportData = () => {
 		const activeSeries = series.filter(s => {
-			const dateMatch = selectedDates.includes(s.date);
-			const dimMatch = activeDimension ? selectedDimensionValues.includes(s.dimensions[activeDimension]) : true;
+			if (!s) return false;
+			const dateMatch = (selectedDates || []).includes(s.date);
+			if (isShowAllGroups) return dateMatch;
+			const dimMatch = activeDimension ? (s.dimensions && selectedDimensionValues.includes(s.dimensions[activeDimension])) : true;
 			return dateMatch && dimMatch;
 		});
 
@@ -680,7 +839,8 @@ function App() {
 		const metricNames = new Set();
 		activeSeries.forEach(s => {
 			Object.keys(s.dimensions).forEach(k => dimensionKeys.add(k));
-			metricNames.add(s.metricName);
+			const mName = s.metricName || s.name.split(' (')[0];
+			metricNames.add(mName);
 		});
 
 		const dimKeyList = Array.from(dimensionKeys).sort();
@@ -690,6 +850,7 @@ function App() {
 		const dataRows = {}; // key: date|time|dimValues
 
 		activeSeries.forEach(s => {
+			const mName = s.metricName || s.name.split(' (')[0];
 			s.data.forEach(d => {
 				const dateStr = s.date;
 				const timeStr = format(d.time, 'HH:mm:ss');
@@ -701,15 +862,28 @@ function App() {
 						date: dateStr,
 						time: timeStr,
 						dims: { ...s.dimensions },
-						metrics: {}
+						metrics: {},
+						isCurtailment: 0
 					};
 				}
-				dataRows[rowKey].metrics[s.metricName] = d.value;
+				dataRows[rowKey].metrics[mName] = d.value;
+
+				// 实时判断限电状态 (基于当前点所属的分组计算)
+				const dimVal = (activeDimension && s.dimensions) ? s.dimensions[activeDimension] : (Object.values(s.dimensions)[0] || 'default');
+				const groupKey = `${s.date}_${dimVal}`;
+				const ranges = curtailmentRanges[groupKey] || [];
+				const t = d.time.getTime();
+				const isInside = ranges.some(r => {
+					const start = r[0].xAxis.getTime();
+					const end = r[1].xAxis.getTime();
+					return t >= start && t <= end;
+				});
+				if (isInside) dataRows[rowKey].isCurtailment = 1;
 			});
 		});
 
 		// 3. 构建 CSV 内容
-		const headers = ['日期', '时间', ...dimKeyList, ...metricNameList];
+		const headers = ['日期', '时间', ...dimKeyList, ...metricNameList, '是否限电'];
 		const rows = [headers];
 
 		// 按日期和时间排序
@@ -721,7 +895,8 @@ function App() {
 				rowData.date,
 				rowData.time,
 				...dimKeyList.map(k => rowData.dims[k] || ''),
-				...metricNameList.map(m => rowData.metrics[m] !== undefined ? rowData.metrics[m] : '')
+				...metricNameList.map(m => rowData.metrics[m] !== undefined ? rowData.metrics[m] : ''),
+				rowData.isCurtailment
 			];
 			rows.push(row);
 		});
@@ -795,7 +970,10 @@ function App() {
 	/**
 	 * 获取历史辐照度数据
 	 */
-	const fetchIrradiance = async () => {
+	/**
+	 * 打开辐照度获取配置窗口
+	 */
+	const fetchIrradiance = () => {
 		if (selectedDates.length === 0) {
 			alert('请先选择日期 (Date Picker)');
 			return;
@@ -823,7 +1001,66 @@ function App() {
 			}
 		}
 
-		const inputName = prompt('请确认或输入场站名称 (对应调度名称) 以匹配坐标获取历史辐照度:', stationName);
+		setStationSearchTerm(stationName);
+		setIsStationModalOpen(true);
+	};
+
+	const fetchStations = async () => {
+		try {
+			const res = await fetch('/api/stations');
+			if (res.ok) setAvailableStations(await res.json());
+		} catch (e) { console.error('获取场站列表失败', e); }
+	};
+
+	useEffect(() => { fetchStations(); }, []);
+
+	const importStations = async () => {
+		if (!stationBatchInput.trim()) return;
+		const rows = stationBatchInput.split('\n').map(r => r.trim()).filter(Boolean);
+		const newStations = [];
+		rows.forEach((row, i) => {
+			if (i === 0 && row.includes('场站')) return; // 跳过表头
+			const parts = row.split(/[,，\t]/);
+			if (parts.length >= 5) {
+				newStations.push({
+					name: parts[0],
+					azimuth: parts[1],
+					angle: parts[2],
+					lon: parseFloat(parts[3]),
+					lat: parseFloat(parts[4]),
+					region: parts[5] || ''
+				});
+			}
+		});
+
+		if (newStations.length === 0) {
+			alert('无效的格式。格式要求：\n场站,方位角,角度,经度,纬度');
+			return;
+		}
+
+		try {
+			const res = await fetch('/api/stations', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(newStations)
+			});
+			if (res.ok) {
+				fetchStations();
+				setStationBatchInput('');
+				alert(`成功导入 ${newStations.length} 个场站`);
+			}
+		} catch (e) { console.error('导入场站失败', e); }
+	};
+
+	const deleteStation = async (name) => {
+		if (!confirm(`确定删除场站 ${name} 吗？`)) return;
+		try {
+			const res = await fetch(`/api/stations/${encodeURIComponent(name)}`, { method: 'DELETE' });
+			if (res.ok) fetchStations();
+		} catch (e) { console.error('删除场站失败', e); }
+	};
+
+	const executeFetchIrradiance = async (inputName) => {
 		if (!inputName) return;
 
 		setIsFetchingWeather(true);
@@ -849,7 +1086,7 @@ function App() {
 						time: new Date(d.time),
 						value: d.value
 					})),
-					dimensions: { '来源': '气象API', '区域': result.region, '匹配关键字': inputName },
+					dimensions: { '来源': '气象API', '区域': result.region, '匹配关键字': inputName, '方位角': result.azimuth || '--', '倾角': result.angle || '--' },
 					unit: 'W/m²'
 				};
 
@@ -982,6 +1219,16 @@ function App() {
 		setSelectedDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
 	};
 
+	const selectAllDimensionValues = () => {
+		if (!activeDimension) return;
+		const allVals = [...new Set(series.filter(s => s && (selectedDates || []).includes(s.date)).map(s => (s.dimensions && activeDimension) ? s.dimensions[activeDimension] : null))].filter(Boolean);
+		setSelectedDimensionValues(allVals);
+	};
+
+	const clearAllDimensionValues = () => {
+		setSelectedDimensionValues([]);
+	};
+
 	return (
 		<div
 			className={`app-container ${isDragging ? 'dragging' : ''} ${theme === 'light' ? 'light-theme' : ''}`}
@@ -1005,7 +1252,7 @@ function App() {
 						<Layout size={20} />
 					</button>
 					<img src="/logo.png" alt="Logo" className="logo-img" />
-					<span><strong>数据曲线分析系统</strong></span>
+					<span><strong>新能源发电分析系统</strong></span>
 					<div className={`backend-status-badge ${backendStatus}`}>
 						<span className="status-dot"></span>
 						{backendStatus === 'online' ? '后端: 在线' : '后端: 离线'}
@@ -1118,28 +1365,57 @@ function App() {
 							{selectedDates.length > 0 && (
 								<div className="dimension-selector-outer section-item">
 									<div className="filter-group">
-										<p className="label">分组维度切换</p>
-										<select value={activeDimension} onChange={(e) => setActiveDimension(e.target.value)} className="styled-select-dim">
-											<option value="">-- 不分拆 --</option>
-											{[...new Set(series.filter(s => selectedDates.includes(s.date)).flatMap(s => Object.keys(s.dimensions)))].map(d => <option key={d} value={d}>{d}</option>)}
-										</select>
-									</div>
-									{activeDimension && (
-										<div className="filter-group" style={{ marginTop: '10px' }}>
-											<p className="label">{activeDimension} 值选择</p>
-											<div className="dimension-tags">
-												{[...new Set(series.filter(s => selectedDates.includes(s.date)).map(s => s.dimensions[activeDimension]).filter(v => v !== undefined))].map(v => (
-													<button
-														key={v}
-														className={`dim-tag ${selectedDimensionValues.includes(v) ? 'active' : ''}`}
-														onClick={() => setSelectedDimensionValues(prev => prev.includes(v) ? prev.filter(i => i !== v) : [...prev, v])}
-													>
-														{v}
-													</button>
-												))}
-											</div>
+										<div className="section-title-row">
+											<p className="label">分组维度切换</p>
+											<label className="show-all-toggle" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', cursor: 'pointer', opacity: 0.8 }}>
+												<input type="checkbox" checked={isShowAllGroups} onChange={(e) => setIsShowAllGroups(e.target.checked)} style={{ width: '12px', height: '12px' }} />
+												<span>显示所有分组</span>
+											</label>
 										</div>
-									)}
+										{!isShowAllGroups && (
+											<>
+												<select 
+													value={activeDimension} 
+													onChange={(e) => {
+														setActiveDimension(e.target.value);
+														setSelectedDimensionValues([]);
+													}} 
+													className="styled-select" 
+													style={{ marginBottom: '10px' }}
+												>
+													<option value="">-- 不分拆 --</option>
+													{[...new Set(series.filter(s => s && (selectedDates || []).includes(s.date)).flatMap(s => s.dimensions ? Object.keys(s.dimensions) : []))].map(d => <option key={d} value={d}>{d}</option>)}
+												</select>
+
+												{activeDimension && (
+													<div className="dimension-selector">
+														<div className="section-title-row">
+															<p className="label" style={{ marginBottom: 0 }}>选择 {activeDimension}</p>
+															<div className="mini-actions" style={{ display: 'flex', gap: '8px' }}>
+																<button style={{ fontSize: '11px', padding: '2px 5px', border: '1px solid var(--border-color)', borderRadius: '4px' }} onClick={selectAllDimensionValues}>全选</button>
+																<button style={{ fontSize: '11px', padding: '2px 5px', border: '1px solid var(--border-color)', borderRadius: '4px' }} onClick={clearAllDimensionValues}>全消</button>
+															</div>
+														</div>
+														<div className="tag-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '8px' }}>
+															{[...new Set(series.filter(s => s && (selectedDates || []).includes(s.date)).map(s => (s.dimensions && activeDimension) ? s.dimensions[activeDimension] : null))].filter(Boolean).map(val => (
+																<button
+																	key={val}
+																	className={`dim-tag ${selectedDimensionValues.includes(val) ? 'active' : ''}`}
+																	onClick={() => {
+																		setSelectedDimensionValues(prev =>
+																			prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+																		);
+																	}}
+																>
+																	{val}
+																</button>
+															))}
+														</div>
+													</div>
+												)}
+											</>
+										)}
+									</div>
 								</div>
 							)}
 
@@ -1163,7 +1439,7 @@ function App() {
 										<p className="label">范围微调 ({granularity === 'hour' ? '时' : granularity === 'day' ? '日' : '月'})</p>
 										<div className="tune-inputs">
 											<select
-												value={rangeConfig[granularity].start}
+												value={rangeConfig[granularity]?.start || 0}
 												onChange={(e) => setRangeConfig(prev => ({ ...prev, [granularity]: { ...prev[granularity], start: parseInt(e.target.value) } }))}
 											>
 												{Array.from({ length: granularity === 'hour' ? 24 : (granularity === 'day' ? 31 : 12) }, (_, i) => i + (granularity === 'hour' ? 0 : 1)).map(v => (
@@ -1172,7 +1448,7 @@ function App() {
 											</select>
 											<span>至</span>
 											<select
-												value={rangeConfig[granularity].end}
+												value={rangeConfig[granularity]?.end || (granularity === 'hour' ? 23 : (granularity === 'day' ? 31 : 12))}
 												onChange={(e) => setRangeConfig(prev => ({ ...prev, [granularity]: { ...prev[granularity], end: parseInt(e.target.value) } }))}
 											>
 												{Array.from({ length: granularity === 'hour' ? 24 : (granularity === 'day' ? 31 : 12) }, (_, i) => i + (granularity === 'hour' ? 0 : 1)).map(v => (
@@ -1199,6 +1475,36 @@ function App() {
 										<input type="checkbox" checked={useDefaultLimits} onChange={(e) => setUseDefaultLimits(e.target.checked)} />
 										<span>统一上下限</span>
 									</label>
+
+									<div className="curtailment-box glass-panel" style={{ marginTop: '8px', padding: '8px', background: 'rgba(255,100,100,0.05)', border: '1px solid rgba(255,100,100,0.1)' }}>
+										<label className="checkbox-label" style={{ marginBottom: '8px' }}>
+											<input type="checkbox" checked={showCurtailmentAnalysis} onChange={(e) => setShowCurtailmentAnalysis(e.target.checked)} />
+											<span style={{ fontWeight: 600, color: 'var(--text-main)' }}>启用限电分析 (MarkArea)</span>
+										</label>
+										{showCurtailmentAnalysis && (
+											<div className="tune-inputs" style={{ flexDirection: 'column', gap: '5px' }}>
+												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+													<span style={{ fontSize: '11px', opacity: 0.8 }}>辐照度阈值 &gt;</span>
+													<input type="number" value={curtailmentIrrThreshold} onChange={(e) => setCurtailmentIrrThreshold(parseFloat(e.target.value))} style={{ width: '60px', height: '20px', fontSize: '11px' }} />
+												</div>
+												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+													<span style={{ fontSize: '11px', opacity: 0.8 }}>|差值| &lt;</span>
+													<input type="number" value={curtailmentDiffThreshold} onChange={(e) => setCurtailmentDiffThreshold(parseFloat(e.target.value))} style={{ width: '60px', height: '20px', fontSize: '11px' }} />
+												</div>
+												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+													<span style={{ fontSize: '11px', opacity: 0.8 }}>颜色</span>
+													<input type="color" value={curtailmentColor} onChange={(e) => setCurtailmentColor(e.target.value)} style={{ width: '40px', height: '20px', padding: '0', border: 'none', background: 'transparent' }} />
+												</div>
+												<div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+													<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+														<span style={{ fontSize: '11px', opacity: 0.8 }}>透明度</span>
+														<span style={{ fontSize: '11px' }}>{(curtailmentOpacity * 100).toFixed(0)}%</span>
+													</div>
+													<input type="range" min="0" max="1" step="0.05" value={curtailmentOpacity} onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))} style={{ width: '100%' }} />
+												</div>
+											</div>
+										)}
+									</div>
 								</div>
 							</div>
 
@@ -1479,6 +1785,88 @@ function App() {
 				</section>
 			</main>
 
+			{isStationModalOpen && (
+				<div className="modal-overlay">
+					<div className="modal-content glass-panel" style={{ width: '400px' }}>
+						<div className="modal-header"><h3>获取历史辐照度 - 选择场站</h3><button onClick={() => setIsStationModalOpen(false)}><X size={20} /></button></div>
+						<div style={{ padding: '0 20px 20px' }}>
+							<p className="label">搜索或输入场站名称 (支持模糊匹配)</p>
+							<input
+								type="text"
+								className="styled-select"
+								placeholder="输入名称搜索..."
+								value={stationSearchTerm}
+								onChange={(e) => setStationSearchTerm(e.target.value)}
+								autoFocus
+								style={{ width: '100%', marginBottom: '10px' }}
+							/>
+							<div className="station-list-scroll" style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
+								{availableStations
+									.filter(s => s.name.toLowerCase().includes(stationSearchTerm.toLowerCase()))
+									.map(s => (
+										<div
+											key={s.name}
+											className="station-item-row"
+											style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: stationSearchTerm === s.name ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent' }}
+											onClick={() => setStationSearchTerm(s.name)}
+										>
+											<span style={{ fontWeight: 500, fontSize: '13px' }}>{s.name}</span>
+											<span style={{ fontSize: '11px', opacity: 0.6, background: 'rgba(128,128,128,0.1)', padding: '2px 6px', borderRadius: '4px' }}>{s.region}</span>
+										</div>
+									))
+								}
+								{availableStations.filter(s => s.name.toLowerCase().includes(stationSearchTerm.toLowerCase())).length === 0 && stationSearchTerm && (
+									<div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', opacity: 0.6 }}>
+										系统中无此预置场站<br/>将尝试作为"自定义名称"搜索
+									</div>
+								)}
+							</div>
+						</div>
+						<div className="modal-actions" style={{ padding: '0 20px 20px' }}>
+							<button onClick={() => setIsStationManagerOpen(true)} style={{ marginRight: 'auto', background: 'transparent', border: '1px dashed var(--primary-color)', color: 'var(--primary-color)' }}>配置场站库</button>
+							<button onClick={() => setIsStationModalOpen(false)}>取消</button>
+							<button className="premium-button" onClick={() => { executeFetchIrradiance(stationSearchTerm); setIsStationModalOpen(false); }}>确认获取</button>
+						</div>
+					</div>
+				</div>
+			)}
+			{isStationManagerOpen && (
+				<div className="modal-overlay">
+					<div className="modal-content glass-panel" style={{ width: '700px', maxHeight: '95vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+						<div className="modal-header"><h3>场站库管理</h3><button onClick={() => setIsStationManagerOpen(false)}><X size={20} /></button></div>
+						<div className="station-manager-body" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', padding: '0 20px 20px', overflow: 'hidden', flex: 1 }}>
+							<div className="station-list-container" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+								<p className="label">当前场站列表 ({availableStations.length})</p>
+								<div className="station-list-scroll" style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
+									{availableStations.map(s => (
+										<div key={s.name} className="station-row" style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+											<div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+												<span style={{ fontSize: '13px', fontWeight: 600 }}>{s.name}</span>
+												<span style={{ fontSize: '11px', opacity: 0.6 }}>{s.region || '未设区域'} | {s.lon?.toFixed(4)}, {s.lat?.toFixed(4)}</span>
+												<span style={{ fontSize: '10px', opacity: 0.5 }}>{s.azimuth || '--'}/{s.angle || '--'}</span>
+											</div>
+											<button onClick={() => deleteStation(s.name)} style={{ padding: '4px', color: '#ff4d4f', background: 'transparent', border: 'none', cursor: 'pointer' }} title="删除场站"><Trash2 size={14} /></button>
+										</div>
+									))}
+								</div>
+							</div>
+							<div className="station-import-container" style={{ display: 'flex', flexDirection: 'column' }}>
+								<p className="label">批量导入/配置 (粘贴文本)</p>
+								<p style={{ fontSize: '11px', opacity: 0.7, marginBottom: '8px' }}>格式：场站,方位角,角度,经度,纬度,区域<br/>(支持以逗号或制表符分隔)</p>
+								<textarea 
+									placeholder="峙书,东南,16,107.28,22.12,宁明..." 
+									value={stationBatchInput} 
+									onChange={(e) => setStationBatchInput(e.target.value)} 
+									style={{ width: '100%', flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#fff', resize: 'none', fontFamily: 'monospace' }}
+								/>
+								<button className="premium-button" onClick={importStations} style={{ width: '100%', marginTop: '10px' }}>确认导入/更新</button>
+								<p style={{ fontSize: '10px', opacity: 0.5, marginTop: '8px', textAlign: 'center' }}>* 名称相同将自动覆盖原有配置</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{isPasteModalOpen && (
 				<div className="modal-overlay">
 					<div className="modal-content glass-panel">
@@ -1573,7 +1961,26 @@ function App() {
 	);
 }
 
-function getUserColor(index) {
+function getUserColor(index, metricName = '') {
+	// 定义核心指标与其对应的固定颜色
+	const fixedColorMap = {
+		'实际功率': '#5470c6',
+		'可用功率': '#91cc75',
+		'理论功率': '#73c0de',
+		'AGC远方指令': '#ee6666',
+		'辐照度': '#fac858',
+		'短波辐射': '#fac858',
+		'价格': '#9a60b4',
+		'预测功率': '#3ba272',
+		'负荷': '#fc8452'
+	};
+
+	if (metricName) {
+		for (const [key, color] of Object.entries(fixedColorMap)) {
+			if (metricName.includes(key)) return color;
+		}
+	}
+
 	const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'];
 	return colors[index % colors.length];
 }
