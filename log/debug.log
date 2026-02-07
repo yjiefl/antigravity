@@ -394,3 +394,13 @@
 结果：
 - 翻译完成，文档现在完全以简体中文呈现。
 已经完成 Git Commit。
+
+[2026-02-07 08:35:00]
+任务：翻译技能创建器指南 SKILL_CN.md 至中文。
+操作：
+- 读取了 `.agent/skills/skill-creator/SKILL_CN.md` 的英文内容。
+- 完整翻译为简体中文并覆盖写入。
+- 确保了所有核心概念（如 Progressive Disclosure, Anatomy of a Skill）有准确的中文描述。
+结果：
+- 翻译完成，SKILL_CN.md 现在完全以简体中文呈现。
+已经完成 Git Commit。
