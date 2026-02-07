@@ -21,11 +21,17 @@
 
 ### 执行命令
 
-在项目根目录下运行：
+在项目根目录下运行一键转换脚本：
 
 ```bash
-python3 convert_docs.py
+python3 run_all.py
 ```
+
+该脚本将自动执行：
+
+1. **convert_docs.py**: 调用 Pandoc 并执行基础排版。
+2. **clean_markdown.py**: 执行深度段落合并与排版清洗。
+3. **final_polish.py**: 最终细节润色并核对信息完整性。
 
 ## 4. 输出说明
 

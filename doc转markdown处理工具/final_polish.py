@@ -2,7 +2,7 @@ import os
 import re
 
 # 设置路径
-PROJECT_ROOT = "/Users/yangjie/code/antigravity/广西崇左及贵港地区风光资源研究"
+PROJECT_ROOT = "/Users/yangjie/code/antigravity/doc转markdown处理工具"
 MARKDOWN_DIR = os.path.join(PROJECT_ROOT, "markdown")
 
 def final_polish(content):
