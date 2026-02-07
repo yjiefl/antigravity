@@ -1060,6 +1060,7 @@ function App() {
 					id: `weather_${inputName}_${date}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
 					name: `历史辐照度 (${inputName})`,
 					metricName: '历史辐照度',
+					dimensions: { '场站': inputName }, // 关键修复：关联场站维度
 					date: date,
 					data: result.data.map(d => ({
 						time: new Date(d.time),
@@ -1183,7 +1184,10 @@ function App() {
 	const setAllLegends = (status) => {
 		if (!chartInstance.current) return;
 		const newSelected = {};
-		uniqueMetrics.forEach(m => { newSelected[m] = status; });
+		series.filter(s => selectedDates.includes(s.date)).forEach(s => {
+			const dn = s.displayName || s.name;
+			newSelected[dn] = status;
+		});
 		setLegendSelected(newSelected);
 	};
 
@@ -1455,30 +1459,26 @@ function App() {
 									</label>
 
 									<div className="curtailment-box glass-panel" style={{ marginTop: '8px', padding: '8px', background: 'rgba(255,100,100,0.05)', border: '1px solid rgba(255,100,100,0.1)' }}>
-										<label className="checkbox-label" style={{ marginBottom: '8px' }}>
+										<label className="checkbox-label" style={{ marginBottom: '4px' }}>
 											<input type="checkbox" checked={showCurtailmentAnalysis} onChange={(e) => setShowCurtailmentAnalysis(e.target.checked)} />
 											<span style={{ fontWeight: 600, color: 'var(--text-main)' }}>启用限电分析 (MarkArea)</span>
 										</label>
 										{showCurtailmentAnalysis && (
-											<div className="tune-inputs" style={{ flexDirection: 'column', gap: '5px' }}>
+											<div className="tune-inputs" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 12px', marginTop: '4px' }}>
 												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-													<span style={{ fontSize: '11px', opacity: 0.8 }}>辐照度阈值 &gt;</span>
-													<input type="number" value={curtailmentIrrThreshold} onChange={(e) => setCurtailmentIrrThreshold(parseFloat(e.target.value))} style={{ width: '60px', height: '20px', fontSize: '11px' }} />
+													<span style={{ fontSize: '11px', opacity: 0.8 }}>辐照度 &gt;</span>
+													<input type="number" value={curtailmentIrrThreshold} onChange={(e) => setCurtailmentIrrThreshold(parseFloat(e.target.value))} style={{ width: '45px', height: '18px', fontSize: '11px', padding: '0 2px' }} />
 												</div>
 												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 													<span style={{ fontSize: '11px', opacity: 0.8 }}>|差值| &lt;</span>
-													<input type="number" value={curtailmentDiffThreshold} onChange={(e) => setCurtailmentDiffThreshold(parseFloat(e.target.value))} style={{ width: '60px', height: '20px', fontSize: '11px' }} />
+													<input type="number" value={curtailmentDiffThreshold} onChange={(e) => setCurtailmentDiffThreshold(parseFloat(e.target.value))} style={{ width: '45px', height: '18px', fontSize: '11px', padding: '0 2px' }} />
 												</div>
 												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-													<span style={{ fontSize: '11px', opacity: 0.8 }}>颜色</span>
-													<input type="color" value={curtailmentColor} onChange={(e) => setCurtailmentColor(e.target.value)} style={{ width: '40px', height: '20px', padding: '0', border: 'none', background: 'transparent' }} />
-												</div>
-												<div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-													<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-														<span style={{ fontSize: '11px', opacity: 0.8 }}>透明度</span>
-														<span style={{ fontSize: '11px' }}>{(curtailmentOpacity * 100).toFixed(0)}%</span>
+													<span style={{ fontSize: '11px', opacity: 0.8 }}>背景色</span>
+													<div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+														<input type="color" value={curtailmentColor} onChange={(e) => setCurtailmentColor(e.target.value)} style={{ width: '20px', height: '18px', padding: 0, border: 'none', background: 'transparent' }} />
+														<input type="range" min="0" max="1" step="0.1" value={curtailmentOpacity} onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))} style={{ width: '30px' }} title={`透明度: ${curtailmentOpacity}`} />
 													</div>
-													<input type="range" min="0" max="1" step="0.05" value={curtailmentOpacity} onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))} style={{ width: '100%' }} />
 												</div>
 											</div>
 										)}
@@ -1497,9 +1497,10 @@ function App() {
 								<ul>
 									{series.filter(s => selectedDates.includes(s.date)).map(s => {
 										const metricKey = s.metricName || s.name.split(' (')[0];
-										const isHidden = legendSelected[metricKey] === false;
+										const displayName = s.displayName || s.name;
+										const isHidden = legendSelected[displayName] === false;
 										return (
-											<li key={s.id} className={`series-item ${isHidden ? 'hidden' : ''}`} onClick={() => toggleMetricLegend(metricKey)} style={{ cursor: 'pointer' }}>
+											<li key={s.id} className={`series-item ${isHidden ? 'hidden' : ''}`} onClick={() => toggleMetricLegend(displayName)} style={{ cursor: 'pointer' }}>
 												<div className="series-main-info">
 													<span className="series-color-dot" style={{
 														backgroundColor: isHidden ? 'transparent' : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey)),
@@ -1776,8 +1777,17 @@ function App() {
 								value={stationSearchTerm}
 								onChange={(e) => setStationSearchTerm(e.target.value)}
 								autoFocus
-								style={{ width: '100%', marginBottom: '10px' }}
+								style={{ width: '100%', marginBottom: '6px' }}
 							/>
+							<select
+								className="styled-select"
+								style={{ width: '100%', marginBottom: '10px' }}
+								value={stationSearchTerm}
+								onChange={(e) => setStationSearchTerm(e.target.value)}
+							>
+								<option value="">-- 选择或搜索场站 --</option>
+								{availableStations.map(s => <option key={s.name} value={s.name}>{s.name} ({s.region || '未分区'})</option>)}
+							</select>
 							<div className="station-list-scroll" style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
 								{availableStations
 									.filter(s => s.name.toLowerCase().includes(stationSearchTerm.toLowerCase()))
