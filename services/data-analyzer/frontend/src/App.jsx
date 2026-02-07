@@ -224,214 +224,171 @@ function App() {
 		}
 	};
 
-	// 2. 数据驱动：更新图表内容 (多轴支持)
+	// --- 辅助工具函数 ---
+	const hexToRgba = (hex, opacity) => {
+		let r = 255, g = 70, b = 70;
+		if (hex && typeof hex === 'string' && hex.startsWith('#')) {
+			const h = hex.replace('#', '');
+			if (h.length === 3) {
+				r = parseInt(h[0] + h[0], 16);
+				g = parseInt(h[1] + h[1], 16);
+				b = parseInt(h[2] + h[2], 16);
+			} else if (h.length === 6) {
+				r = parseInt(h.substring(0, 2), 16);
+				g = parseInt(h.substring(2, 4), 16);
+				b = parseInt(h.substring(4, 6), 16);
+			}
+		}
+		return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+	};
+
+	const getAggregatedData = (data, gran) => {
+		if (gran === 'hour') return data.map(d => [d.time, d.value]);
+		const groups = {};
+		data.forEach(d => {
+			let key;
+			const dt = new Date(d.time);
+			if (gran === 'day') key = format(dt, 'yyyy-MM-dd');
+			else if (granularity === 'month') key = format(dt, 'yyyy-MM');
+			if (!groups[key]) groups[key] = { sum: 0, count: 0, firstTime: dt };
+			groups[key].sum += d.value;
+			groups[key].count += 1;
+		});
+		return Object.entries(groups).map(([, info]) => {
+			const date = new Date(info.firstTime);
+			if (gran === 'day') date.setHours(0, 0, 0, 0);
+			else if (gran === 'month') { date.setDate(1); date.setHours(0, 0, 0, 0); }
+			return [date, info.sum / info.count];
+		}).sort((a, b) => a[0] - b[0]);
+	};
+
+	const getCurtailmentRanges = (allSeries, dates) => {
+		const ranges = {};
+		const relevantSeries = allSeries.filter(s => s && (dates || []).includes(s.date));
+		const groupDimKey = activeDimension || (() => {
+			const possibleKeys = ['场站', '电站', '名称', '调度名称', 'item', 'station', '项目'];
+			const sample = allSeries.find(s => s && s.dimensions);
+			return sample ? possibleKeys.find(k => sample.dimensions[k]) : null;
+		})();
+		const dimensionGroups = {};
+		relevantSeries.forEach(s => {
+			if (!s) return;
+			const dimVal = (groupDimKey && s.dimensions) ? s.dimensions[groupDimKey] : 'default';
+			const groupKey = `${s.date}_${dimVal}`;
+			if (!dimensionGroups[groupKey]) dimensionGroups[groupKey] = [];
+			dimensionGroups[groupKey].push(s);
+		});
+		Object.entries(dimensionGroups).forEach(([groupKey, groupSeries]) => {
+			const irrad = groupSeries.find(s => {
+				const m = (s.metricName || s.name).toLowerCase();
+				return m.includes('辐照度') || m.includes('短波') || m.includes('irradiance') || m.includes('radiation');
+			});
+			const agc = groupSeries.find(s => {
+				const m = (s.metricName || s.name).toLowerCase();
+				return m.includes('agc') || m.includes('指令');
+			});
+			const power = groupSeries.find(s => {
+				const m = (s.metricName || s.name).toLowerCase();
+				return (m.includes('实际功率') || m.includes('功率') || m.includes('power') || m.includes('load') || m.includes('output')) && !m.includes('agc') && !m.includes('可用') && !m.includes('预测');
+			});
+			if (irrad && agc && power) {
+				if (!ranges[groupKey]) ranges[groupKey] = [];
+				const timeMap = {};
+				const addToMap = (s, type) => {
+					s.data.forEach(d => {
+						const t = new Date(d.time).getTime();
+						if (!timeMap[t]) timeMap[t] = {};
+						timeMap[t][type] = d.value;
+					});
+				};
+				addToMap(irrad, 'irrad'); addToMap(agc, 'agc'); addToMap(power, 'power');
+				const times = Object.keys(timeMap).map(Number).sort((a, b) => a - b);
+				let startRange = null;
+				const pushRange = (start, end) => {
+					let s = start, e = end;
+					if (isCompareOverlap) {
+						const mapTime = (ts) => {
+							const dTime = new Date(ts);
+							const baseDate = new Date(2000, 0, 1);
+							if (granularity === 'hour') baseDate.setHours(dTime.getHours(), dTime.getMinutes(), dTime.getSeconds());
+							else if (granularity === 'day') baseDate.setDate(dTime.getDate());
+							else if (granularity === 'month') baseDate.setMonth(dTime.getMonth());
+							return baseDate.getTime();
+						};
+						s = mapTime(start); e = mapTime(end);
+					}
+					ranges[groupKey].push([
+						{ xAxis: new Date(s), startTime: start },
+						{ xAxis: new Date(e), endTime: end, itemStyle: { color: hexToRgba(curtailmentColor, curtailmentOpacity) } }
+					]);
+				};
+				times.forEach((t) => {
+					const v = timeMap[t];
+					if (v.irrad !== undefined && v.agc !== undefined && v.power !== undefined) {
+						const diff = Math.abs(v.agc - v.power);
+						const isCurtailment = (v.irrad > curtailmentIrrThreshold) && (v.agc < v.power || diff < curtailmentDiffThreshold);
+						if (isCurtailment) { if (startRange === null) startRange = t; }
+						else { if (startRange !== null) { pushRange(startRange, t); startRange = null; } }
+					} else if (startRange !== null) { pushRange(startRange, t); startRange = null; }
+				});
+				if (startRange !== null) pushRange(startRange, times[times.length - 1]);
+			}
+		});
+		return { ranges, groupDim: groupDimKey };
+	};
+
+	// --- 核心绘图更新 ---
 	const updateChart = () => {
 		if (!chartInstance.current || chartInstance.current.isDisposed()) return;
-
-		if (activeSeries.length === 0) {
-			chartInstance.current.clear();
-			return;
-		}
+		if (activeSeries.length === 0) { chartInstance.current.clear(); return; }
 
 		const isLight = theme === 'light';
-
 		const legendItems = [...new Set(activeSeries.map(s => s.displayName))];
 
 		const yAxisConfig = uniqueMetrics.map((metric, index) => {
 			const customRange = axisRanges[metric] || {};
-			// 修正：检查该指标下的所有 displayName 是否有任意一个在图例中是可见的
 			const isMetricVisible = (m) => {
 				const sameMetricDisplayNames = activeSeries.filter(s => (s.metricName || s.name.split(' (')[0]) === m).map(s => s.displayName);
 				return sameMetricDisplayNames.some(dn => legendSelected[dn] !== false);
 			};
 			const firstVisibleMetric = uniqueMetrics.find(m => isMetricVisible(m)) || uniqueMetrics[0];
-			const isActive = (hoveredMetric && isMetricVisible(hoveredMetric))
-				? (metric === hoveredMetric)
-				: (metric === firstVisibleMetric);
-
+			const isActive = (hoveredMetric && isMetricVisible(hoveredMetric)) ? (metric === hoveredMetric) : (metric === firstVisibleMetric);
 			const isIrradiance = metric.includes('辐照度') || metric.includes('短波') || metric.includes('辐射') || metric.toLowerCase().includes('irradiance') || metric.toLowerCase().includes('radiation');
 			const factor = parseFloat(axisAdjustmentFactor) || 1.0;
-
 			let finalMin = customRange.min !== '' && customRange.min !== undefined ? parseFloat(customRange.min) : null;
 			let finalMax = customRange.max !== '' && customRange.max !== undefined ? parseFloat(customRange.max) : null;
 
-			// 辐照度缺省范围 0-1000
 			if (finalMin === null && isIrradiance) finalMin = 0;
 			if (finalMax === null && isIrradiance) finalMax = 1000;
 
 			if (finalMin === null || finalMax === null) {
 				const metricSeries = activeSeries.filter(s => (s.metricName || s.name.split(' (')[0]) === metric);
 				const vals = metricSeries.flatMap(s => s.data.map(d => d.value));
-
-				// 业务默认范围设置 (AGC/超短期)
 				if (useDefaultLimits && (metric.includes('AGC远方指令') || metric.includes('超短期'))) {
 					if (finalMin === null) finalMin = 0;
-					if (finalMax === null) finalMax = 1000; // 默认最大值设为1000，用户可后续手动调优
+					if (finalMax === null) finalMax = 1000;
 				}
-
 				if (vals.length) {
-					const dataMax = Math.max(...vals);
-					const dataMin = Math.min(...vals);
-					if (finalMin === null) {
-						finalMin = dataMin < 0 ? dataMin * 1.1 : dataMin - (Math.abs(dataMax - dataMin) * 0.05 || 1);
-					}
-					if (finalMax === null) {
-						finalMax = dataMax > 0 ? dataMax * 1.1 : dataMax + (Math.abs(dataMax - dataMin) * 0.05 || 1);
-					}
+					const dataMax = Math.max(...vals); const dataMin = Math.min(...vals);
+					if (finalMin === null) finalMin = dataMin < 0 ? dataMin * 1.1 : dataMin - (Math.abs(dataMax - dataMin) * 0.05 || 1);
+					if (finalMax === null) finalMax = dataMax > 0 ? dataMax * 1.1 : dataMax + (Math.abs(dataMax - dataMin) * 0.05 || 1);
 				}
 			}
-
-			// 应用全局调节系数
 			if (finalMin !== null) finalMin *= factor;
 			if (finalMax !== null) finalMax *= factor;
 
 			return {
-				type: 'value',
-				name: metric,
-				nameTextStyle: {
-					color: isActive ? (customMetricColors[metric] || getUserColor(index)) : 'transparent',
-					padding: [0, 0, 0, 0]
-				},
-				nameGap: 8,
-				position: 'left',
-				show: isActive,
-				scale: true,
-				min: finalMin,
-				max: finalMax,
-				axisLine: {
-					show: isActive,
-					lineStyle: { color: customMetricColors[metric] || getUserColor(index), width: 2 }
-				},
+				type: 'value', name: metric,
+				nameTextStyle: { color: isActive ? (customMetricColors[metric] || getUserColor(index, metric)) : 'transparent', padding: [0, 0, 0, 0] },
+				nameGap: 8, position: 'left', show: isActive, scale: true, min: finalMin, max: finalMax,
+				axisLine: { show: isActive, lineStyle: { color: customMetricColors[metric] || getUserColor(index, metric), width: 2 } },
 				axisTick: { show: isActive },
-				axisLabel: {
-					show: true,
-					color: isLight ? '#1d1d1f' : '#ccc',
-					margin: 12,
-					width: 75,
-					overflow: 'truncate',
-					align: 'right',
-					formatter: (val) => parseFloat(val.toFixed(2)).toString()
-				},
-				splitLine: {
-					show: isActive,
-					lineStyle: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255, 255, 255, 0.05)' }
-				}
+				axisLabel: { show: true, color: isLight ? '#1d1d1f' : '#ccc', margin: 12, width: 75, overflow: 'truncate', align: 'right', formatter: (val) => parseFloat(val.toFixed(2)).toString() },
+				splitLine: { show: isActive, lineStyle: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255, 255, 255, 0.05)' } }
 			};
 		});
 
-		// 数据聚合逻辑
-		const getAggregatedData = (data, gran) => {
-			if (gran === 'hour') return data.map(d => [d.time, d.value]); // 日视图：原始精度 (通常到分钟)
-
-			const groups = {};
-			data.forEach(d => {
-				let key;
-				const dt = new Date(d.time);
-				if (gran === 'day') key = format(dt, 'yyyy-MM-dd'); // 月视图：按天聚合
-				else if (gran === 'month') key = format(dt, 'yyyy-MM'); // 年视图：按月聚合
-
-				if (!groups[key]) groups[key] = { sum: 0, count: 0, firstTime: dt };
-				groups[key].sum += d.value;
-				groups[key].count += 1;
-			});
-
-			return Object.entries(groups).map(([, info]) => {
-				const date = new Date(info.firstTime);
-				if (gran === 'day') date.setHours(0, 0, 0, 0); // 对齐到天
-				else if (gran === 'month') {
-					date.setDate(1); // 对齐到月
-					date.setHours(0, 0, 0, 0);
-				}
-				return [date, info.sum / info.count];
-			}).sort((a, b) => a[0] - b[0]);
-		};
-
-
-		// 自动识别当前的“场站/分组”维度
-		const groupDim = activeDimension || (() => {
-			const possibleKeys = ['场站', '电站', '名称', '调度名称', 'item', 'station', '项目'];
-			const sample = series.find(s => s && s.dimensions);
-			return sample ? possibleKeys.find(k => sample.dimensions[k]) : null;
-		})();
-
-		// 3. 计算限电分析区间
-		let curtailmentRanges = {}; // 按 groupKey 分组存放
-		if (showCurtailmentAnalysis) {
-			const relevantSeries = series.filter(s => s && (selectedDates || []).includes(s.date));
-			
-			const dimensionGroups = {};
-			relevantSeries.forEach(s => {
-				if (!s) return;
-				const dimVal = (groupDim && s.dimensions) ? s.dimensions[groupDim] : 'default';
-				const groupKey = `${s.date}_${dimVal}`;
-				if (!dimensionGroups[groupKey]) dimensionGroups[groupKey] = [];
-				dimensionGroups[groupKey].push(s);
-			});
-
-			Object.entries(dimensionGroups).forEach(([groupKey, groupSeries]) => {
-				const irrad = groupSeries.find(s => {
-					const m = (s.metricName || s.name).toLowerCase();
-					return m.includes('辐照度') || m.includes('短波') || m.includes('irradiance') || m.includes('radiation');
-				});
-				const agc = groupSeries.find(s => {
-					const m = (s.metricName || s.name).toLowerCase();
-					return m.includes('agc') || m.includes('指令');
-				});
-				const power = groupSeries.find(s => {
-					const m = (s.metricName || s.name).toLowerCase();
-					// 修正：power 优先匹配实际功率，但也应匹配包含 power 的项（排除可用和预测）
-					return (m.includes('实际功率') || m.includes('功率') || m.includes('power') || m.includes('load') || m.includes('output')) && !m.includes('agc') && !m.includes('可用') && !m.includes('预测');
-				});
-
-				if (irrad && agc && power) {
-					if (!curtailmentRanges[groupKey]) curtailmentRanges[groupKey] = [];
-					const timeMap = {};
-					const addToMap = (s, type) => {
-						s.data.forEach(d => {
-							const t = new Date(d.time).getTime();
-							if (!timeMap[t]) timeMap[t] = {};
-							timeMap[t][type] = d.value;
-						});
-					};
-					addToMap(irrad, 'irrad');
-					addToMap(agc, 'agc');
-					addToMap(power, 'power');
-
-					const times = Object.keys(timeMap).map(Number).sort((a, b) => a - b);
-					let startRange = null;
-
-					const pushRange = (start, end) => {
-						let s = start, e = end;
-						if (isCompareOverlap) {
-							const mapTime = (ts) => {
-								const dTime = new Date(ts);
-								const baseDate = new Date(2000, 0, 1);
-								if (granularity === 'hour') baseDate.setHours(dTime.getHours(), dTime.getMinutes(), dTime.getSeconds());
-								else if (granularity === 'day') baseDate.setDate(dTime.getDate());
-								else if (granularity === 'month') baseDate.setMonth(dTime.getMonth());
-								return baseDate.getTime();
-							};
-							s = mapTime(start); e = mapTime(end);
-						}
-						curtailmentRanges[groupKey].push([
-							{ xAxis: new Date(s) },
-							{ xAxis: new Date(e), itemStyle: { color: hexToRgba(curtailmentColor, curtailmentOpacity) } }
-						]);
-					};
-
-					times.forEach((t) => {
-						const v = timeMap[t];
-						if (v.irrad !== undefined && v.agc !== undefined && v.power !== undefined) {
-							const diff = Math.abs(v.agc - v.power);
-							const isCurtailment = (v.irrad > curtailmentIrrThreshold) && (v.agc < v.power || diff < curtailmentDiffThreshold);
-							if (isCurtailment) { if (startRange === null) startRange = t; }
-							else { if (startRange !== null) { pushRange(startRange, t); startRange = null; } }
-						} else if (startRange !== null) { pushRange(startRange, t); startRange = null; }
-					});
-					if (startRange !== null) pushRange(startRange, times[times.length - 1]);
-				}
-			});
-		}
+		const { ranges: curtailmentRanges, groupDim } = getCurtailmentRanges(series, selectedDates);
 
 		function hexToRgba(hex, opacity) {
 			let r = 255, g = 70, b = 70;
@@ -849,6 +806,8 @@ function App() {
 		// 2. 按时间、日期和维度组合数据
 		const dataRows = {}; // key: date|time|dimValues
 
+		const { ranges: curtailmentRanges, groupDim } = getCurtailmentRanges(series, selectedDates);
+
 		activeSeries.forEach(s => {
 			const mName = s.metricName || s.name.split(' (')[0];
 			s.data.forEach(d => {
@@ -869,13 +828,13 @@ function App() {
 				dataRows[rowKey].metrics[mName] = d.value;
 
 				// 实时判断限电状态 (基于当前点所属的分组计算)
-				const dimVal = (activeDimension && s.dimensions) ? s.dimensions[activeDimension] : (Object.values(s.dimensions)[0] || 'default');
+				const dimVal = (groupDim && s.dimensions) ? s.dimensions[groupDim] : 'default';
 				const groupKey = `${s.date}_${dimVal}`;
 				const ranges = curtailmentRanges[groupKey] || [];
 				const t = d.time.getTime();
 				const isInside = ranges.some(r => {
-					const start = r[0].xAxis.getTime();
-					const end = r[1].xAxis.getTime();
+					const start = r[0].startTime;
+					const end = r[1].endTime;
 					return t >= start && t <= end;
 				});
 				if (isInside) dataRows[rowKey].isCurtailment = 1;
@@ -886,8 +845,14 @@ function App() {
 		const headers = ['日期', '时间', ...dimKeyList, ...metricNameList, '是否限电'];
 		const rows = [headers];
 
-		// 按日期和时间排序
-		const sortedRowKeys = Object.keys(dataRows).sort();
+		// 按日期和时间排序 (解决多日期排序乱码)
+		const sortedRowKeys = Object.keys(dataRows).sort((a, b) => {
+			const [d1, t1, dim1] = a.split('|');
+			const [d2, t2, dim2] = b.split('|');
+			if (d1 !== d2) return d1.localeCompare(d2);
+			if (t1 !== t2) return t1.localeCompare(t2);
+			return dim1.localeCompare(dim2);
+		});
 
 		sortedRowKeys.forEach(key => {
 			const rowData = dataRows[key];
@@ -901,16 +866,18 @@ function App() {
 			rows.push(row);
 		});
 
-		const csvContent = rows.map(r => r.join(',')).join('\n');
+		// 4. 下载文件实现
+		const csvContent = rows.map(r => r.map(v => typeof v === 'string' && v.includes(',') ? `"${v}"` : v).join(',')).join('\n');
 		const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+		const link = document.createElement("a");
 		const url = URL.createObjectURL(blob);
-		const link = document.createElement('a');
-		link.href = url;
-		const dateLabel = selectedDates.length > 1 ? 'multi_dates' : selectedDates[0];
-		link.setAttribute('download', `exported_data_${dateLabel}.csv`);
+		link.setAttribute("href", url);
+		link.setAttribute("download", `新能源发电分析导出_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
+		link.style.visibility = 'hidden';
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
 	};
 
 	const clearAll = () => {
@@ -1019,22 +986,34 @@ function App() {
 		const rows = stationBatchInput.split('\n').map(r => r.trim()).filter(Boolean);
 		const newStations = [];
 		rows.forEach((row, i) => {
-			if (i === 0 && row.includes('场站')) return; // 跳过表头
+			if (i === 0 && (row.includes('场站') || row.includes('站名'))) return; // 跳过表头
 			const parts = row.split(/[,，\t]/);
+			// 支持多种列数格式：
+			// 1. 场站,经度,纬度,区域
+			// 2. 场站,方位角,倾角,经度,纬度,区域
 			if (parts.length >= 5) {
 				newStations.push({
 					name: parts[0],
-					azimuth: parts[1],
-					angle: parts[2],
+					azimuth: parseFloat(parts[1]),
+					tilt: parseFloat(parts[2]),
 					lon: parseFloat(parts[3]),
 					lat: parseFloat(parts[4]),
 					region: parts[5] || ''
+				});
+			} else if (parts.length >= 3) {
+				newStations.push({
+					name: parts[0],
+					lon: parseFloat(parts[1]),
+					lat: parseFloat(parts[2]),
+					region: parts[3] || '',
+					azimuth: 0,
+					tilt: 0
 				});
 			}
 		});
 
 		if (newStations.length === 0) {
-			alert('无效的格式。格式要求：\n场站,方位角,角度,经度,纬度');
+			alert('无效的格式。格式要求：\n场站,经度,纬度,区域\n或：场站,方位角,角度,经度,纬度,区域');
 			return;
 		}
 
@@ -1086,7 +1065,7 @@ function App() {
 						time: new Date(d.time),
 						value: d.value
 					})),
-					dimensions: { '来源': '气象API', '区域': result.region, '匹配关键字': inputName, '方位角': result.azimuth || '--', '倾角': result.angle || '--' },
+					dimensions: { '场站': result.stationName || inputName }, // 简化维度，只保留场站
 					unit: 'W/m²'
 				};
 
@@ -1372,48 +1351,47 @@ function App() {
 												<span>显示所有分组</span>
 											</label>
 										</div>
-										{!isShowAllGroups && (
-											<>
-												<select 
-													value={activeDimension} 
-													onChange={(e) => {
-														setActiveDimension(e.target.value);
-														setSelectedDimensionValues([]);
-													}} 
-													className="styled-select" 
-													style={{ marginBottom: '10px' }}
-												>
-													<option value="">-- 不分拆 --</option>
-													{[...new Set(series.filter(s => s && (selectedDates || []).includes(s.date)).flatMap(s => s.dimensions ? Object.keys(s.dimensions) : []))].map(d => <option key={d} value={d}>{d}</option>)}
-												</select>
+										
+										<select 
+											value={activeDimension} 
+											onChange={(e) => {
+												setActiveDimension(e.target.value);
+												setSelectedDimensionValues([]);
+											}} 
+											className="styled-select" 
+											style={{ marginBottom: '10px' }}
+										>
+											<option value="">-- 不分拆 --</option>
+											{[...new Set(series.filter(s => s && (selectedDates || []).includes(s.date)).flatMap(s => s.dimensions ? Object.keys(s.dimensions) : []))].map(d => <option key={d} value={d}>{d}</option>)}
+										</select>
 
-												{activeDimension && (
-													<div className="dimension-selector">
-														<div className="section-title-row">
-															<p className="label" style={{ marginBottom: 0 }}>选择 {activeDimension}</p>
-															<div className="mini-actions" style={{ display: 'flex', gap: '8px' }}>
-																<button style={{ fontSize: '11px', padding: '2px 5px', border: '1px solid var(--border-color)', borderRadius: '4px' }} onClick={selectAllDimensionValues}>全选</button>
-																<button style={{ fontSize: '11px', padding: '2px 5px', border: '1px solid var(--border-color)', borderRadius: '4px' }} onClick={clearAllDimensionValues}>全消</button>
-															</div>
-														</div>
-														<div className="tag-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '8px' }}>
-															{[...new Set(series.filter(s => s && (selectedDates || []).includes(s.date)).map(s => (s.dimensions && activeDimension) ? s.dimensions[activeDimension] : null))].filter(Boolean).map(val => (
-																<button
-																	key={val}
-																	className={`dim-tag ${selectedDimensionValues.includes(val) ? 'active' : ''}`}
-																	onClick={() => {
-																		setSelectedDimensionValues(prev =>
-																			prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
-																		);
-																	}}
-																>
-																	{val}
-																</button>
-															))}
-														</div>
+										{activeDimension && (
+											<div className="dimension-selector">
+												<div className="section-title-row">
+													<p className="label" style={{ marginBottom: 0 }}>选择 {activeDimension}</p>
+													<div className="mini-actions" style={{ display: 'flex', gap: '8px' }}>
+														<button style={{ fontSize: '11px', padding: '2px 5px', border: '1px solid var(--border-color)', borderRadius: '4px' }} onClick={selectAllDimensionValues}>全选</button>
+														<button style={{ fontSize: '11px', padding: '2px 5px', border: '1px solid var(--border-color)', borderRadius: '4px' }} onClick={clearAllDimensionValues}>全消</button>
 													</div>
-												)}
-											</>
+												</div>
+												<div className="tag-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '8px' }}>
+													{[...new Set(series.filter(s => s && (selectedDates || []).includes(s.date)).map(s => (s.dimensions && activeDimension) ? s.dimensions[activeDimension] : null))].filter(Boolean).map(val => (
+														<button
+															key={val}
+															className={`dim-tag ${selectedDimensionValues.includes(val) ? 'active' : ''}`}
+															disabled={false}
+															style={{ cursor: 'pointer' }}
+															onClick={() => {
+																setSelectedDimensionValues(prev =>
+																	prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+																);
+															}}
+														>
+															{val}
+														</button>
+													))}
+												</div>
+											</div>
 										)}
 									</div>
 								</div>
@@ -1524,7 +1502,7 @@ function App() {
 											<li key={s.id} className={`series-item ${isHidden ? 'hidden' : ''}`} onClick={() => toggleMetricLegend(metricKey)} style={{ cursor: 'pointer' }}>
 												<div className="series-main-info">
 													<span className="series-color-dot" style={{
-														backgroundColor: isHidden ? 'transparent' : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey))),
+														backgroundColor: isHidden ? 'transparent' : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey)),
 														border: isHidden ? '1px solid #666' : 'none'
 													}}></span>
 													<div className="series-text-main">
@@ -1637,9 +1615,9 @@ function App() {
 											)}
 											{uniqueMetricsInView.map((metric, index) => {
 												const isHidden = legendSelected[metric] === false;
-												const metricColor = customMetricColors[metric] || getUserColor(index);
+												const metricColor = customMetricColors[metric] || getUserColor(index, metric);
 												const metricColorAlpha = isHidden ? 'transparent' : (metricColor + '22');
-												const isIrradiance = metric.includes('辐照度') || metric.toLowerCase().includes('irradiance');
+												const isIrradiance = metric.includes('辐照度') || metric.includes('短波') || metric.includes('辐射');
 
 												const vals = currentActiveSeries.filter(s => (s.metricName === metric || s.name.startsWith(metric))).flatMap(s => s.data.map(d => d.value));
 												const dataMin = vals.length ? Math.min(...vals) : 0;
@@ -1843,7 +1821,6 @@ function App() {
 											<div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
 												<span style={{ fontSize: '13px', fontWeight: 600 }}>{s.name}</span>
 												<span style={{ fontSize: '11px', opacity: 0.6 }}>{s.region || '未设区域'} | {s.lon?.toFixed(4)}, {s.lat?.toFixed(4)}</span>
-												<span style={{ fontSize: '10px', opacity: 0.5 }}>{s.azimuth || '--'}/{s.angle || '--'}</span>
 											</div>
 											<button onClick={() => deleteStation(s.name)} style={{ padding: '4px', color: '#ff4d4f', background: 'transparent', border: 'none', cursor: 'pointer' }} title="删除场站"><Trash2 size={14} /></button>
 										</div>
@@ -1852,9 +1829,9 @@ function App() {
 							</div>
 							<div className="station-import-container" style={{ display: 'flex', flexDirection: 'column' }}>
 								<p className="label">批量导入/配置 (粘贴文本)</p>
-								<p style={{ fontSize: '11px', opacity: 0.7, marginBottom: '8px' }}>格式：场站,方位角,角度,经度,纬度,区域<br/>(支持以逗号或制表符分隔)</p>
+								<p style={{ fontSize: '11px', opacity: 0.7, marginBottom: '8px' }}>格式：场站,经度,纬度,区域<br/>(支持以逗号或制表符分隔)</p>
 								<textarea 
-									placeholder="峙书,东南,16,107.28,22.12,宁明..." 
+									placeholder="峙书,107.28,22.12,宁明..." 
 									value={stationBatchInput} 
 									onChange={(e) => setStationBatchInput(e.target.value)} 
 									style={{ width: '100%', flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#fff', resize: 'none', fontFamily: 'monospace' }}

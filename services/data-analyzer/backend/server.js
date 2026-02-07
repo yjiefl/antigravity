@@ -37,36 +37,30 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 		// 场站配置表
 		db.run(`CREATE TABLE IF NOT EXISTS stations (
 			name TEXT PRIMARY KEY,
-			azimuth TEXT,
-			angle TEXT,
 			lon REAL,
 			lat REAL,
-			region TEXT
+			region TEXT,
+			azimuth REAL DEFAULT 0,
+			tilt REAL DEFAULT 0
 		)`, () => {
-			// 预设数据 (Seeding)
+			// 预设数据 (按照用户最新要求的 场站,经度,纬度 格式)
 			const initialStations = [
-				['峙书', '东南', '16°', 107.2879, 22.1235, '崇左宁明'],
-				['守旗', '东南', '16°', 107.6518, 22.4539, '崇左扶绥'],
-				['弄滩', '东南', '45°', 107.2668, 22.2477, '崇左江州'],
-				['派岸', '正南', '16°', 107.272, 22.3027, '崇左江州'],
-				['寨安', '正南', '45°', 107.0092, 22.0386, '崇左宁明'],
-				['强胜', '正南', '45°', 107.5495, 22.3185, '崇左江州'],
-				['康宁', '正南', '16°', 107.2714, 22.087, '崇左宁明'],
-				['驮堪', '东南', '4°', 107.2574, 23.1326, '崇左天等'],
-				['浦峙', '正南', '23°', 107.3855, 22.1573, '崇左宁明'],
-				['岑凡', '正南', '16°', 107.8472, 22.3392, '崇左扶绥'],
-				['樟木', '正南', '25°', 109.3785, 23.379, '贵港'],
-				['榕木', '东南角', '17°', 109.494, 22.9408, '贵港'],
-				['那小', '正南', '16°', 107.4159, 22.1853, '崇左'],
-				// 保留原有映射
-				['守旗光伏电站', '东南', '16°', 107.9044, 22.6394, '崇左扶绥'],
-				['守旗储能系统', '东南', '16°', 107.9044, 22.6394, '崇左扶绥'],
-				['弄滩光伏电站', '东南', '45°', 107.3539, 22.4034, '崇左江州'],
-				['浦峙光伏电站', '正南', '23°', 107.0734, 22.1311, '崇左宁明'],
-				['樟木光伏电站', '正南', '25°', 109.5990, 23.0970, '贵港']
+				['峙书', 107.2879, 22.1235, '崇左宁明'],
+				['守旗', 107.6518, 22.4539, '崇左扶绥'],
+				['弄滩', 107.2668, 22.2477, '崇左江州'],
+				['派岸', 107.272, 22.3027, '崇左江州'],
+				['寨安', 107.0092, 22.0386, '崇左宁明'],
+				['强胜', 107.5495, 22.3185, '崇左江州'],
+				['康宁', 107.2714, 22.087, '崇左宁明'],
+				['驮堪', 107.2574, 23.1326, '崇左天等'],
+				['浦峙', 107.3855, 22.1573, '崇左宁明'],
+				['岑凡', 107.8472, 22.3392, '崇左扶绥'],
+				['樟木', 109.3785, 23.379, '贵港'],
+				['榕木', 109.494, 22.9408, '贵港'],
+				['那小', 107.4159, 22.1853, '崇左']
 			];
 			initialStations.forEach(s => {
-				db.run("INSERT OR IGNORE INTO stations (name, azimuth, angle, lon, lat, region) VALUES (?,?,?,?,?,?)", s);
+				db.run("INSERT OR IGNORE INTO stations (name, lon, lat, region, azimuth, tilt) VALUES (?,?,?,?,?,?)", [...s, 0, 0]);
 			});
 		});
 	}
@@ -109,9 +103,9 @@ app.post('/api/stations', (req, res) => {
 	const stations = Array.isArray(req.body) ? req.body : [req.body];
 	logAction(req, 'Save Stations', `Count: ${stations.length}`);
 	
-	const stmt = db.prepare("INSERT OR REPLACE INTO stations (name, azimuth, angle, lon, lat, region) VALUES (?, ?, ?, ?, ?, ?)");
+	const stmt = db.prepare("INSERT OR REPLACE INTO stations (name, lon, lat, region, azimuth, tilt) VALUES (?, ?, ?, ?, ?, ?)");
 	stations.forEach(s => {
-		stmt.run([s.name, s.azimuth, s.angle, s.lon, s.lat, s.region || '']);
+		stmt.run([s.name, s.lon, s.lat, s.region || '', s.azimuth || 0, s.tilt || 0]);
 	});
 	stmt.finalize();
 	res.json({ success: true });
@@ -157,7 +151,7 @@ app.get('/api/weather/irradiance', (req, res) => {
 						result.push({ time: interpolatedTime, value: parseFloat(interpolatedVal.toFixed(2)) });
 					}
 				}
-				res.json({ stationName, date, data: result, region: coords.region, azimuth: coords.azimuth, angle: coords.angle });
+				res.json({ stationName, date, data: result, region: coords.region });
 			} else {
 				res.status(502).json({ error: '天气 API 未返回数据', details: data });
 			}
