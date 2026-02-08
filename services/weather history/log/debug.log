@@ -1,0 +1,13 @@
+2026-02-03 20:06:00
+[PROBLEM] 用户反馈 ./start.command 打不开。
+[ANALYSIS] 经测试，脚本运行卡在 `pip install` 阶段，报错 `SSL: CERTIFICATE_VERIFY_FAILED`。这是一个常见的 Python 环境 SSL 证书问题，尤其在中国大陆网络环境下，连接官方 PyPI 源不稳定。
+[SOLUTION] 
+1. 修改 `start.command`，将 pip 源切换为清华镜像源 (https://pypi.tuna.tsinghua.edu.cn/simple) 以解决连接和证书问题。
+2. 在脚本末尾增加暂停指令，以便出错时窗口不会立即关闭，方便查看报错信息。
+[VERIFICATION] 待修改后验证。
+[PROBLEM] Tsinghua pip mirror failed... Switching to Aliyun and explicit paths.
+[SUCCESS] Verified: start.command successfully created venv, installed dependencies via Aliyun, and started the server. Fix verified.
+[UI] Improved City Selector UI: bg-color #f3f4f6, z-index 9999 for dropdown.
+[UI] Fixed dropdown clipping: removed overflow-y on .city-selector-compact and added z-index: 50 to .query-panel.
+2026-02-03 21:42:47 - [DEBUG] Fix UI bugs in Forecast Query. Corrected field mapping for statistics. Fixed card alignment. Added Real-time weather integration. Removed Forecast Review feature as requested by user. Verified with browser testing.
+[2026-02-03 22:03:48] Feature: Optimized forecast query UI with multi-city support, new 24h trend chart, and icon-based live weather dashboard.
