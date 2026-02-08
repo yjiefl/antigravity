@@ -17,10 +17,13 @@ import {
   Layout,
   Archive,
   History,
-  PlayCircle,
   Activity,
   FilePen,
   Check,
+  CheckSquare,
+  Square,
+  RefreshCw,
+  Search,
 } from "lucide-react";
 import { format } from "date-fns";
 import { processDataLogic } from "./utils/dataProcessor";
@@ -619,10 +622,11 @@ function App() {
             ? customMetricColors[metric] || getUserColor(index, metric)
             : "transparent",
           padding: [0, 0, 0, 0],
-          fontFamily: "Open Sans, sans-serif",
+          fontFamily: "Fira Sans, sans-serif",
           fontWeight: 600,
+          fontSize: 10,
         },
-        nameGap: 10,
+        nameGap: 6,
         position: "left",
         show: isActive,
         scale: true,
@@ -632,19 +636,19 @@ function App() {
           show: isActive,
           lineStyle: {
             color: customMetricColors[metric] || getUserColor(index, metric),
-            width: 2,
+            width: 1,
           },
         },
-        axisTick: { show: isActive },
+        axisTick: { show: isActive, length: 3 },
         axisLabel: {
           show: true,
-          color: isLight ? "#1d1d1f" : "#ccc",
-          margin: 12,
-          width: 75,
+          color: isLight ? "#1d1d1f" : "#a1a1aa",
+          margin: 4,
+          width: 50,
           overflow: "truncate",
           align: "right",
           fontFamily: "Fira Code, monospace",
-          fontSize: 10,
+          fontSize: 9,
           formatter: (val) => parseFloat(val.toFixed(2)).toString(),
         },
         splitLine: {
@@ -728,18 +732,18 @@ function App() {
             : "rgba(0, 0, 0, 0.05)";
           const mute = isDark ? "#cbd5e1" : "#64748b";
 
-          const timestamp = new Date(params[0].value[0]).getTime();
+
 
           let html = `<div style="
-            padding: 8px 10px; 
-            min-width: 200px; 
+            padding: 4px 6px; 
+            min-width: 140px; 
             background: ${bg}; 
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 6px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 4px;
             border: 0.5px solid ${border};
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            font-family: var(--font-family-main);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            font-family: 'Fira Sans', sans-serif;
           ">`;
 
           html += `<div style="
@@ -766,14 +770,14 @@ function App() {
                 ? parseFloat(rawVal.toFixed(3)).toString()
                 : rawVal;
 
-            html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-              <div style="display: flex; align-items: center; gap: 6px; overflow: hidden;">
-                <span style="width: 5px; height: 5px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></span>
-                <span style="font-size: 10px; color: ${mute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">
+            html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
+                <span style="width: 4px; height: 4px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></span>
+                <span style="font-size: 9px; color: ${mute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">
                   ${fullSeriesName}
                 </span>
               </div>
-              <span style="font-weight: 700; font-family: 'Poppins', monospace; color: ${text}; font-size: 11px;">
+              <span style="font-weight: 500; font-family: 'Fira Code', monospace; color: ${text}; font-size: 10px;">
                 ${displayVal}
               </span>
             </div>`;
@@ -786,15 +790,17 @@ function App() {
         data: legendItems,
         selected: legendSelected,
         textStyle: {
-          color: isLight ? "#1d1d1f" : "#94a3b8",
-          fontSize: 11,
-          fontFamily: "Open Sans, sans-serif",
+          color: isLight ? "#1d1d1f" : "#a1a1aa",
+          fontSize: 10,
+          fontFamily: "Fira Sans, sans-serif",
+          padding: [0, 0, 0, 0],
         },
         top: 0,
         type: "scroll",
-        pageTextStyle: { color: isLight ? "#1d1d1f" : "#f1f5f9" },
-        itemWidth: 12,
-        itemHeight: 12,
+        pageTextStyle: { color: isLight ? "#1d1d1f" : "#a1a1aa" },
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 8,
         icon: "circle",
       },
       grid: {
@@ -915,7 +921,7 @@ function App() {
         splitLine: { show: false },
       },
       yAxis: yAxisConfig,
-      series: activeSeries.map((s, index) => {
+      series: activeSeries.map((s) => {
         const metricKey = s.metricName || s.name.split(" (")[0];
         const axisIndex = uniqueMetrics.indexOf(metricKey);
         const color =
@@ -1232,7 +1238,7 @@ function App() {
         ),
       );
       setIsDataEditorOpen(false);
-    } catch (err) {
+    } catch (_err) {
       alert(
         "JSON 解析失败，请检查格式。支持编辑 time (yyyy-MM-dd HH:mm:ss) 和 value。",
       );
@@ -1778,23 +1784,24 @@ function App() {
       )}
 
       <nav className="navbar glass-panel">
-        <div className="logo">
+        <div className="logo" style={{ paddingLeft: '8px' }}>
           <button
             className="sidebar-toggle-btn"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             title={isSidebarCollapsed ? "展开" : "折叠"}
+            style={{ marginRight: '8px' }}
           >
-            <Layout size={20} />
+            <Layout size={18} />
           </button>
           <img src="/logo.png" alt="Logo" className="logo-img" />
-          <span>
-            <strong>新能源发电分析系统</strong>
+          <span style={{ marginLeft: '4px' }}>
+            <strong>新能源分析系统</strong>
           </span>
-          <div className={`backend-status-badge ${backendStatus}`}>
+          <div className={`backend-status-badge ${backendStatus}`} style={{ marginLeft: '8px' }}>
             <span className="status-dot"></span>
-            {backendStatus === "online" ? "后端: 在线" : "后端: 离线"}
+            {backendStatus === "online" ? "在线" : "离线"}
           </div>
-          <div className="version-tag">{systemVersion}</div>
+          <div className="version-tag" style={{ marginLeft: '4px' }}>{systemVersion}</div>
         </div>
         <div className="nav-actions">
           <label
@@ -1820,18 +1827,18 @@ function App() {
             <Archive size={15} /> 存入历史
           </button>
           <button
-            className="icon-btn-mini"
+            className="action-icon-btn premium-button secondary"
             onClick={resetSettings}
-            title="恢复默认面板设置 (不删除数据)"
+            title="重置面板 (RotateCcw)"
           >
-            <RotateCcw size={15} /> 重置面板
+            <RotateCcw size={15} />
           </button>
           <button
-            className="clear-btn"
+            className="action-icon-btn clear-btn"
             onClick={clearAll}
-            title="清空当前所有图表数据"
+            title="清空当前所有图表数据 (Trash2)"
           >
-            <Trash2 size={15} /> 清空当前
+            <Trash2 size={15} />
           </button>
           <div className="nav-divider"></div>
           <button
@@ -1850,11 +1857,11 @@ function App() {
           <div className="nav-divider"></div>
           {selectedDates.length > 0 && (
             <button
-              className="export-btn"
+              className="action-icon-btn export-btn"
               onClick={exportData}
-              title="导出当前显示的数据为 CSV"
+              title="导出当前 CSV (Download)"
             >
-              <Download size={14} /> 导出 CSV
+              <Download size={15} />
             </button>
           )}
           <div className="nav-divider"></div>
@@ -1959,9 +1966,9 @@ function App() {
                 <div className="section-item">
                   <div className="section-header">
                     <span className="label">维度筛选</span>
-                    <div className="dimension-actions">
+                    <div className="dimension-actions-modern">
                       <button
-                        className="text-btn-mini"
+                        className="icon-btn-text-tiny"
                         onClick={() => {
                           const newFilters = { ...dimensionFilters };
                           const currentSeries = series.filter((s) =>
@@ -1979,12 +1986,12 @@ function App() {
                           });
                           setDimensionFilters(newFilters);
                         }}
+                        title="全局全选"
                       >
-                        全选
+                        <CheckSquare size={13} />
                       </button>
-                      <span className="divider-vertical"></span>
                       <button
-                        className="text-btn-mini"
+                        className="icon-btn-text-tiny"
                         onClick={() => {
                           const newFilters = { ...dimensionFilters };
                           Object.keys(newFilters).forEach(
@@ -1992,8 +1999,33 @@ function App() {
                           );
                           setDimensionFilters(newFilters);
                         }}
+                        title="全局清空"
                       >
-                        清空
+                        <Square size={13} />
+                      </button>
+                      <button
+                        className="icon-btn-text-tiny"
+                        onClick={() => {
+                          const newFilters = { ...dimensionFilters };
+                          const currentSeries = series.filter((s) =>
+                            selectedDates.includes(s.date),
+                          );
+                          Object.keys(newFilters).forEach((dimKey) => {
+                            const allValues = [
+                              ...new Set(
+                                currentSeries
+                                  .map((s) => s.dimensions?.[dimKey])
+                                  .filter(Boolean),
+                              ),
+                            ].sort();
+                            const current = newFilters[dimKey] || [];
+                            newFilters[dimKey] = allValues.filter(v => !current.includes(v));
+                          });
+                          setDimensionFilters(newFilters);
+                        }}
+                        title="全局反选"
+                      >
+                        <RefreshCw size={13} />
                       </button>
                     </div>
                   </div>
@@ -2042,22 +2074,35 @@ function App() {
                               <span className="dim-count">
                                 {selected.length}/{allValues.length}
                               </span>
-                              <button
-                                className="text-btn-mini"
-                                onClick={() =>
-                                  setDimensionFilters((prev) => ({
-                                    ...prev,
-                                    [dimKey]: isAllSelected ? [] : allValues,
-                                  }))
-                                }
-                                title={
-                                  isAllSelected ? "清空此维度" : "全选此维度"
-                                }
-                              >
-                                {isAllSelected ? "消" : "全"}
-                              </button>
+                                <button
+                                  className="icon-btn-text-tiny"
+                                  onClick={() =>
+                                    setDimensionFilters((prev) => ({
+                                      ...prev,
+                                      [dimKey]: isAllSelected ? [] : allValues,
+                                    }))
+                                  }
+                                  title={
+                                    isAllSelected ? "清空此维度" : "全选此维度"
+                                  }
+                                >
+                                  {isAllSelected ? <Square size={12} /> : <CheckSquare size={12} />}
+                                </button>
+                                <button
+                                  className="icon-btn-text-tiny"
+                                  onClick={() =>
+                                    setDimensionFilters((prev) => {
+                                      const current = prev[dimKey] || [];
+                                      const next = allValues.filter(v => !current.includes(v));
+                                      return { ...prev, [dimKey]: next };
+                                    })
+                                  }
+                                  title="反选此维度"
+                                >
+                                  <RefreshCw size={12} />
+                                </button>
+                              </div>
                             </div>
-                          </div>
                           <div className="dimension-tags">
                             {allValues.map((val) => (
                               <button
@@ -2256,21 +2301,23 @@ function App() {
                            />
                         </div>
                       </div>
-                      <div className="param-item-inline" style={{display:'flex', alignItems:'center', justifyContent:'space-between', background:'rgba(0,0,0,0.1)', padding:'2px 4px', borderRadius:'4px'}}>
+                      <div className="param-item-inline curtailment-style-row">
                          <span style={{fontSize:'10px', opacity:0.6}}>样式</span>
-                         <div style={{display: "flex", gap: "6px", alignItems: "center"}}>
+                         <div style={{display: "flex", gap: "8px", alignItems: "center", flex: 1}}>
                            <input
                              type="color"
                              value={curtailmentColor}
                              onChange={(e) => setCurtailmentColor(e.target.value)}
-                             style={{width:'14px', height:'14px', border:'none', padding:0, background:'transparent'}}
+                             className="curtailment-color-picker"
+                             title="限电背景颜色"
                            />
                            <input
                              type="range"
                              min="0" max="1" step="0.1"
                              value={curtailmentOpacity}
                              onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))}
-                             style={{ width: "40px", height:'2px' }}
+                             className="curtailment-opacity-slider"
+                             title={`透明度: ${curtailmentOpacity}`}
                            />
                          </div>
                       </div>
@@ -2298,9 +2345,9 @@ function App() {
                     }
                     )
                   </span>
-                  <div className="legend-bulk-actions">
-                    <button onClick={() => setAllLegends(true)}>全显</button>
-                    <button onClick={() => setAllLegends(false)}>全隐</button>
+                  <div className="legend-bulk-actions-modern">
+                    <button onClick={() => setAllLegends(true)} title="全部可见"><CheckSquare size={12} /></button>
+                    <button onClick={() => setAllLegends(false)} title="全部隐藏"><Square size={12} /></button>
                   </div>
                 </div>
                 <div
@@ -2464,18 +2511,7 @@ function App() {
                       low.includes("超短期")
                     );
                   });
-                  const isPowerMetric = (m) => {
-                    const low = m.toLowerCase();
-                    return (
-                      low.includes("功率") ||
-                      low.includes("power") ||
-                      low.includes("预测") ||
-                      low.includes("出清") ||
-                      low.includes("负荷") ||
-                      low.includes("agc") ||
-                      low.includes("超短期")
-                    );
-                  };
+
 
                   return (
                     <div
@@ -2579,100 +2615,142 @@ function App() {
                         </div>
                       )}
 
-                      {uniqueMetricsInView.map((metric, i) => {
-                        const originalColor = getUserColor(i, metric);
+                      {uniqueMetricsInView.map((metric, index) => {
+                        const originalColor = getUserColor(index, metric);
                         const metricColor =
                           customMetricColors[metric] || originalColor;
-                        let metricColorAlpha = "1";
-                        if (metricColor.startsWith("#")) {
-                          const r = parseInt(metricColor.slice(1, 3), 16);
-                          const g = parseInt(metricColor.slice(3, 5), 16);
-                          const b = parseInt(metricColor.slice(5, 7), 16);
-                          metricColorAlpha = `${r}, ${g}, ${b}`;
-                        } else if (metricColor.startsWith("rgb")) {
-                          const match = metricColor.match(/\d+/g);
-                          if (match) metricColorAlpha = match.join(", ");
-                        }
-
-                        // 判断该指标下的所有系列是否全部被隐藏
-                        const sameMetricSeries = series.filter(
+                        
+                        // Check if all series for this metric are hidden
+                        const isHidden = !currentActiveSeries.some(
                           (s) =>
-                            (s.metricName || s.name.split(" (")[0]) === metric,
+                            (s.metricName || s.name.split(" (")[0]) === metric &&
+                            legendSelected[s.displayName] !== false,
                         );
-                        // 计算当前指标的数据范围 (用于 placeholder)
-                        let dMin = Infinity,
-                          dMax = -Infinity;
-                        series.forEach((s) => {
-                          const mName = s.metricName || s.name.split(" (")[0];
-                          if (
-                            mName === metric &&
-                            selectedDates.includes(s.date)
-                          ) {
-                            s.data.forEach((d) => {
-                              if (d.value < dMin) dMin = d.value;
-                              if (d.value > dMax) dMax = d.value;
-                            });
-                          }
-                        });
-                        if (dMin === Infinity) {
-                          dMin = 0;
-                          dMax = 100;
-                        }
-
-                        const dMinDisplay = Math.floor(
-                          dMin * axisAdjustmentFactor,
-                        );
-                        const dMaxDisplay = Math.ceil(
-                          dMax * axisAdjustmentFactor,
-                        );
-
-                        const isUnified = useDefaultLimits && isPowerMetric(metric);
-                        const isHidden = !series.some(s => (s.metricName || s.name.split(' (')[0]) === metric && legendSelected[s.displayName] !== false);
 
                         return (
-                           <div key={metric} 
-                                className={`axis-control-card ${isHidden ? "is-hidden-metric" : ""}`}
-                                style={{borderLeft: `2.5px solid ${metricColor}`, padding:'4px 8px'}}>
-                              <div className="control-row-dense header" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'6px', marginBottom:'2px'}}>
-                                 <span className="metric-name" title={metric} style={{fontSize:'10px', fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1}}>{metric}</span>
-                                 <div className="header-tools" style={{display:'flex', gap: '2px', alignItems:'center'}}>
-                                     <input 
-                                        type="color" 
-                                        value={metricColor}
-                                        onChange={(e) => setCustomMetricColors(prev => ({...prev, [metric]: e.target.value}))}
-                                        className="color-picker-mini"
-                                        style={{width:'14px', height:'14px', border:'none', padding:0, background:'transparent', cursor:'pointer'}}
-                                     />
-                                     <button className="icon-btn-text" 
-                                             onClick={() => setAxisRanges(prev => { const n={...prev}; delete n[metric]; return n; })} 
-                                             title="重置"
-                                             style={{background:'transparent', border:'none', cursor:'pointer', padding:'2px', display:'flex', alignItems:'center'}}>
-                                        <RotateCcw size={10} />
-                                      </button>
-                                 </div>
+                          <div
+                            key={metric}
+                            className={`axis-control-card glass-panel ${isHidden ? "is-hidden-metric" : ""}`}
+                            style={{
+                              borderLeft: `3px solid ${metricColor}`,
+                              padding: "4px 8px",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            <div
+                              className="control-row-dense header"
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: "6px",
+                                marginBottom: "2px",
+                              }}
+                            >
+                              <span
+                                className="metric-name"
+                                title={metric}
+                                style={{
+                                  fontSize: "10px",
+                                  fontWeight: 600,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: 1,
+                                  fontFamily: "Fira Sans",
+                                }}
+                              >
+                                {metric}
+                              </span>
+                              <div
+                                className="header-tools"
+                                style={{
+                                  display: "flex",
+                                  gap: "4px",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: "12px",
+                                    height: "12px",
+                                    borderRadius: "2px",
+                                    backgroundColor: metricColor,
+                                    overflow: "hidden",
+                                    position: "relative",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  <input
+                                    type="color"
+                                    value={metricColor}
+                                    onChange={(e) =>
+                                      setCustomMetricColors((prev) => ({
+                                        ...prev,
+                                        [metric]: e.target.value,
+                                      }))
+                                    }
+                                    style={{
+                                      opacity: 0,
+                                      width: "100%",
+                                      height: "100%",
+                                      position: "absolute",
+                                      top: 0,
+                                      left: 0,
+                                      cursor: "pointer",
+                                    }}
+                                  />
+                                </div>
+                                <button
+                                  className="icon-btn-text"
+                                  onClick={() =>
+                                    setAxisRanges((prev) => {
+                                      const n = { ...prev };
+                                      delete n[metric];
+                                      return n;
+                                    })
+                                  }
+                                  title="重置范围"
+                                >
+                                  <RotateCcw size={10} />
+                                </button>
                               </div>
-                              <div className="inputs-row" style={{display:'flex', gap:'4px', alignItems:'center'}}>
-                                 <input
-                                    className="axis-input"
-                                    type="number"
-                                    placeholder={isUnified ? "Unified" : dMinDisplay}
-                                    disabled={isUnified}
-                                    value={axisRanges[metric]?.min ?? ""}
-                                    onChange={(e) => setAxisRanges(prev => ({...prev, [metric]: {...prev[metric], min: e.target.value}}))}
-                                    style={{flex:1, background:'rgba(0,0,0,0.15)', border:'none', borderRadius:'3px', padding:'2px 4px', fontSize:'10px', color:'inherit', textAlign:'center', outline:'none', fontFamily:'var(--font-family-mono)'}}
-                                 />
-                                 <span className="sep" style={{opacity:0.3, fontSize:'10px'}}>-</span>
-                                 <input
-                                    className="axis-input"
-                                    type="number"
-                                    placeholder={isUnified ? "Unified" : dMaxDisplay}
-                                    disabled={isUnified}
-                                    value={axisRanges[metric]?.max ?? ""}
-                                    onChange={(e) => setAxisRanges(prev => ({...prev, [metric]: {...prev[metric], max: e.target.value}}))}
-                                    style={{flex:1, background:'rgba(0,0,0,0.15)', border:'none', borderRadius:'3px', padding:'2px 4px', fontSize:'10px', color:'inherit', textAlign:'center', outline:'none', fontFamily:'var(--font-family-mono)'}}
-                                 />
-                              </div>
-                           </div>
+                            </div>
+
+                            <div className="inputs-row">
+                              <input
+                                className="axis-input"
+                                type="number"
+                                placeholder="Min"
+                                value={axisRanges[metric]?.min ?? ""}
+                                onChange={(e) =>
+                                  setAxisRanges((prev) => ({
+                                    ...prev,
+                                    [metric]: {
+                                      ...prev[metric],
+                                      min: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                              <span className="sep">-</span>
+                              <input
+                                className="axis-input"
+                                type="number"
+                                placeholder="Max"
+                                value={axisRanges[metric]?.max ?? ""}
+                                onChange={(e) =>
+                                  setAxisRanges((prev) => ({
+                                    ...prev,
+                                    [metric]: {
+                                      ...prev[metric],
+                                      max: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
@@ -3226,17 +3304,17 @@ function App() {
 }
 
 function getUserColor(index, metricName = "") {
-  // 定义核心指标与其对应的固定颜色
+  // 定义核心指标与其对应的固定颜色 (电力工业标准方案)
   const fixedColorMap = {
-    实际功率: "#5470c6",
-    可用功率: "#91cc75",
-    理论功率: "#73c0de",
-    AGC远方指令: "#ee6666",
-    辐照度: "#fac858",
-    短波辐射: "#fac858",
-    价格: "#9a60b4",
-    预测功率: "#3ba272",
-    负荷: "#fc8452",
+    实际功率: "#2c7be5", // 蓝色
+    可用功率: "#27b768", // 绿色
+    理论功率: "#17a2b8", // 青色
+    AGC远方指令: "#ef4444", // 红色
+    辐照度: "#ffc107", // 金黄
+    短波辐射: "#f59e0b", // 橙黄
+    价格: "#6610f2", // 紫色
+    预测功率: "#20c997", // 碧绿
+    负荷: "#fd7e14", // 橙色
   };
 
   if (metricName) {
@@ -3245,27 +3323,13 @@ function getUserColor(index, metricName = "") {
     }
   }
 
+  // 专业高对比度色板 (适配多场站、多指标叠加)
   const colors = [
-    "#3b82f6",
-    "#10b981",
-    "#f59e0b",
-    "#ef4444",
-    "#8b5cf6",
-    "#ec4899",
-    "#06b6d4",
-    "#84cc16",
-    "#f97316",
-    "#6366f1",
-    "#14b8a6",
-    "#d946ef",
-    "#eab308",
-    "#f43f5e",
-    "#a855f7",
-    "#22c55e",
-    "#0ea5e9",
-    "#facc15",
-    "#fb7185",
-    "#c084fc",
+    "#2c7be5", "#f5803e", "#27b768", "#d63384", 
+    "#6610f2", "#0dcaf0", "#ffc107", "#fd7e14", 
+    "#20c997", "#e83e8c", "#6f42c1", "#198754", 
+    "#dc3545", "#52616b", "#7d5a50", "#00ffab",
+    "#ff4d4d", "#007bff", "#6c757d", "#17a2b8"
   ];
   return colors[index % colors.length];
 }
