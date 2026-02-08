@@ -72,6 +72,14 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["任务管理"])
 app.include_router(kpi.router, prefix="/api/kpi", tags=["绩效统计"])
 app.include_router(reports.router, prefix="/api/reports", tags=["报表"])
 app.include_router(appeals.router, prefix="/api/appeals", tags=["申诉管理"])
+from app.api import attachments
+app.include_router(attachments.router, prefix="/api/attachments", tags=["附件管理"])
+
+# 挂载静态文件目录 (用于访问上传的附件)
+from fastapi.staticfiles import StaticFiles
+import os
+os.makedirs("static/uploads", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/api/health", tags=["系统"])

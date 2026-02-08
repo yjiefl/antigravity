@@ -12,7 +12,6 @@
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.4",
     "dayjs": "^1.11.19",
-    "frappe-gantt": "^1.0.4",
     "pinia": "^3.0.4",
     "tailwindcss": "^4.1.18",
     "vue": "^3.5.24",

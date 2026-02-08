@@ -263,7 +263,6 @@ $$T = \begin{cases} 1.0, & \Delta t \le 0 \\ \max(0.2, 1.0 - \frac{\Delta t}{D} 
 ├── /tasks                   # 任务列表（大表管理）
 │   ├── /tasks/new           # 新建任务
 │   └── /tasks/:id           # 任务详情
-├── /gantt                   # 甘特图
 ├── /kpi                     # 绩效统计
 │   ├── /kpi/personal        # 个人绩效
 │   └── /kpi/department      # 部门绩效

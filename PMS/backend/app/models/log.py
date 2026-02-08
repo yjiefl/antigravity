@@ -74,6 +74,7 @@ class TaskLog(Base):
     
     # 关联关系
     task: Mapped["Task"] = relationship("Task", back_populates="logs")
+    attachments: Mapped[list["Attachment"]] = relationship("Attachment", back_populates="log", cascade="all, delete-orphan")
 
 
 # 避免循环导入

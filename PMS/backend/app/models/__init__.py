@@ -27,6 +27,7 @@ from app.models.penalty import (
     AppealStatus,
     AppealReason,
 )
+from app.models.attachment import Attachment
 
 __all__ = [
     # 用户与组织
@@ -49,4 +50,5 @@ __all__ = [
     "CardType",
     "AppealStatus",
     "AppealReason",
+    "Attachment",
 ]

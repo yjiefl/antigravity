@@ -215,6 +215,11 @@ class Task(Base):
         back_populates="task",
         cascade="all, delete-orphan"
     )
+    attachments: Mapped[List["Attachment"]] = relationship(
+        "Attachment",
+        back_populates="task",
+        cascade="all, delete-orphan"
+    )
 
     # 用户关联（用于 eager loading）
     creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id])
@@ -225,3 +230,4 @@ class Task(Base):
 # 导入避免循环引用
 from app.models.log import TaskLog
 from app.models.penalty import Appeal, PenaltyCard
+from app.models.attachment import Attachment

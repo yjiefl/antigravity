@@ -19,7 +19,6 @@ const sidebarOpen = ref(true);
 const navItems = [
   { name: "仪表盘", path: "/", icon: "📊" },
   { name: "任务管理", path: "/tasks", icon: "📋" },
-  { name: "甘特图", path: "/gantt", icon: "📅" },
   { name: "绩效统计", path: "/kpi", icon: "📈" },
   {
     name: "申诉审核",
@@ -58,9 +57,7 @@ function handleLogout() {
       <div
         class="p-6 border-b border-indigo-100/30 bg-white/10 backdrop-blur-md"
       >
-        <h1
-          class="text-xl font-bold tracking-tight text-indigo-700"
-        >
+        <h1 class="text-xl font-bold tracking-tight text-indigo-700">
           计划管理系统
         </h1>
       </div>
@@ -82,9 +79,7 @@ function handleLogout() {
             class="text-xl transition-transform duration-200 group-hover:scale-110"
             >{{ item.icon }}</span
           >
-          <span class="font-semibold tracking-wide">{{
-            item.name
-          }}</span>
+          <span class="font-semibold tracking-wide">{{ item.name }}</span>
           <div
             v-if="currentPath === item.path && !sidebarOpen"
             class="absolute left-full ml-2 px-2 py-1 bg-indigo-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity"

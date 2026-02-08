@@ -5,10 +5,11 @@
 """
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Annotated, Optional
 
 from app.core import get_db, verify_password, create_access_token, decode_access_token
 from app.models import User, UserRole
@@ -16,13 +17,14 @@ from app.schemas import LoginRequest, LoginResponse, Token, TokenData, UserRespo
 
 router = APIRouter()
 
-# OAuth2 密码模式
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# OAuth2 密码模式 (不强制 header，以便支持 query token)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
+    token: Annotated[Optional[str], Depends(oauth2_scheme)] = None,
+    token_query: Annotated[Optional[str], Query(alias="token")] = None,
 ) -> User:
     """
     获取当前登录用户
@@ -39,13 +41,18 @@ async def get_current_user(
     Raises:
         HTTPException: 401 令牌无效或用户不存在
     """
+    final_token = token or token_query
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="无法验证凭据",
+        detail="无效的认证凭据",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    if not final_token:
+        raise credentials_exception
     
-    payload = decode_access_token(token)
+    payload = decode_access_token(final_token)
     if payload is None:
         raise credentials_exception
     

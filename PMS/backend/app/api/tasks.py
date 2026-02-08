@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
 from sqlalchemy import select, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -54,6 +54,7 @@ async def add_task_log(
     progress_before: Optional[int] = None,
     progress_after: Optional[int] = None,
     evidence_url: Optional[str] = None,
+    attachments_meta: Optional[list[dict]] = None,
 ):
     """添加任务日志"""
     log = TaskLog(
@@ -66,6 +67,23 @@ async def add_task_log(
         evidence_url=evidence_url,
     )
     db.add(log)
+    # 如果有附件元数据，创建 Attachment 记录
+    if attachments_meta:
+        from app.models.attachment import Attachment
+        for meta in attachments_meta:
+            attachment = Attachment(
+                task_id=task_id,
+                # log_id=log.id,  # 通过关系自动关联
+                uploader_id=user_id,
+                filename=meta["filename"],
+                file_path=meta["file_path"],
+                file_type=meta["file_type"],
+                file_size=meta["file_size"],
+            )
+            log.attachments.append(attachment)
+            db.add(attachment)
+    
+    return log
 
 
 # ============ 任务 CRUD ============
@@ -322,15 +340,19 @@ async def reject_task(
 @router.post("/{task_id}/progress", response_model=TaskResponse)
 async def update_progress(
     task_id: uuid.UUID,
-    progress_in: TaskProgress,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    progress: int = Form(..., description="进度百分比", ge=0, le=100),
+    content: Optional[str] = Form(None, description="进展说明"),
+    files: List[UploadFile] = File(None, description="证明附件"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    更新任务进展
+    更新任务进展 (支持附件上传)
     
     仅进行中状态可更新
     """
+    from app.utils.file import save_upload_file
+    
     task = await get_task_or_404(task_id, db)
     
     if task.status != TaskStatus.IN_PROGRESS:
@@ -342,20 +364,30 @@ async def update_progress(
     progress_before = task.progress
     
     # 防止进度倒退
-    if progress_in.progress < progress_before:
+    if progress < progress_before:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"新进度 ({progress_in.progress}%) 不能小于当前进度 ({progress_before}%)"
+            detail=f"新进度 ({progress}%) 不能小于当前进度 ({progress_before}%)"
         )
     
-    task.progress = progress_in.progress
+    task.progress = progress
+    
+    # 处理文件上传
+    attachments_meta = []
+    if files:
+        from app.utils.file import save_multiple_files
+        attachments_meta = await save_multiple_files(files)
+        # 为了兼容旧版字段，取第一个作为 evidence_url
+        if attachments_meta:
+            task.evidence_url = attachments_meta[0]["file_path"]
     
     await add_task_log(
         db, task.id, current_user.id, LogAction.PROGRESS_UPDATED,
-        progress_in.content,
+        content,
         progress_before=progress_before,
-        progress_after=progress_in.progress,
-        evidence_url=progress_in.evidence_url,
+        progress_after=progress,
+        evidence_url=task.evidence_url,
+        attachments_meta=attachments_meta,
     )
     
     await db.flush()
@@ -367,15 +399,18 @@ async def update_progress(
 @router.post("/{task_id}/complete", response_model=TaskResponse)
 async def complete_task(
     task_id: uuid.UUID,
-    complete_in: TaskComplete,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    comment: Optional[str] = Form(None, description="完成备注"),
+    files: List[UploadFile] = File(None, description="交付物/证据"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    提交验收
+    提交验收 (支持附件上传)
     
     进行中 → 待验收
     """
+    from app.utils.file import save_upload_file
+    
     task = await get_task_or_404(task_id, db)
     
     if task.status != TaskStatus.IN_PROGRESS:
@@ -398,14 +433,22 @@ async def complete_task(
     
     task.status = TaskStatus.PENDING_REVIEW
     task.progress = 100  # 强制设置为 100%
-    task.evidence_url = complete_in.evidence_url
+    
+    # 处理文件上传
+    attachments_meta = []
+    if files:
+        from app.utils.file import save_multiple_files
+        attachments_meta = await save_multiple_files(files)
+        if attachments_meta:
+            task.evidence_url = attachments_meta[0]["file_path"]
     
     await add_task_log(
         db, task.id, current_user.id, LogAction.COMPLETED,
-        complete_in.comment,
+        comment,
         progress_before=progress_before,
         progress_after=100,
-        evidence_url=complete_in.evidence_url,
+        evidence_url=task.evidence_url,
+        attachments_meta=attachments_meta,
     )
     
     await db.flush()
@@ -592,6 +635,7 @@ async def get_task_logs(
     
     result = await db.execute(
         select(TaskLog)
+        .options(selectinload(TaskLog.attachments))
         .where(TaskLog.task_id == task_id)
         .order_by(TaskLog.created_at.desc())
     )
@@ -601,12 +645,24 @@ async def get_task_logs(
     return [
         {
             "id": str(log.id),
-            "action": log.action.value,
+            "action": log.action,
             "content": log.content,
+            "evidence_url": log.evidence_url,
             "progress_before": log.progress_before,
             "progress_after": log.progress_after,
-            "evidence_url": log.evidence_url,
-            "created_at": log.created_at.isoformat(),
+            "created_at": log.created_at,
+            "attachments": [
+                {
+                    "id": str(a.id),
+                    "filename": a.filename,
+                    "file_path": a.file_path,
+                    "file_type": a.file_type,
+                    "file_size": a.file_size,
+                    "download_count": a.download_count,
+                    "created_at": a.created_at,
+                }
+                for a in log.attachments
+            ]
         }
         for log in logs
     ]

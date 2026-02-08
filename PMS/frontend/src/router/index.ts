@@ -27,11 +27,6 @@ const routes = [
         component: () => import('../views/TaskList.vue')
       },
       {
-        path: 'gantt',
-        name: 'Gantt',
-        component: () => import('../views/GanttView.vue')
-      },
-      {
         path: 'tasks/new',
         name: 'TaskCreate',
         component: () => import('../views/TaskForm.vue')

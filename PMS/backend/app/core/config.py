@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     # 强制评价期限（小时）
     force_review_hours: int = 48
     
+    # 附件配置
+    max_file_size: int = 20 * 1024 * 1024  # 默认 20MB
+    allowed_file_types: list[str] = ["image/", "application/pdf", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip", "text/plain"]
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

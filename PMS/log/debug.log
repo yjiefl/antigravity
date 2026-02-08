@@ -86,3 +86,27 @@
    - 纠正定时任务后台由于导入缺失导致的 NameError。
    - 补充甘特图组件 TypeScript 类型声明，彻底解决 build 阶段报错。
 
+### 2026-02-08 20:35 - 附件系统升级 & 甘特图错误排查
+1. **甘特图加载报错修复**
+   - **问题**：浏览器报 `Failed to fetch dynamically imported module .../GanttView.vue`。
+   - **成因**：`GanttChart.vue` 组件中通过 JS `import` 引用了 `frappe-gantt/dist/frappe-gantt.css`。由于 Vite 7 对于 `node_modules` 中 `package.json` 的 `exports` 校验更加严格，而 `frappe-gantt` 未完全导出该 CSS 子路径，导致 JS 分析阶段报错并中断了整个视图的动态加载。
+   - **修复**：将 CSS 导入移至组件的 `<style>` 块中，使用 `@import "frappe-gantt"` 规范，由 CSS 编译器（PostCSS/Tailwind）通过 `package.json` 的 `style` 字段自动解析路径。
+
+2. **高级附件管理系统 (Advanced Attachment System)**
+   - **后端实现**：
+     - 新增 `Attachment` 模型，记录文件名、MIME 类型、文件大小、物理路径及下载计数。
+     - 建立了 `Task` 与 `Attachment`、`TaskLog` 与 `Attachment` 的一对多关系，支持单次操作绑定多个附件。
+     - 创建了 `api/attachments` 端点，实现带计数统计的附件下载。
+     - 升级了 `add_task_log` 工具函数，支持在记录日志时自动持久化关联附件。
+     - `get_task_logs` API 现在采用 `selectinload` 预加载附件列表，确保前端可一次性获取历史动态及对应的所有文件。
+   - **前端实现**：
+     - `TaskDetail.vue` 全面升级：支持在「更新进展」和「提交验收」时拖拽/选择多个文件。
+     - 日志时间轴强化：按类型（图片/文档）平铺展示附件，显示元数据（大小、下载量）。
+     - 集成了下载统计链路，点击下载按钮后前端调取专项 API。
+   - **配置化管理**：
+     - 集成全局 `Settings` 配置，支持在 `core/config.py` 中自定义 `max_file_size` (20MB) 和 `allowed_file_types`。
+     - 在文件保存环节（`utils/file.py`）增加了严格的 MIME 类型白名单校验。
+
+3. **自动化测试**
+   - 更新了 `backend/tests/test_upload.py`，模拟多文件上传场景，验证了日志关联关系、附件元数据持久化及下载统计功能的正确性。
+2026-02-08 21:50:00 [INFO] 开始删除「甘特图」功能。操作包括：移除前端路由、侧边栏导航、相关的 Vue 组件和视图文件，以及清理 package.json 中的 frappe-gantt 依赖。
