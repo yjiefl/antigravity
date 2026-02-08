@@ -23,8 +23,8 @@ const showHistoryModal = ref(false);
 const showCompleteModal = ref(false);
 const showReviewModal = ref(false);
 const showApproveModal = ref(false);
-const showPreviewModal = ref(false);
-const previewUrl = ref("");
+// const showPreviewModal = ref(false);
+// const previewUrl = ref("");
 
 // 表单数据
 const progressForm = ref({ percent: 0, content: "", files: [] as File[] });
@@ -48,10 +48,10 @@ function handleCompleteFileChange(event: Event) {
   }
 }
 
-function openPreview(url: string) {
-  previewUrl.value = url;
-  showPreviewModal.value = true;
-}
+// function openPreview(url: string) {
+//   previewUrl.value = url;
+//   showPreviewModal.value = true;
+// }
 
 // 加载任务
 async function loadTask() {
@@ -140,7 +140,7 @@ async function updateProgress() {
 
   showProgressModal.value = false;
   progressForm.value.content = "";
-  progressForm.value.file = null;
+  progressForm.value.files = [];
   await loadTask();
 }
 
