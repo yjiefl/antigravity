@@ -19,7 +19,8 @@ class TokenData(BaseModel):
     """令牌数据（从 JWT 解析）"""
     user_id: Optional[uuid.UUID] = None
     username: Optional[str] = None
-    role: Optional[UserRole] = None
+    from typing import List
+    roles: Optional[List[UserRole]] = None
 
 
 class LoginRequest(BaseModel):
@@ -35,4 +36,5 @@ class LoginResponse(BaseModel):
     user_id: uuid.UUID
     username: str
     real_name: str
-    role: UserRole
+    from typing import List
+    roles: List[UserRole]

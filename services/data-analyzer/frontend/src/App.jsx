@@ -805,7 +805,7 @@ function App() {
       },
       grid: {
         top: "40", // Optimized space
-        left: "50",
+        left: "10",
         right: "20",
         bottom: "25",
         containLabel: true, // Ensure labels don't get cut off despite tight margins
@@ -1885,7 +1885,7 @@ function App() {
       <main className="main-content">
         <aside
           className={`sidebar glass-panel ${isSidebarCollapsed ? "collapsed" : ""} ${isSidebarWide ? "wide" : ""}`}
-          style={{ width: isSidebarCollapsed ? 0 : isSidebarWide ? 420 : 280 }}
+          style={{ width: isSidebarCollapsed ? 0 : isSidebarWide ? 320 : 210 }}
         >
           <div className="sidebar-tabs">
             <button
@@ -1988,9 +1988,9 @@ function App() {
                       <>
                         <div className="section-header">
                           <span className="label">维度筛选</span>
-                          <div className="dimension-actions-modern">
+                          <div className="dimension-actions-text">
                             <button
-                              className="icon-btn-text-tiny"
+                              className="text-action-btn"
                               onClick={() => {
                                 const newFilters = { ...dimensionFilters };
                                 allDimKeys.forEach((dim) => {
@@ -2005,43 +2005,42 @@ function App() {
                                 });
                                 setDimensionFilters(newFilters);
                               }}
-                              title="全局全选"
                             >
-                              <CheckSquare size={13} />
+                              全选
                             </button>
                             <button
-                              className="icon-btn-text-tiny"
+                              className="text-action-btn"
                               onClick={() => {
                                 const newFilters = { ...dimensionFilters };
-                                allDimKeys.forEach(
-                                  (key) => (newFilters[key] = []),
-                                );
-                                setDimensionFilters(newFilters);
-                              }}
-                              title="全局清空"
-                            >
-                              <Square size={13} />
-                            </button>
-                            <button
-                              className="icon-btn-text-tiny"
-                              onClick={() => {
-                                const newFilters = { ...dimensionFilters };
-                                allDimKeys.forEach((dimKey) => {
-                                  const allValues = [
-                                    ...new Set(
-                                      currentSeries
-                                        .map((s) => s.dimensions?.[dimKey])
-                                        .filter(Boolean),
-                                    ),
-                                  ].sort();
-                                  const current = dimensionFilters[dimKey] || [];
-                                  newFilters[dimKey] = allValues.filter(v => !current.includes(v));
+                                allDimKeys.forEach((dim) => {
+                                  newFilters[dim] = [];
                                 });
                                 setDimensionFilters(newFilters);
                               }}
-                              title="全局反选"
                             >
-                              <RefreshCw size={13} />
+                              清空
+                            </button>
+                            <button
+                              className="text-action-btn"
+                              onClick={() => {
+                                const newFilters = { ...dimensionFilters };
+                                allDimKeys.forEach((dim) => {
+                                  const allVals = [
+                                    ...new Set(
+                                      currentSeries
+                                        .map((s) => s.dimensions?.[dim])
+                                        .filter(Boolean),
+                                    ),
+                                  ];
+                                  const current = dimensionFilters[dim] || [];
+                                  newFilters[dim] = allVals.filter(
+                                    (v) => !current.includes(v),
+                                  );
+                                });
+                                setDimensionFilters(newFilters);
+                              }}
+                            >
+                              反选
                             </button>
                           </div>
                         </div>
@@ -2055,64 +2054,51 @@ function App() {
                             ),
                           ].sort();
                           const selected = dimensionFilters[dimKey] || [];
-                          const isAllSelected =
-                            selected.length === allValues.length;
+                          const isAllSelected = selected.length === allValues.length;
 
                           return (
-                            <div key={dimKey} style={{ marginBottom: "8px" }}>
-                              <div className="dim-header-row">
-                                <span className="dim-name">{dimKey}</span>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    gap: "6px",
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <span className="dim-count">
-                                    {selected.length}/{allValues.length}
+                            <div key={dimKey} className="dimension-group" style={{ marginBottom: "12px" }}>
+                              <div className="dim-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span className="dim-name" style={{ fontWeight: 600, fontSize: '11px' }}>{dimKey}</span>
+                                <div className="dim-header-actions" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                  <span style={{ fontSize: "10px", opacity: 0.6 }}>
+                                    {isAllSelected ? "全部" : `${selected.length}/${allValues.length}`}
                                   </span>
-                                  <button
-                                    className="icon-btn-text-tiny"
-                                    onClick={() =>
-                                      setDimensionFilters((prev) => ({
-                                        ...prev,
-                                        [dimKey]: allValues,
-                                      }))
-                                    }
-                                    title="全选此维度"
-                                    disabled={isAllSelected}
-                                    style={{ opacity: isAllSelected ? 0.3 : 1 }}
-                                  >
-                                    <CheckSquare size={12} />
-                                  </button>
-                                  <button
-                                    className="icon-btn-text-tiny"
-                                    onClick={() =>
-                                      setDimensionFilters((prev) => ({
-                                        ...prev,
-                                        [dimKey]: [],
-                                      }))
-                                    }
-                                    title="清空此维度"
-                                    disabled={selected.length === 0}
-                                    style={{ opacity: selected.length === 0 ? 0.3 : 1 }}
-                                  >
-                                    <Square size={12} />
-                                  </button>
-                                  <button
-                                    className="icon-btn-text-tiny"
-                                    onClick={() =>
-                                      setDimensionFilters((prev) => {
-                                        const current = prev[dimKey] || [];
-                                        const next = allValues.filter(v => !current.includes(v));
-                                        return { ...prev, [dimKey]: next };
-                                      })
-                                    }
-                                    title="反选此维度"
-                                  >
-                                    <RefreshCw size={12} />
-                                  </button>
+                                  <div className="dimension-actions-text">
+                                    <button
+                                      className="text-action-btn-mini"
+                                      onClick={() =>
+                                        setDimensionFilters((prev) => ({
+                                          ...prev,
+                                          [dimKey]: allValues,
+                                        }))
+                                      }
+                                    >
+                                      全
+                                    </button>
+                                    <button
+                                      className="text-action-btn-mini"
+                                      onClick={() =>
+                                        setDimensionFilters((prev) => ({
+                                          ...prev,
+                                          [dimKey]: [],
+                                        }))
+                                      }
+                                    >
+                                      仅
+                                    </button>
+                                    <button
+                                      className="text-action-btn-mini"
+                                      onClick={() =>
+                                        setDimensionFilters((prev) => ({
+                                          ...prev,
+                                          [dimKey]: allValues.filter((v) => !selected.includes(v)),
+                                        }))
+                                      }
+                                    >
+                                      反
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                               <div className="dimension-tags">
@@ -2381,21 +2367,19 @@ function App() {
                           onClick={() => toggleMetricLegend(displayName)}
                         >
                           <div className="series-row-main">
-                            <span
-                              className="series-dot"
-                              style={{
-                                backgroundColor: isHidden
-                                  ? "transparent"
-                                  : customMetricColors[metricKey] ||
-                                    getUserColor(
-                                      uniqueMetrics.indexOf(metricKey),
-                                      metricKey,
-                                    ),
-                                border: isHidden
-                                  ? "1px solid var(--text-secondary)"
-                                  : "none",
-                              }}
-                            ></span>
+                             <div 
+                               className="series-color-indicator"
+                               style={{
+                                 width: '12px',
+                                 height: '4px',
+                                 borderRadius: '1px',
+                                 background: isHidden 
+                                   ? 'rgba(255,255,255,0.1)' 
+                                   : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey)),
+                                 marginRight: '6px',
+                                 flexShrink: 0
+                               }}
+                             />
                             <div className="series-info">
                               <div className="s-name" title={s.name}>
                                 {s.name}
@@ -2501,7 +2485,6 @@ function App() {
           {selectedDates.length > 0 && (
             <div className="axis-section">
               <p className="label fixed-header">坐标轴与单位设置</p>
-              <div className="axis-list-scrollable">
                 {(() => {
                   const currentActiveSeries = series.filter((s) =>
                     selectedDates.includes(s.date),
@@ -2533,9 +2516,11 @@ function App() {
                         display: "flex",
                         flexDirection: "column",
                         gap: "8px",
+                        flex: 1,
+                        minHeight: 0
                       }}
                     >
-                      <div className="axis-control-card glass-panel">
+                      <div className="axis-control-card glass-panel" style={{ marginBottom: '4px' }}>
                         <div className="control-row-dense">
                           <span className="label-mini">全局缩放</span>
                           <div
@@ -2572,6 +2557,15 @@ function App() {
                           </div>
                         </div>
                       </div>
+
+                      <div className="axis-list-scrollable">
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                          }}
+                        >
 
                       {powerMetrics.length > 1 && (
                         <div className="axis-control-card glass-panel power-box">
@@ -2763,16 +2757,17 @@ function App() {
                                   }))
                                 }
                               />
-                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
+        </div>
+      )}
         </aside>
 
         <section className="chart-area glass-panel">

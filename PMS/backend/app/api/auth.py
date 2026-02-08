@@ -85,7 +85,7 @@ async def get_current_admin(
     
     验证当前用户是否为管理员角色
     """
-    if current_user.role != UserRole.ADMIN:
+    if UserRole.ADMIN not in current_user.roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="需要管理员权限"
@@ -99,7 +99,9 @@ async def get_current_manager_or_admin(
     """
     获取当前主管或管理员用户
     """
-    if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+    allowed = {UserRole.ADMIN, UserRole.MANAGER}
+    user_roles = set(current_user.roles)
+    if not user_roles.intersection(allowed):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="需要主管或管理员权限"
@@ -138,7 +140,7 @@ async def login(
     
     # 创建访问令牌
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role.value}
+        data={"sub": user.username, "roles": [r.value for r in user.roles]}
     )
     
     return LoginResponse(
@@ -147,7 +149,7 @@ async def login(
         user_id=user.id,
         username=user.username,
         real_name=user.real_name,
-        role=user.role,
+        roles=user.roles,
     )
 
 

@@ -426,7 +426,7 @@ h6 {
 }
 
 .sidebar {
-  width: 200px;
+  width: 210px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -625,25 +625,35 @@ h6 {
 }
 
 .dim-tag {
-  padding: 2px 8px;
-  background: var(--hover-bg);
-  border: 0.5px solid var(--border-color);
+  padding: 2px 6px;
+  background: transparent;
+  border: none;
   color: var(--text-mute);
-  font-size: 0.7rem;
-  border-radius: 4px;
+  font-size: 0.75rem;
+  border-radius: 3px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
+  font-weight: 400;
+}
+
+.dim-tag:hover {
+  background: var(--hover-bg);
+  color: var(--text-main);
 }
 
 .light-theme .dim-tag {
-  background: #f5f5f7;
-  color: #1d1d1f;
+  color: #4b4b4d;
 }
 
 .dim-tag.active {
-  background: var(--accent-color);
-  color: white;
-  border-color: var(--accent-color);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+.light-theme .dim-tag.active {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
 }
 
 .series-item {
@@ -683,12 +693,13 @@ h6 {
   overflow: hidden;
 }
 
-.series-color-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.series-color-dot,
+.series-color-block {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
   flex-shrink: 0;
-  margin-top: 5px;
+  margin-top: 2px;
 }
 
 .series-text-main {
@@ -815,6 +826,15 @@ h6 {
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
+  padding-bottom: 20px;
+}
+
+/* Series Dot in data list */
+.series-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px; /* Changed to square */
+  flex-shrink: 0;
 }
 
 .axis-row-compact {

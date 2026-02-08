@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import String, ForeignKey, DateTime, func
+from sqlalchemy import String, ForeignKey, DateTime, func, Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Uuid as UUID
 
@@ -26,6 +26,25 @@ class UserRole(str, Enum):
     ADMIN = "admin"
     MANAGER = "manager"
     STAFF = "staff"
+
+
+# 用户-角色关联模型
+class UserRoleBinding(Base):
+    """用户角色关联"""
+    __tablename__ = "user_roles"
+    
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    role: Mapped[UserRole] = mapped_column(
+        SqlEnum(UserRole),
+        primary_key=True
+    )
+    
+    # 反向关联（可选）
+    # user = relationship("User", back_populates="roles_binding")
 
 
 class Organization(Base):
@@ -162,10 +181,16 @@ class User(Base):
     real_name: Mapped[str] = mapped_column(String(50), nullable=False, comment="真实姓名")
     email: Mapped[Optional[str]] = mapped_column(String(100), comment="邮箱")
     phone: Mapped[Optional[str]] = mapped_column(String(20), comment="手机号")
-    role: Mapped[UserRole] = mapped_column(
-        default=UserRole.STAFF,
-        comment="用户角色"
+    # 角色关联
+    roles_binding: Mapped[List["UserRoleBinding"]] = relationship(
+        cascade="all, delete-orphan",
+        lazy="joined"
     )
+    
+    @property
+    def roles(self) -> List[UserRole]:
+        """获取角色列表（只读）"""
+        return [b.role for b in self.roles_binding]
     department_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("departments.id", ondelete="SET NULL"),

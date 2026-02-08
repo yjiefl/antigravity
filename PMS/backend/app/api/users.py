@@ -12,12 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core import get_db, get_password_hash
-from app.models import User, Organization, Department, Position, UserRole
+from app.models import User, Organization, Department, Position, UserRole, UserRoleBinding
 from app.schemas import (
     UserCreate, UserUpdate, UserResponse, UserBrief,
-    OrganizationCreate, OrganizationUpdate, OrganizationResponse,
-    DepartmentCreate, DepartmentUpdate, DepartmentResponse,
-    PositionCreate, PositionUpdate, PositionResponse,
 )
 from app.api.auth import get_current_user, get_current_admin
 
@@ -45,7 +42,8 @@ async def list_users(
     if department_id:
         query = query.where(User.department_id == department_id)
     if role:
-        query = query.where(User.role == role)
+        # 使用 any() 查询关联表
+        query = query.where(User.roles_binding.any(role=role))
     
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
@@ -79,12 +77,18 @@ async def create_user(
         real_name=user_in.real_name,
         email=user_in.email,
         phone=user_in.phone,
-        role=user_in.role,
         department_id=user_in.department_id,
         position_id=user_in.position_id,
     )
     
     db.add(user)
+    await db.flush()
+    
+    # 绑定角色
+    for role in user_in.roles:
+        binding = UserRoleBinding(user_id=user.id, role=role)
+        db.add(binding)
+        
     await db.flush()
     await db.refresh(user)
     
@@ -135,10 +139,19 @@ async def update_user(
             detail="用户不存在"
         )
     
-    # 更新字段
-    for field, value in user_in.model_dump(exclude_unset=True).items():
-        setattr(user, field, value)
-    
+    if hasattr(user_in, 'roles') and user_in.roles is not None:
+        # 清除旧角色
+        stmt = select(UserRoleBinding).where(UserRoleBinding.user_id == user.id)
+        result = await db.execute(stmt)
+        old_bindings = result.scalars().all()
+        for binding in old_bindings:
+            await db.delete(binding)
+        
+        # 添加新角色
+        for role in user_in.roles:
+            binding = UserRoleBinding(user_id=user.id, role=role)
+            db.add(binding)
+            
     await db.flush()
     await db.refresh(user)
     
@@ -175,67 +188,3 @@ async def delete_user(
     await db.flush()
 
 
-# ============ 组织架构管理 ============
-
-@router.get("/org/organizations", response_model=List[OrganizationResponse])
-async def list_organizations(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
-):
-    """
-    获取公司列表
-    """
-    result = await db.execute(
-        select(Organization).options(
-            selectinload(Organization.departments).selectinload(Department.positions)
-        )
-    )
-    return result.scalars().all()
-
-
-@router.post("/org/organizations", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED)
-async def create_organization(
-    org_in: OrganizationCreate,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_admin)],
-):
-    """
-    创建公司（仅管理员）
-    """
-    org = Organization(**org_in.model_dump())
-    db.add(org)
-    await db.flush()
-    await db.refresh(org)
-    return org
-
-
-@router.post("/org/departments", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)
-async def create_department(
-    dept_in: DepartmentCreate,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_admin)],
-):
-    """
-    创建部门（仅管理员）
-    """
-    dept = Department(**dept_in.model_dump())
-    db.add(dept)
-    await db.flush()
-    await db.refresh(dept)
-    return dept
-
-
-@router.post("/org/positions", response_model=PositionResponse, status_code=status.HTTP_201_CREATED)
-async def create_position(
-    pos_in: PositionCreate,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_admin)],
-):
-    """
-    创建岗位（仅管理员）
-    """
-    pos = Position(**pos_in.model_dump())
-    db.add(pos)
-    await db.flush()
-    await db.refresh(pos)
-    return pos

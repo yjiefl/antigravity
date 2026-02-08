@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.database import init_db
-from app.api import auth, users, tasks, kpi, reports, appeals
+from app.api import auth, users, tasks, kpi, reports, appeals, org
 
 settings = get_settings()
 
@@ -68,6 +68,7 @@ app.add_middleware(
 # 注册 API 路由
 app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
 app.include_router(users.router, prefix="/api/users", tags=["用户管理"])
+app.include_router(org.router, prefix="/api/org", tags=["组织架构"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["任务管理"])
 app.include_router(kpi.router, prefix="/api/kpi", tags=["绩效统计"])
 app.include_router(reports.router, prefix="/api/reports", tags=["报表"])

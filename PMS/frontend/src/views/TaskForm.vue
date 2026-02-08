@@ -17,8 +17,10 @@ const form = ref({
   description: "",
   task_type: "performance",
   category: "other",
-  plan_start: "",
-  plan_end: "",
+  plan_start: new Date().toISOString().slice(0, 16),
+  plan_end: new Date(Date.now() + 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 16),
 });
 
 const loading = ref(false);
@@ -43,7 +45,7 @@ const dateError = ref("");
 // 实时校验日期
 function validateDates() {
   dateError.value = "";
-  
+
   if (form.value.plan_start && form.value.plan_end) {
     const start = new Date(form.value.plan_start);
     const end = new Date(form.value.plan_end);
@@ -61,14 +63,12 @@ async function handleSubmit(submit = false) {
     error.value = "请输入任务标题";
     return;
   }
-  
+
   // 再次校验日期
   if (!validateDates()) {
-     return;
+    return;
   }
 
-
-  
   // 仅在非编辑模式下校验开始时间是否早于当日（可选，视需求而定，这里保留但放宽到分钟？）
   // 或者用户可能需要补录过去的某个任务，所以这个校验可能需要谨慎。
   // 原有逻辑: if (start < now && !isEdit) ...
@@ -101,13 +101,13 @@ async function handleSubmit(submit = false) {
     } else {
       res = await api.post("/api/tasks", taskData);
     }
-    
+
     // 如果选择直接提交
     const currentId = isEdit ? taskId : res.data?.id;
     if (submit && currentId) {
       await api.post(`/api/tasks/${currentId}/submit`);
     }
-    
+
     router.push("/tasks");
   } catch (e: any) {
     error.value = e.response?.data?.detail || "创建失败";
@@ -216,7 +216,7 @@ onMounted(() => {
           </div>
         </div>
 
-          <!-- 时间 -->
+        <!-- 时间 -->
         <div class="grid md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-2"
@@ -237,10 +237,15 @@ onMounted(() => {
               v-model="form.plan_end"
               type="datetime-local"
               class="w-full px-4 py-3 border border-slate-200 rounded-lg"
-              :class="{'border-red-500 focus:border-red-500 focus:ring-red-200': dateError}"
+              :class="{
+                'border-red-500 focus:border-red-500 focus:ring-red-200':
+                  dateError,
+              }"
               @input="validateDates"
             />
-            <p v-if="dateError" class="text-xs text-red-500 mt-1 font-bold">{{ dateError }}</p>
+            <p v-if="dateError" class="text-xs text-red-500 mt-1 font-bold">
+              {{ dateError }}
+            </p>
           </div>
         </div>
 

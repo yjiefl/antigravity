@@ -9,6 +9,7 @@ from app.models.user import (
     Position,
     User,
     UserRole,
+    UserRoleBinding,
 )
 from app.models.task import (
     Task,
@@ -36,6 +37,7 @@ __all__ = [
     "Position",
     "User",
     "UserRole",
+    "UserRoleBinding",
     # 任务
     "Task",
     "TaskStatus",

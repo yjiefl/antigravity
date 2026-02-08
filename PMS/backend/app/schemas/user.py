@@ -41,7 +41,7 @@ class UserBase(BaseModel):
     real_name: str = Field(..., max_length=50, description="真实姓名")
     email: Optional[EmailStr] = Field(None, description="邮箱")
     phone: Optional[str] = Field(None, max_length=20, description="手机号")
-    role: UserRole = Field(UserRole.STAFF, description="用户角色")
+    roles: List[UserRole] = Field(default=[UserRole.STAFF], description="用户角色")
     department_id: Optional[uuid.UUID] = Field(None, description="所属部门")
     position_id: Optional[uuid.UUID] = Field(None, description="岗位")
 
@@ -96,7 +96,7 @@ class UserUpdate(BaseModel):
     real_name: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=20)
-    role: Optional[UserRole] = None
+    roles: Optional[List[UserRole]] = None
     department_id: Optional[uuid.UUID] = None
     position_id: Optional[uuid.UUID] = None
     is_active: Optional[bool] = None
@@ -157,7 +157,7 @@ class UserBrief(BaseModel):
     id: uuid.UUID
     username: str
     real_name: str
-    role: UserRole
+    roles: List[UserRole]
 
     class Config:
         from_attributes = True

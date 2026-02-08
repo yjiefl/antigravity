@@ -23,6 +23,7 @@ const showHistoryModal = ref(false);
 const showCompleteModal = ref(false);
 const showReviewModal = ref(false);
 const showApproveModal = ref(false);
+const showReturnModal = ref(false);
 // const showPreviewModal = ref(false);
 // const previewUrl = ref("");
 
@@ -31,6 +32,7 @@ const progressForm = ref({ percent: 0, content: "", files: [] as File[] });
 const completeForm = ref({ comment: "", files: [] as File[] });
 const reviewForm = ref({ quality: 1.0, comment: "" });
 const approveForm = ref({ importance: 1.0, difficulty: 1.0 });
+const returnForm = ref({ reason: "" });
 
 function handleProgressFileChange(event: Event) {
   const target = event.target as HTMLInputElement;
@@ -93,8 +95,27 @@ async function submitTask() {
 }
 
 async function rollbackTask() {
-  if (!confirm("确认回撤申请？任务将返回进行中状态。")) return;
+  if (!confirm("确认回撤验收申请？任务将返回进行中状态。")) return;
   await api.post(`/api/tasks/${taskId.value}/rollback`);
+  await loadTask();
+}
+
+async function withdrawTask() {
+  if (!confirm("确认撤回审批申请？任务将返回草稿状态。")) return;
+  await api.post(`/api/tasks/${taskId.value}/withdraw`);
+  await loadTask();
+}
+
+async function returnTask() {
+  if (!returnForm.value.reason) {
+    alert("请输入退回原因");
+    return;
+  }
+  await api.post(
+    `/api/tasks/${taskId.value}/return?reason=${encodeURIComponent(returnForm.value.reason)}`,
+  );
+  showReturnModal.value = false;
+  returnForm.value.reason = "";
   await loadTask();
 }
 
@@ -405,6 +426,19 @@ onMounted(() => {
           编辑任务
         </button>
 
+        <!-- 待审批 -> 撤回 (Creator/Owner) -->
+        <button
+          v-if="
+            task.status === 'pending_approval' &&
+            (task.creator_id === authStore.user.id ||
+              task.owner_id === authStore.user.id)
+          "
+          @click="withdrawTask"
+          class="btn btn-secondary"
+        >
+          撤回申请
+        </button>
+
         <!-- 待审批 -> 审批通过 (Manager) -->
         <button
           v-if="task.status === 'pending_approval' && authStore.isManager"
@@ -412,6 +446,15 @@ onMounted(() => {
           class="btn btn-primary"
         >
           审批通过
+        </button>
+
+        <!-- 待审批 -> 退回 (Manager) -->
+        <button
+          v-if="task.status === 'pending_approval' && authStore.isManager"
+          @click="showReturnModal = true"
+          class="btn btn-danger"
+        >
+          退回任务
         </button>
 
         <!-- 进行中 -> 更新进展 -->
@@ -439,6 +482,15 @@ onMounted(() => {
           class="btn btn-primary"
         >
           验收评分
+        </button>
+
+        <!-- 待验收 -> 退回 (Manager) -->
+        <button
+          v-if="task.status === 'pending_review' && authStore.isManager"
+          @click="showReturnModal = true"
+          class="btn btn-danger"
+        >
+          验收退回
         </button>
 
         <!-- 待验收 -> 回撤 (Creator/Executor) -->
@@ -628,6 +680,44 @@ onMounted(() => {
           </div>
           <button @click="approveTask" class="btn btn-primary w-full mt-2">
             确认通过
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.5. 退回模态框 -->
+    <div
+      v-if="showReturnModal"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+    >
+      <div
+        class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up"
+      >
+        <div
+          class="p-4 border-b border-slate-100 bg-red-50 flex justify-between items-center"
+        >
+          <h3 class="font-bold text-red-800">↩️ 退回任务</h3>
+          <button
+            @click="showReturnModal = false"
+            class="text-slate-400 hover:text-slate-600"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1"
+              >退回原因 *</label
+            >
+            <textarea
+              v-model="returnForm.reason"
+              rows="3"
+              class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+              placeholder="请输入退回原因..."
+            ></textarea>
+          </div>
+          <button @click="returnTask" class="btn btn-danger w-full mt-2">
+            确认退回
           </button>
         </div>
       </div>

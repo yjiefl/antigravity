@@ -109,7 +109,7 @@ async def list_tasks(
     query = select(Task)  # 不再强制过滤子任务，以便让执行人看到分配给自己的子任务
     
     # 权限过滤：普通员工只能看到自己相关的任务
-    if current_user.role == UserRole.STAFF:
+    if UserRole.STAFF in current_user.roles and UserRole.ADMIN not in current_user.roles and UserRole.MANAGER not in current_user.roles:
         query = query.where(
             or_(
                 Task.creator_id == current_user.id,
@@ -175,6 +175,7 @@ async def create_task(
     task = Task(
         **task_in.model_dump(),
         creator_id=current_user.id,
+        department_id=current_user.department_id,
         status=TaskStatus.DRAFT,
     )
     
@@ -269,6 +270,77 @@ async def submit_task(
     await db.flush()
     # await db.refresh(task)
     
+    return task
+
+
+@router.post("/{task_id}/withdraw", response_model=TaskResponse)
+async def withdraw_task(
+    task_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    撤回任务审批
+    
+    待审批 → 草稿
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    if task.status != TaskStatus.PENDING_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="只有待审批状态的任务可以撤回"
+        )
+    
+    # 权限检查：仅创建者或负责人可撤回
+    if task.creator_id != current_user.id and task.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有任务创建者或负责人可以撤回"
+        )
+    
+    task.status = TaskStatus.DRAFT
+    await add_task_log(db, task.id, current_user.id, LogAction.UPDATED, "撤回审批申请")
+    
+    await db.flush()
+    return task
+
+
+@router.post("/{task_id}/return", response_model=TaskResponse)
+async def return_task(
+    task_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_manager_or_admin)],
+    reason: str = Query(..., description="退回原因"),
+):
+    """
+    退回任务 (主管操作)
+    
+    待审批 → 草稿
+    待验收 → 进行中
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    if task.status == TaskStatus.PENDING_APPROVAL:
+        # 退回到草稿
+        task.status = TaskStatus.DRAFT
+        action = LogAction.REJECTED
+        msg = f"退回任务（至草稿）：{reason}"
+    elif task.status == TaskStatus.PENDING_REVIEW:
+        # 退回到进行中
+        task.status = TaskStatus.IN_PROGRESS
+        # 重置进度为 90% (或保持 100% 但状态变更为进行中) - 这里选择不自动改进度，由用户自己改
+        action = LogAction.REVIEW_REJECTED
+        msg = f"退回任务（至进行中）：{reason}"
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="当前状态无法执行退回操作"
+        )
+    
+    await add_task_log(db, task.id, current_user.id, action, msg)
+    
+    await db.flush()
     return task
 
 

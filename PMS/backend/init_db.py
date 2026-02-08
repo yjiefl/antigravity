@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 from app.core.database import async_session_maker, init_db
 from app.core.security import get_password_hash
 from app.models import (
-    Organization, Department, Position, User, UserRole,
+    Organization, Department, Position, User, UserRole, UserRoleBinding,
     Task, TaskStatus, TaskType, TaskCategory
 )
 
@@ -62,7 +62,7 @@ async def create_admin():
             username="admin",
             password_hash=get_password_hash("admin123"),
             real_name="管理员",
-            role=UserRole.ADMIN,
+            roles_binding=[UserRoleBinding(role=UserRole.ADMIN)],
             department_id=dept.id,
             position_id=manager_pos.id,
         )
@@ -73,7 +73,7 @@ async def create_admin():
             username="manager",
             password_hash=get_password_hash("manager123"),
             real_name="张主管",
-            role=UserRole.MANAGER,
+            roles_binding=[UserRoleBinding(role=UserRole.MANAGER)],
             department_id=dept.id,
             position_id=manager_pos.id,
         )
@@ -84,7 +84,7 @@ async def create_admin():
             username="staff",
             password_hash=get_password_hash("staff123"),
             real_name="李员工",
-            role=UserRole.STAFF,
+            roles_binding=[UserRoleBinding(role=UserRole.STAFF)],
             department_id=dept.id,
             position_id=staff_pos.id,
         )
