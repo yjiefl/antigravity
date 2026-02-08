@@ -6,6 +6,7 @@ from datetime import datetime
 
 class GitSync:
     def __init__(self):
+        """初始化 Git 同步工具，进入仓库根目录"""
         self.repo_path = "/Users/yangjie/code/antigravity"
         os.chdir(self.repo_path)
 
