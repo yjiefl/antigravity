@@ -4,7 +4,7 @@ Thumbs.db
 *.swp
 *.log
 output.log
-!log/debug.log
+!**/log/debug.log
 
 # --- Python 开发 (用于您的汇总脚本和分析工具) ---
 __pycache__/
