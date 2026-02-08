@@ -1,0 +1,88 @@
+# 计划管理系统开发日志
+
+## 2026-02-07 21:08 - 项目初始化
+
+### 完成内容
+
+1. **项目结构创建**
+   - 创建后端目录结构 (backend/app/{api,core,models,schemas,services})
+   - 创建前端目录结构 (frontend/src/{api,components,layouts,router,stores,views})
+
+2. **Docker 配置**
+   - docker-compose.yml: PostgreSQL + Redis + Backend + Frontend
+   - backend/Dockerfile
+   - frontend/Dockerfile
+
+3. **后端开发 (FastAPI)**
+   - core/config.py: 应用配置
+   - core/database.py: SQLAlchemy 异步数据库
+   - core/security.py: JWT 认证
+   - models/user.py: 用户/部门/岗位模型
+   - models/task.py: 任务模型 + 状态机
+   - models/log.py: 任务日志模型
+   - models/penalty.py: 考核单/申诉模型
+   - schemas/: Pydantic 验证模式
+   - api/auth.py: 认证 API
+   - api/users.py: 用户管理 API
+   - api/tasks.py: 任务管理 API + 状态流转
+   - api/kpi.py: 绩效统计 API
+   - services/kpi_service.py: 绩效计算公式
+
+4. **前端开发 (Vue 3 + Vite)**
+   - 安装依赖: tailwindcss, vue-router, pinia, axios
+   - vite.config.ts: Tailwind + API 代理
+   - style.css: 主题样式
+   - router/index.ts: 路由配置 + 守卫
+   - stores/auth.ts: 认证状态
+   - api/index.ts: Axios 客户端
+   - layouts/MainLayout.vue: PC/移动端布局
+   - views/Login.vue: 登录页
+   - views/Dashboard.vue: 仪表盘
+   - views/TaskList.vue: 任务列表（表格/卡片）
+   - views/TaskDetail.vue: 任务详情
+   - views/TaskForm.vue: 任务创建
+   - views/KPI.vue: 绩效统计
+   - views/Help.vue: 帮助说明
+
+### 2026-02-08 06:45 - UI/UX 体验重绘与功能增强
+
+1. **报表导出与绩效申诉**
+   - 实现任务 Excel 一键导出，导出逻辑集成在 `reports.py`。
+   - 完善红牌申诉链路，从自动创建申诉单到管理员审批逻辑全线贯通。
+
+2. **UI/UX 深度优化 (Glassmorphism)**
+   - 全站切换至 Poppins/Open Sans 字体方案。
+   - 应用玻璃质感卡片、高对比度文字和微交互动效。
+   - 适配 PC/移动端，确保在不同屏幕下均有卓越的 SaaS 产品观感。
+
+### 当前状态
+- 所有核心业务流程（任务、绩效、申诉、导出）完成并已 UI 化。
+- 进入验证与文档交付阶段。
+
+### 下一步
+1. 编写 `guide.md` 使用指南。
+2. 修复前端别名路径一致性。
+3. 执行集成测试。
+
+### 2026-02-08 08:20 - 故障修复
+
+1. **日期解析错误修复**
+   - **问题**：任务创建时 `plan_start` 和 `plan_end` 报错 `datetime_parsing`。原因是前端通过 `<input type="date">` 发送了 `YYYY-MM-DD` 格式的字符串，而 Pydantic Schema 预期的是完整的 `datetime` 对象。
+   - **修复**：在 `backend/app/schemas/task.py` 中为涉及时间字段的类（`TaskBase`, `SubTaskCreate`, `TaskUpdate`, `TaskFilter`）添加了 `field_validator`。由于设置了 `mode='before'`，校验器会在 Pydantic 尝试解析前将 10 位日期字符串手动转换为 `datetime` 对象（时间设为 00:00:00）。
+### 2026-02-08 10:35 - 系统功能优化 & 核心反馈落实
+
+1. **功能增强与流程优化**
+   - 引入 **完成度系数** 参与绩效得分计算，确保 0% 进度任务不得分。
+   - 实现 **待验收回撤** 功能，增强计划调整的灵活性。
+   - 升级任务表单逻辑，支持 **直接提交审批** 及 **草稿原地编辑**。
+   - 增强数据校验，覆盖日期倒挂及过期录入限制。
+
+2. **UI/UX 与 可用性改进**
+   - 统一更名为 **「计划管理系统」**，移除侧边栏隐藏标签文字功能以增强 PC 端操作效率。
+   - 优化仪表盘布局，强化待办事项与风险预警的视觉比重。
+
+3. **稳定性修复**
+   - 修复 KPI 页面由于前端模板损坏导致的语法错误。
+   - 纠正定时任务后台由于导入缺失导致的 NameError。
+   - 补充甘特图组件 TypeScript 类型声明，彻底解决 build 阶段报错。
+

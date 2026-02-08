@@ -9,16 +9,26 @@ const { exec } = require('child_process');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const DB_PATH = path.join(__dirname, 'data.db');
-const LOG_DIR = path.join(__dirname, '../log');
+const LOG_DIR = path.join(__dirname, '../logs');
 const ACCESS_LOG = path.join(LOG_DIR, 'access.log');
 const ERROR_LOG = path.join(LOG_DIR, 'error.log');
 
 // 确保日志目录存在
-if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+try {
+	if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+} catch (e) {
+	console.error('无法创建或访问日志目录:', e.message);
+}
 
 const logToError = (msg) => {
 	const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-	fs.appendFileSync(ERROR_LOG, `[${timestamp}] ERROR: ${msg}\n`);
+	const line = `[${timestamp}] ERROR: ${msg}\n`;
+	console.error(line);
+	try {
+		fs.appendFileSync(ERROR_LOG, line);
+	} catch (e) {
+		// 忽略写入失败
+	}
 };
 
 // 初始化数据库
@@ -70,18 +80,26 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); 
 
-// 网站访问日志记录到文件
-const accessLogStream = fs.createWriteStream(ACCESS_LOG, { flags: 'a' });
-app.use(morgan('combined', { stream: accessLogStream }));
+// 网站访问日志记录
 app.use(morgan('dev')); 
 
-// 自定义操作日志函数
+// 自定义操作日志函数 (带容错)
 const logAction = (req, action, details = '') => {
-	const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 	const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-	const logMessage = `[${timestamp}] IP: ${ip} | ACTION: ${action} | DETAILS: ${details}\n`;
-	fs.appendFileSync(ACCESS_LOG, logMessage);
+	const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+	const line = `[${timestamp}] ${ip} - ${action} ${details}\n`;
+	console.log(line);
+	try {
+		// 仅在目录存在时尝试写入
+		if (fs.existsSync(LOG_DIR)) {
+			fs.appendFileSync(ACCESS_LOG, line);
+		}
+	} catch (e) {
+		// 忽略写入失败
+	}
 };
+
+
 
 // --- API 接口 ---
 
@@ -119,28 +137,127 @@ app.delete('/api/stations/:name', (req, res) => {
 	});
 });
 
+// Promise-based helpers for sqlite3
+function dbGetAsync(sql, params) {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+}
+
+function dbRunAsync(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function (err) {
+            if (err) reject(err);
+            else resolve(this);
+        });
+    });
+}
+
+// 更新场站名称
+app.put('/api/stations/:oldName', async (req, res) => {
+	const { oldName } = req.params;
+	const { newName } = req.body;
+
+	if (!newName || oldName === newName) {
+		return res.status(400).json({ error: '新名称无效或与旧名称相同' });
+	}
+
+	logAction(req, 'Rename Station', `From: ${oldName}, To: ${newName}`);
+
+	try {
+		// 1. 检查新名称是否已存在
+		const existingNew = await dbGetAsync("SELECT name FROM stations WHERE name = ?", [newName]);
+		if (existingNew) {
+			return res.status(409).json({ error: `名称 "${newName}" 已存在，无法重命名` });
+		}
+
+		// 2. 检查旧场站是否存在
+		const station = await dbGetAsync("SELECT * FROM stations WHERE name = ?", [oldName]);
+		if (!station) {
+			return res.status(404).json({ error: `未找到要重命名的场站 "${oldName}"` });
+		}
+
+		// 3. 执行事务
+		await dbRunAsync("BEGIN TRANSACTION");
+		try {
+			// Create new record
+			await dbRunAsync(
+				"INSERT INTO stations (name, lon, lat, region, azimuth, tilt) VALUES (?, ?, ?, ?, ?, ?)",
+				[newName, station.lon, station.lat, station.region, station.azimuth, station.tilt]
+			);
+			
+			// Delete old record
+			await dbRunAsync("DELETE FROM stations WHERE name = ?", [oldName]);
+			
+			// Commit
+			await dbRunAsync("COMMIT");
+			
+			res.json({ success: true, message: `场站已从 ${oldName} 重命名为 ${newName}` });
+		} catch (transactionError) {
+			await dbRunAsync("ROLLBACK");
+			// Rethrow to be caught by the outer catch block
+			throw transactionError;
+		}
+	} catch (err) {
+		console.error(`重命名场站 "${oldName}" 到 "${newName}" 失败:`, err);
+		res.status(500).json({ error: `数据库操作失败: ${err.message}` });
+	}
+});
+
+
 // 获取历史辐照度数据
-app.get('/api/weather/irradiance', (req, res) => {
+app.get('/api/weather/irradiance', async (req, res) => {
 	const { stationName, date } = req.query;
 	if (!stationName || !date) return res.status(400).json({ error: '缺少场站名称或日期参数' });
 
 	db.get("SELECT * FROM stations WHERE name = ?", [stationName], async (err, coords) => {
-		if (err || !coords) {
-			logAction(req, 'Weather Data Failed', `Not found: ${stationName}`);
-			return res.status(404).json({ error: `未找到场站 "${stationName}" 的坐标映射` });
+		if (err) {
+			logToError(`Database error fetching station ${stationName}: ${err.message}`);
+			return res.status(500).json({ error: '数据库查询失败' });
+		}
+		if (!coords) {
+			logAction(req, 'Weather Data Failed', `Station not found: ${stationName}`);
+			return res.status(404).json({ error: `未找到场站 "${stationName}" 的坐标映射，请先在场站管理中配置` });
 		}
 
-		logAction(req, 'Fetch Weather Data', `Station: ${stationName}, Date: ${date}`);
+		if (!coords.lat || !coords.lon) {
+			logAction(req, 'Weather Data Failed', `Coords missing for: ${stationName}`);
+			return res.status(400).json({ error: `场站 "${stationName}" 缺少有效的经纬度信息` });
+		}
+
+		logAction(req, 'Fetch Weather Data', `Station: ${stationName} (${coords.lat}, ${coords.lon}), Date: ${date}`);
 		try {
 			const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${coords.lat}&longitude=${coords.lon}&start_date=${date}&end_date=${date}&hourly=shortwave_radiation&timezone=auto`;
-			const response = await fetch(url);
-			const data = await response.json();
+			
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+			
+			const response = await fetch(url, {
+				headers: { 'User-Agent': 'AntigravityDataAnalyzer/1.1' },
+				signal: controller.signal
+			});
+			clearTimeout(timeoutId);
 
-			if (data.hourly) {
-				const result = [];
-				const times = data.hourly.time;
-				const values = data.hourly.shortwave_radiation;
-				for (let i = 0; i < times.length; i++) {
+			if (!response.ok) {
+				const errText = await response.text();
+				logToError(`Open-Meteo API Error (${response.status}): ${errText}`);
+				return res.status(response.status).json({ error: `天气服务请求失败 (HTTP ${response.status})` });
+			}
+
+			const data = await response.json();
+			if (!data || !data.hourly) {
+				logToError(`Open-Meteo returned invalid data format: ${JSON.stringify(data)}`);
+				return res.status(502).json({ error: '天气服务返回了无效的数据格式' });
+			}
+
+			const result = [];
+			const times = data.hourly.time || [];
+			const values = data.hourly.shortwave_radiation || [];
+			
+			for (let i = 0; i < times.length; i++) {
 					const currentTime = new Date(times[i]);
 					const currentVal = values[i];
 					const nextVal = (i < times.length - 1) ? values[i + 1] : currentVal;
@@ -152,11 +269,10 @@ app.get('/api/weather/irradiance', (req, res) => {
 					}
 				}
 				res.json({ stationName, date, data: result, region: coords.region });
-			} else {
-				res.status(502).json({ error: '天气 API 未返回数据', details: data });
-			}
-		} catch (err) {
-			res.status(500).json({ error: '获取天气数据失败: ' + err.message });
+			} catch (err) {
+			console.error('Fetch error:', err);
+			const msg = err.name === 'AbortError' ? '请求超时' : err.message;
+			res.status(500).json({ error: '获取天气数据失败: ' + msg });
 		}
 	});
 });

@@ -1,0 +1,27 @@
+[2026-01-31 15:09:28] 修改总结：将 monitor.html 翻译成中文。保持了专业术语（MW, MWp, AC, DC, clipping, PR）的准确性，并优化了图表标签和交互提示信息的中文呈现。已验证显示效果。
+2026-01-31 15:30:00 - CSS Fix - Added standard 'appearance' property to input[type='range'] for better browser compatibility.
+2026-01-31 15:40:00 - Feature - Updated station list with real data (22 items) and implemented annual degradation logic (0.5%/year).
+2026-01-31 16:50:00 - Feature - Updated station list with 12 real PV sites and implemented Ambient Temperature to Cell Temperature conversion logic.
+2026-01-31 17:05:00 - Feature - Refined station locations (County level), visually displayed calculated cell temp, renamed output to 'Generation Capacity', and added weather timestamp.
+2026-01-31 17:15:00 - Feature - Split forecast into Today/Tomorrow charts and added Station Location card.
+2026-01-31 17:25:00 - BugFix - Fixed blank forecast charts by synchronizing HTML structure and JS variables.
+2026-01-31 17:30:00 - Feature - Unified app title and header to 'PV Station Power Output Simulator'.
+2026-01-31 17:35:00 - Feature - Upgraded forecast sampling resolution to 15 minutes (96 points/day).
+2026-01-31 17:40:00 - Documentation - Created DEPLOY.md for VPS deployment guidance.
+2026-01-31 17:45:00 - Tooling - Added deploy.sh for one-click deployment updates via SSH/aaPanel.
+2026-01-31 18:05:00 - Feature - Added adjustable Annual Degradation Rate control.
+2026-01-31 18:15:00 - UI - Added Favicon and updated deploy script.
+2026-01-31 18:35:00 - Security - Added client-side password lock (admin888) per user request.
+2026-01-31 18:35:00 - Security - Upgraded password lock to SHA-256 hash validation for better obfuscation.
+
+2026-01-31 19:40:00: 开始开发移动端版本。已初始化 Vite + React 项目，完成了核心计算逻辑移植，并实现了高保真移动端 UI 面板。
+2026-01-31 19:46:00: 移动端版本构建成功。已修复 Tailwind CSS v4 兼容性问题，并验证了所有核心功能的逻辑一致性。
+[2026-01-31 20:10:45] 验证移动端可用性: 
+1. index.html - 包含 viewport meta 标签，使用 Tailwind 响应式类，检查通过。
+2. mobile/ (React App) - 代码完整，包含 App.jsx 高保真 UI、Calculator 逻辑、Tailwind 配置。依赖项完整。
+结论: 移动端版本代码就绪且可用。
+[2026-01-31 20:12:45] 启动移动端开发服务器 (Port 5173)
+
+2026-02-02 16:16:00 - BugFix - 修复了岑凡光伏电站（AC: 79.25, DC: 110.16）和守旗光伏电站（AC: 183.5, DC: 255.07）的电站容量错误。已同步更新 mobile/src/logic/calculator.js 和 html版本/index.html。
+
+2026-02-02 16:53:00 - BugFix - 修复了移动端部署时出现 "sh: vite: command not found" 的错误。原因是 mobile 目录下依赖不完整，已在该目录下运行 npm install 修复。经测试 npm run build 已能成功运行。

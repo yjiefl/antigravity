@@ -41,13 +41,13 @@ BACKEND_DIR="$SCRIPT_DIR/backend"
 if [ -d "$BACKEND_DIR" ]; then
     echo "⚙️ 正在检查并重启后端服务..."
     # 杀掉可能已在运行的旧后端进程
-    lsof -ti :3001 | xargs kill -9 2>/dev/null
+    lsof -ti :3002 | xargs kill -9 2>/dev/null
     
-    mkdir -p "$SCRIPT_DIR/log" # 确保日志目录存在
+    mkdir -p "$SCRIPT_DIR/logs" # 确保日志目录存在
     cd "$BACKEND_DIR"
     "$NPM_BIN" install --quiet
-    node server.js > "$SCRIPT_DIR/log/backend.log" 2>&1 &
-    echo "✅ 后端服务已重新启动 (Port: 3001)"
+    PORT=3002 node server.js > "/tmp/backend-analyzer.log" 2>&1 &
+    echo "✅ 后端服务已重新启动 (Port: 3002)"
 fi
 
 # 4. 启动前端 Vite 开发服务器并尝试自动打开浏览器
@@ -60,16 +60,16 @@ echo "------------------------------------------------"
 (
     MAX_RETRIES=30
     COUNT=0
-    while ! lsof -i :5173 > /dev/null; do
+    while ! lsof -i :5175 > /dev/null; do
         sleep 1
         COUNT=$((COUNT + 1))
         if [ $COUNT -ge $MAX_RETRIES ]; then
-            echo "\n⚠️  等待服务器启动超时，请手动访问 http://localhost:5173"
+            echo "\n⚠️  等待服务器启动超时，请手动访问 http://localhost:5175"
             exit 1
         fi
     done
     echo "\n✨ 服务器已就绪，正在打开网页..."
-    open "http://localhost:5173"
+    open "http://localhost:5175"
 ) &
 
 # 启动 Vite (如果有配置错误，npm run dev 会直接报错退出，不会进入上面的监听逻辑)

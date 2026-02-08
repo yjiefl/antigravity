@@ -1,336 +1,486 @@
-import React, { useState, useEffect, useRef } from 'react';
-import * as echarts from 'echarts';
-import Papa from 'papaparse';
-import { Upload, FileText, ChevronRight, BarChart3, Trash2, ClipboardPaste, X, Download, RotateCcw, Moon, Sun, ChevronLeft, Layout, Archive, History, PlayCircle, Activity } from 'lucide-react';
-import { format } from 'date-fns';
-import { processDataLogic } from './utils/dataProcessor';
-import './App.css';
+import React, { useState, useEffect, useRef } from "react";
+import * as echarts from "echarts";
+import Papa from "papaparse";
+import {
+  Upload,
+  FileText,
+  ChevronRight,
+  BarChart3,
+  Trash2,
+  ClipboardPaste,
+  X,
+  Download,
+  RotateCcw,
+  Moon,
+  Sun,
+  ChevronLeft,
+  Layout,
+  Archive,
+  History,
+  PlayCircle,
+  Activity,
+  FilePen,
+  Check,
+} from "lucide-react";
+import { format } from "date-fns";
+import { processDataLogic } from "./utils/dataProcessor";
+import "./App.css";
 
 /**
  * 数据文件解析与曲线展示主应用
  * @returns {JSX.Element}
  */
 function App() {
-	// 从 LocalStorage 加载初始数据
-	const getInitialState = (key, defaultVal) => {
-		try {
-			const saved = localStorage.getItem(`da_${key}`);
-			if (!saved) return defaultVal;
-			const parsed = JSON.parse(saved);
+  // 从 LocalStorage 加载初始数据
+  const getInitialState = (key, defaultVal) => {
+    try {
+      const saved = localStorage.getItem(`da_${key}`);
+      if (!saved) return defaultVal;
+      const parsed = JSON.parse(saved);
 
-			// 如果是 series，需要将字符串日期恢复为 Date 对象
-			if (key === 'series' && Array.isArray(parsed)) {
-				return parsed.map(s => {
-					if (!s || !Array.isArray(s.data)) return null;
-					return { ...s, data: s.data.map(d => ({ ...d, time: new Date(d.time) })) };
-				}).filter(Boolean);
-			}
+      // 如果是 series，需要将字符串日期恢复为 Date 对象
+      if (key === "series" && Array.isArray(parsed)) {
+        return parsed
+          .map((s) => {
+            if (!s || !Array.isArray(s.data)) return null;
+            return {
+              ...s,
+              data: s.data.map((d) => ({ ...d, time: new Date(d.time) })),
+            };
+          })
+          .filter(Boolean);
+      }
 
-			// 特殊处理 rangeConfig，确保嵌套对象存在
-			if (key === 'rangeConfig' && parsed) {
-				return {
-					hour: parsed.hour || { start: 0, end: 23 },
-					day: parsed.day || { start: 1, end: 31 },
-					month: parsed.month || { start: 1, end: 12 }
-				};
-			}
-			return parsed;
-		} catch { return defaultVal; }
-	};
+      // 特殊处理 rangeConfig，确保嵌套对象存在
+      if (key === "rangeConfig" && parsed) {
+        return {
+          hour: parsed.hour || { start: 0, end: 23 },
+          day: parsed.day || { start: 1, end: 31 },
+          month: parsed.month || { start: 1, end: 12 },
+        };
+      }
+      return parsed;
+    } catch {
+      return defaultVal;
+    }
+  };
 
-	const [series, setSeries] = useState(() => getInitialState('series', []));
-	const [selectedDates, setSelectedDates] = useState(() => getInitialState('selectedDates', []));
-	const [availableDates, setAvailableDates] = useState([]);
-	const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
-	const [pasteContent, setPasteContent] = useState('');
-	const [isDragging, setIsDragging] = useState(false);
+  const [series, setSeries] = useState(() => getInitialState("series", []));
+  const [selectedDates, setSelectedDates] = useState(() =>
+    getInitialState("selectedDates", []),
+  );
+  const [availableDates, setAvailableDates] = useState([]);
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [pasteContent, setPasteContent] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
 
-	const chartRef = useRef(null);
-	const chartInstance = useRef(null);
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
 
-	// 轴范围设置：{ metricName: { min: '', max: '' } }
-	const [axisRanges, setAxisRanges] = useState(() => getInitialState('axisRanges', {}));
-	const [showIntegral, setShowIntegral] = useState(() => getInitialState('showIntegral', true));
-	const [axisAdjustmentFactor, setAxisAdjustmentFactor] = useState(() => getInitialState('axisAdjustmentFactor', 1.0));
-	// const [isFocusMode, setIsFocusMode] = useState(() => getInitialState('isFocusMode', true)); // Removed
-	const [hoveredMetric, setHoveredMetric] = useState(null);
-	const [backendStatus, setBackendStatus] = useState('offline');
+  // 轴范围设置：{ metricName: { min: '', max: '' } }
+  const [axisRanges, setAxisRanges] = useState(() =>
+    getInitialState("axisRanges", {}),
+  );
+  const [showIntegral, setShowIntegral] = useState(() =>
+    getInitialState("showIntegral", true),
+  );
+  const [axisAdjustmentFactor, setAxisAdjustmentFactor] = useState(() =>
+    getInitialState("axisAdjustmentFactor", 1.0),
+  );
+  // const [isFocusMode, setIsFocusMode] = useState(() => getInitialState('isFocusMode', true)); // Removed
+  const [hoveredMetric, setHoveredMetric] = useState(null);
+  const [backendStatus, setBackendStatus] = useState("offline");
 
-	const [dimensionFilters, setDimensionFilters] = useState(() => getInitialState('dimensionFilters', {}));
-	const [legendSelected, setLegendSelected] = useState(() => getInitialState('legendSelected', {}));
-	const [chartTypes, setChartTypes] = useState(() => getInitialState('chartTypes', {}));
-	const [historyRecords, setHistoryRecords] = useState([]); // 从后端动态加载
-	const [historySearchTerm, setHistorySearchTerm] = useState(''); // 新增：存单搜索
-	const [customMetricColors, setCustomMetricColors] = useState(() => getInitialState('customMetricColors', {}));
-	const [useDefaultLimits, setUseDefaultLimits] = useState(() => getInitialState('useDefaultLimits', true));
+  const [dimensionFilters, setDimensionFilters] = useState(() =>
+    getInitialState("dimensionFilters", {}),
+  );
+  const [legendSelected, setLegendSelected] = useState(() =>
+    getInitialState("legendSelected", {}),
+  );
+  const [chartTypes, setChartTypes] = useState(() =>
+    getInitialState("chartTypes", {}),
+  );
+  const [historyRecords, setHistoryRecords] = useState([]); // 从后端动态加载
+  const [historySearchTerm, setHistorySearchTerm] = useState(""); // 新增：存单搜索
+  const [customMetricColors, setCustomMetricColors] = useState(() =>
+    getInitialState("customMetricColors", {}),
+  );
+  const [useDefaultLimits, setUseDefaultLimits] = useState(() =>
+    getInitialState("useDefaultLimits", true),
+  );
 
-	// 限电分析设置
-	const [showCurtailmentAnalysis, setShowCurtailmentAnalysis] = useState(() => getInitialState('showCurtailmentAnalysis', false));
-	const [curtailmentIrrThreshold, setCurtailmentIrrThreshold] = useState(() => getInitialState('curtailmentIrrThreshold', 20));
-	const [curtailmentDiffThreshold, setCurtailmentDiffThreshold] = useState(() => getInitialState('curtailmentDiffThreshold', 3));
-	const [curtailmentColor, setCurtailmentColor] = useState(() => getInitialState('curtailmentColor', '#ff4646'));
-	const [curtailmentOpacity, setCurtailmentOpacity] = useState(() => getInitialState('curtailmentOpacity', 0.3));
-	// const [isShowAllGroups, setIsShowAllGroups] = useState(() => getInitialState('isShowAllGroups', true)); // Removed
+  // 限电分析设置
+  const [showCurtailmentAnalysis, setShowCurtailmentAnalysis] = useState(() =>
+    getInitialState("showCurtailmentAnalysis", false),
+  );
+  const [curtailmentIrrThreshold, setCurtailmentIrrThreshold] = useState(() =>
+    getInitialState("curtailmentIrrThreshold", 20),
+  );
+  const [curtailmentDiffThreshold, setCurtailmentDiffThreshold] = useState(() =>
+    getInitialState("curtailmentDiffThreshold", 3),
+  );
+  const [curtailmentColor, setCurtailmentColor] = useState(() =>
+    getInitialState("curtailmentColor", "#ff4646"),
+  );
+  const [curtailmentOpacity, setCurtailmentOpacity] = useState(() =>
+    getInitialState("curtailmentOpacity", 0.3),
+  );
+  // const [isShowAllGroups, setIsShowAllGroups] = useState(() => getInitialState('isShowAllGroups', true)); // Removed
 
-	const [systemVersion] = useState('v1.5.0');
-	const [isFetchingWeather, setIsFetchingWeather] = useState(false);
-	const [availableStations, setAvailableStations] = useState([]);
-	const [isStationModalOpen, setIsStationModalOpen] = useState(false);
-	const [stationSearchTerm, setStationSearchTerm] = useState('');
+  const [systemVersion] = useState("v1.5.0");
+  const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+  const [availableStations, setAvailableStations] = useState([]);
+  const [isStationModalOpen, setIsStationModalOpen] = useState(false);
+  	const [stationSearchTerm, setStationSearchTerm] = useState('');
+	const curtailmentStatusRef = useRef({}); // 用于存储点对点限电判断结果，供提示框使用
 
-	// 新增 UI 状态
-	const [theme, setTheme] = useState(() => getInitialState('theme', 'dark'));
-	const [activeTab, setActiveTab] = useState('controls'); // controls | history
-	const [isCompareOverlap, setIsCompareOverlap] = useState(() => getInitialState('isCompareOverlap', false)); // 多日期重叠对比
-	const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-	const [isSidebarWide, setIsSidebarWide] = useState(false);
-	const [isStationManagerOpen, setIsStationManagerOpen] = useState(false);
-	const [stationBatchInput, setStationBatchInput] = useState('');
-	const [granularity, setGranularity] = useState(() => getInitialState('granularity', 'hour')); // hour | day | month
-	const [isLogModalOpen, setIsLogModalOpen] = useState(false);
-	const [accessLogs, setAccessLogs] = useState([]);
-	const [logType, setLogType] = useState('access'); // access | error
-	const [logSearchTerm, setLogSearchTerm] = useState('');
-	const [rangeConfig, setRangeConfig] = useState(() => getInitialState('rangeConfig', {
-		hour: { start: 0, end: 23 },
-		day: { start: 1, end: 31 },
-		month: { start: 1, end: 12 }
-	}));
-	const [isDataEditorOpen, setIsDataEditorOpen] = useState(false);
-	const [editingSeriesId, setEditingSeriesId] = useState(null);
-	const [editingSeriesName, setEditingSeriesName] = useState('');
-	const [editingMetricName, setEditingMetricName] = useState('');
-	const [editingDataText, setEditingDataText] = useState('');
+  // 重命名功能的状态
+  const [editingStationName, setEditingStationName] = useState(null); // 正在编辑的旧名称
+  const [newStationName, setNewStationName] = useState(""); // 输入框中的新名称
 
-	const activeSeries = series.filter(s => {
-		if (!s) return false;
-		const dateMatch = (selectedDates || []).includes(s.date);
-		if (!dateMatch) return false;
+  const renameStation = async (oldName, newName) => {
+    if (!newName || oldName === newName) {
+      setEditingStationName(null);
+      return;
+    }
 
-		// Dimension filters
-		return Object.entries(dimensionFilters).every(([dimKey, selectedVals]) => {
-			if (!selectedVals || selectedVals.length === 0) return true;
-			const sVal = s.dimensions ? s.dimensions[dimKey] : 'N/A';
-			return selectedVals.includes(sVal);
-		});
-	}).map(s => {
-		// Always append dimension info if present to distinguish series
-		if (s.dimensions) {
-			const dimVals = Object.entries(s.dimensions)
-				.filter(([k, v]) => v)
-				.map(([k, v]) => v)
-				.join('/');
-			if (dimVals) {
-				return { ...s, displayName: `${s.metricName || s.name.split(' (')[0]} (${dimVals})` };
-			}
-		}
-		return { ...s, displayName: s.metricName || s.name.split(' (')[0] };
-	});
+    try {
+      const res = await fetch(`/api/stations/${encodeURIComponent(oldName)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newName }),
+      });
 
-	const uniqueMetrics = [...new Set(activeSeries.map(s => {
-		if (!s) return null;
-		const name = s.metricName || s.name || '';
-		return name.split(' (')[0];
-	}).filter(Boolean))];
+      const result = await res.json();
 
-	// 1. 生命周期管理：初始化与销毁
-	useEffect(() => {
-		if (chartRef.current) {
-			const initChart = () => {
-				if (chartInstance.current) {
-					chartInstance.current.dispose();
-				}
-				chartInstance.current = echarts.init(chartRef.current, theme === 'dark' ? 'dark' : null);
+      if (res.ok) {
+        alert(`场站已成功重命名为 "${newName}"`);
+        fetchStations(); // 重新加载列表
+        setEditingStationName(null); // 退出编辑模式
+      } else {
+        throw new Error(result.error || "未知错误");
+      }
+    } catch (e) {
+      console.error("重命名失败:", e);
+      alert(`重命名失败: ${e.message}`);
+    }
+  };
 
-				// 鼠标移动监听：用于切换左侧纵坐标
-				chartInstance.current.on('mouseover', (params) => {
-					if (params.seriesName) {
-						const metric = params.seriesName.split(' (')[0];
-						setHoveredMetric(metric);
-					}
-				});
+  // 新增 UI 状态
+  const [theme, setTheme] = useState(() => getInitialState("theme", "dark"));
+  const [activeTab, setActiveTab] = useState("controls"); // controls | history
+  const [isCompareOverlap, setIsCompareOverlap] = useState(() =>
+    getInitialState("isCompareOverlap", false),
+  ); // 多日期重叠对比
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarWide, setIsSidebarWide] = useState(false);
+  const [isStationManagerOpen, setIsStationManagerOpen] = useState(false);
+  const [stationBatchInput, setStationBatchInput] = useState("");
+  const [granularity, setGranularity] = useState(() =>
+    getInitialState("granularity", "hour"),
+  ); // hour | day | month
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [accessLogs, setAccessLogs] = useState([]);
+  const [logType, setLogType] = useState("access"); // access | error
+  const [logSearchTerm, setLogSearchTerm] = useState("");
+  const [rangeConfig, setRangeConfig] = useState(() =>
+    getInitialState("rangeConfig", {
+      hour: { start: 0, end: 23 },
+      day: { start: 1, end: 31 },
+      month: { start: 1, end: 12 },
+    }),
+  );
+  const [isDataEditorOpen, setIsDataEditorOpen] = useState(false);
+  const [editingSeriesId, setEditingSeriesId] = useState(null);
+  const [editingSeriesName, setEditingSeriesName] = useState("");
+  const [editingMetricName, setEditingMetricName] = useState("");
+  const [editingDataText, setEditingDataText] = useState("");
 
-				chartInstance.current.on('mouseout', () => {
-					// 移除悬停时的自动切换，防止曲线跳动
-				});
+  const activeSeries = series
+    .filter((s) => {
+      if (!s) return false;
+      const dateMatch = (selectedDates || []).includes(s.date);
+      if (!dateMatch) return false;
 
-				// 点击圆点切换纵坐标
-				chartInstance.current.on('click', (params) => {
-					if (params.seriesName) {
-						const metric = params.seriesName.split(' (')[0];
-						setHoveredMetric(metric);
-					}
-				});
+      // Dimension filters
+      return Object.entries(dimensionFilters).every(
+        ([dimKey, selectedVals]) => {
+          const sVal = s.dimensions ? s.dimensions[dimKey] : undefined;
+          // Allow series that do not have this dimension (for overlaying different dimensions)
+          if (sVal === undefined) return true;
+          return selectedVals && selectedVals.includes(sVal);
+        },
+      );
+    })
+    .map((s) => {
+      // Always append dimension info if present to distinguish series
+      if (s.dimensions) {
+        const dimVals = Object.entries(s.dimensions)
+          .filter(([k, v]) => v)
+          .map(([k, v]) => v)
+          .join("/");
+        if (dimVals) {
+          return {
+            ...s,
+            displayName: `${s.metricName || s.name.split(" (")[0]} (${dimVals})`,
+          };
+        }
+      }
+      return { ...s, displayName: s.metricName || s.name.split(" (")[0] };
+    });
 
-				// 监听图例变化，将其保存到 React 状态
-				chartInstance.current.on('legendselectchanged', (params) => {
-					setLegendSelected(params.selected);
-				});
+  const uniqueMetrics = [
+    ...new Set(
+      activeSeries
+        .map((s) => {
+          if (!s) return null;
+          const name = s.metricName || s.name || "";
+          return name.split(" (")[0];
+        })
+        .filter(Boolean),
+    ),
+  ];
 
-				// 恢复之前的数据渲染（如果有）
-				if (series.length > 0) {
-					updateChart();
-				}
-			};
+  // 1. 生命周期管理：初始化与销毁
+  useEffect(() => {
+    if (chartRef.current) {
+      const initChart = () => {
+        if (chartInstance.current) {
+          chartInstance.current.dispose();
+        }
+        chartInstance.current = echarts.init(
+          chartRef.current,
+          theme === "dark" ? "dark" : null,
+        );
 
-			initChart();
+        // 鼠标移动监听：用于切换左侧纵坐标
+        chartInstance.current.on("mouseover", (params) => {
+          if (params.seriesName) {
+            const metric = params.seriesName.split(" (")[0];
+            setHoveredMetric(metric);
+          }
+        });
 
-			// 使用 ResizeObserver 替代 window resize 监听，更精准且平滑
-			const resizeObserver = new ResizeObserver(() => {
-				requestAnimationFrame(() => {
-					chartInstance.current?.resize();
-				});
-			});
-			resizeObserver.observe(chartRef.current);
+        chartInstance.current.on("mouseout", () => {
+          // 移除悬停时的自动切换，防止曲线跳动
+        });
 
-			checkBackend();
-			loadSnapshotsFromBackend();
+        // 点击圆点切换纵坐标
+        chartInstance.current.on("click", (params) => {
+          if (params.seriesName) {
+            const metric = params.seriesName.split(" (")[0];
+            setHoveredMetric(metric);
+          }
+        });
 
-			return () => {
-				resizeObserver.disconnect();
-				chartInstance.current?.dispose();
-				chartInstance.current = null;
-			};
-		}
-	}, [theme]); // 主题切换时重新初始化
+        // 监听图例变化，将其保存到 React 状态
+        chartInstance.current.on("legendselectchanged", (params) => {
+          setLegendSelected(params.selected);
+        });
 
-	/**
-	 * 从后端加载历史存单
-	 */
-	const loadSnapshotsFromBackend = async () => {
-		try {
-			const res = await fetch('/api/snapshots');
-			if (res.ok) {
-				const data = await res.json();
-				setHistoryRecords(data);
-			}
-		} catch (e) {
-			console.error('加载历史存单失败:', e);
-		}
-	};
+        // 恢复之前的数据渲染（如果有）
+        if (series.length > 0) {
+          updateChart();
+        }
+      };
 
-	useEffect(() => {
-		fetch('/api/stations')
-			.then(res => res.json())
-			.then(data => setAvailableStations(data))
-			.catch(err => console.error('Failed to fetch stations:', err));
-	}, []);
+      initChart();
 
-	/**
-	 * 模拟检测后端
-	 */
-	const checkBackend = async () => {
-		try {
-			setBackendStatus('checking');
-			const res = await fetch('/api/health').catch(() => ({ ok: false }));
-			setBackendStatus(res.ok ? 'online' : 'offline');
-		} catch {
-			setBackendStatus('offline');
-		}
-	};
+      // 使用 ResizeObserver 替代 window resize 监听，更精准且平滑
+      const resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          chartInstance.current?.resize();
+        });
+      });
+      resizeObserver.observe(chartRef.current);
 
-	// --- 辅助工具函数 ---
-	const hexToRgba = (hex, opacity) => {
-		let r = 255, g = 70, b = 70;
-		if (hex && typeof hex === 'string' && hex.startsWith('#')) {
-			const h = hex.replace('#', '');
-			if (h.length === 3) {
-				r = parseInt(h[0] + h[0], 16);
-				g = parseInt(h[1] + h[1], 16);
-				b = parseInt(h[2] + h[2], 16);
-			} else if (h.length === 6) {
-				r = parseInt(h.substring(0, 2), 16);
-				g = parseInt(h.substring(2, 4), 16);
-				b = parseInt(h.substring(4, 6), 16);
-			}
-		}
-		return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-	};
+      checkBackend();
+      loadSnapshotsFromBackend();
 
-	const getAggregatedData = (data, gran) => {
-		if (gran === 'hour') return data.map(d => [d.time, d.value]);
-		const groups = {};
-		data.forEach(d => {
-			let key;
-			const dt = new Date(d.time);
-			if (gran === 'day') key = format(dt, 'yyyy-MM-dd');
-			else if (granularity === 'month') key = format(dt, 'yyyy-MM');
-			if (!groups[key]) groups[key] = { sum: 0, count: 0, firstTime: dt };
-			groups[key].sum += d.value;
-			groups[key].count += 1;
-		});
-		return Object.entries(groups).map(([, info]) => {
-			const date = new Date(info.firstTime);
-			if (gran === 'day') date.setHours(0, 0, 0, 0);
-			else if (gran === 'month') { date.setDate(1); date.setHours(0, 0, 0, 0); }
-			return [date, info.sum / info.count];
-		}).sort((a, b) => a[0] - b[0]);
-	};
+      return () => {
+        resizeObserver.disconnect();
+        chartInstance.current?.dispose();
+        chartInstance.current = null;
+      };
+    }
+  }, [theme]); // 主题切换时重新初始化
 
-	const getCurtailmentRanges = (allSeries, dates) => {
+  /**
+   * 从后端加载历史存单
+   */
+  const loadSnapshotsFromBackend = async () => {
+    try {
+      const res = await fetch("/api/snapshots");
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryRecords(data);
+      }
+    } catch (e) {
+      console.error("加载历史存单失败:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetch("/api/stations")
+      .then((res) => res.json())
+      .then((data) => setAvailableStations(data))
+      .catch((err) => console.error("Failed to fetch stations:", err));
+  }, []);
+
+  /**
+   * 模拟检测后端
+   */
+  const checkBackend = async () => {
+    try {
+      setBackendStatus("checking");
+      const res = await fetch("/api/health").catch(() => ({ ok: false }));
+      setBackendStatus(res.ok ? "online" : "offline");
+    } catch {
+      setBackendStatus("offline");
+    }
+  };
+
+  // --- 辅助工具函数 ---
+  const hexToRgba = (hex, opacity) => {
+    let r = 255,
+      g = 70,
+      b = 70;
+    if (hex && typeof hex === "string" && hex.startsWith("#")) {
+      const h = hex.replace("#", "");
+      if (h.length === 3) {
+        r = parseInt(h[0] + h[0], 16);
+        g = parseInt(h[1] + h[1], 16);
+        b = parseInt(h[2] + h[2], 16);
+      } else if (h.length === 6) {
+        r = parseInt(h.substring(0, 2), 16);
+        g = parseInt(h.substring(2, 4), 16);
+        b = parseInt(h.substring(4, 6), 16);
+      }
+    }
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
+
+  const getAggregatedData = (data, gran) => {
+    if (gran === "hour") return data.map((d) => [d.time, d.value]);
+    const groups = {};
+    data.forEach((d) => {
+      let key;
+      const dt = new Date(d.time);
+      if (gran === "day") key = format(dt, "yyyy-MM-dd");
+      else if (granularity === "month") key = format(dt, "yyyy-MM");
+      if (!groups[key]) groups[key] = { sum: 0, count: 0, firstTime: dt };
+      groups[key].sum += d.value;
+      groups[key].count += 1;
+    });
+    return Object.entries(groups)
+      .map(([, info]) => {
+        const date = new Date(info.firstTime);
+        if (gran === "day") date.setHours(0, 0, 0, 0);
+        else if (gran === "month") {
+          date.setDate(1);
+          date.setHours(0, 0, 0, 0);
+        }
+        return [date, info.sum / info.count];
+      })
+      .sort((a, b) => a[0] - b[0]);
+  };
+
+  	const getCurtailmentRanges = (allSeries, dates) => {
 		const ranges = {};
+		curtailmentStatusRef.current = {}; // 重置点对点状态记录
 		const relevantSeries = allSeries.filter(s => s && (dates || []).includes(s.date));
-		const groupDimKey = Object.keys(dimensionFilters)[0] || (() => {
-			const possibleKeys = ['场站', '电站', '名称', '调度名称', 'item', 'station', '项目'];
-			const sample = allSeries.find(s => s && s.dimensions);
-			return sample ? possibleKeys.find(k => sample.dimensions[k]) : null;
-		})();
-		const dimensionGroups = {};
-		relevantSeries.forEach(s => {
-			if (!s) return;
-			const dimVal = (groupDimKey && s.dimensions) ? s.dimensions[groupDimKey] : 'default';
-			const groupKey = `${s.date}_${dimVal}`;
-			if (!dimensionGroups[groupKey]) dimensionGroups[groupKey] = [];
-			dimensionGroups[groupKey].push(s);
-		});
-		Object.entries(dimensionGroups).forEach(([groupKey, groupSeries]) => {
-			const irrad = groupSeries.find(s => {
-				const m = (s.metricName || s.name).toLowerCase();
-				return m.includes('辐照度') || m.includes('短波') || m.includes('irradiance') || m.includes('radiation');
-			});
-			const agc = groupSeries.find(s => {
-				const m = (s.metricName || s.name).toLowerCase();
-				return m.includes('agc') || m.includes('指令');
-			});
-			const power = groupSeries.find(s => {
-				const m = (s.metricName || s.name).toLowerCase();
-				return (m.includes('实际功率') || m.includes('功率') || m.includes('power') || m.includes('load') || m.includes('output')) && !m.includes('agc') && !m.includes('可用') && !m.includes('预测');
-			});
-			if (irrad && agc && power) {
-				if (!ranges[groupKey]) ranges[groupKey] = [];
-				const timeMap = {};
-				const addToMap = (s, type) => {
-					s.data.forEach(d => {
-						const t = new Date(d.time).getTime();
-						if (!timeMap[t]) timeMap[t] = {};
-						timeMap[t][type] = d.value;
-					});
-				};
-				addToMap(irrad, 'irrad'); addToMap(agc, 'agc'); addToMap(power, 'power');
-				const times = Object.keys(timeMap).map(Number).sort((a, b) => a - b);
-				let startRange = null;
-				let lastIrrad = 0; // 缓存上一个有效的辐照度值，应对时间戳不对齐
-				
-				const pushRange = (start, end) => {
-					let s = start, e = end;
-					if (isCompareOverlap) {
-						const mapTime = (ts) => {
-							const dTime = new Date(ts);
-							const baseDate = new Date(2000, 0, 1);
-							if (granularity === 'hour') baseDate.setHours(dTime.getHours(), dTime.getMinutes(), dTime.getSeconds());
-							else if (granularity === 'day') baseDate.setDate(dTime.getDate());
-							else if (granularity === 'month') baseDate.setMonth(dTime.getMonth());
-							return baseDate.getTime();
-						};
-						s = mapTime(start); e = mapTime(end);
-					}
-					ranges[groupKey].push([
-						{ xAxis: new Date(s), startTime: start },
-						{ xAxis: new Date(e), endTime: end, itemStyle: { color: hexToRgba(curtailmentColor, curtailmentOpacity) } }
-					]);
-				};
+		const possibleKeys = ['场站名称', '场站', '电站', '名称', '调度名称', 'item', 'station', '项目'];
+		const sample = allSeries.find(s => s && s.dimensions);
+		const groupDimKey = Object.keys(dimensionFilters)[0] || (sample ? possibleKeys.find(k => sample.dimensions[k]) : null);
+    const dimensionGroups = {};
+    relevantSeries.forEach((s) => {
+      if (!s) return;
+      const dimVal =
+        groupDimKey && s.dimensions ? s.dimensions[groupDimKey] : "default";
+      const groupKey = `${s.date}_${dimVal}`;
+      if (!dimensionGroups[groupKey]) dimensionGroups[groupKey] = [];
+      dimensionGroups[groupKey].push(s);
+    });
+    Object.entries(dimensionGroups).forEach(([groupKey, groupSeries]) => {
+      const irrad = groupSeries.find((s) => {
+        const m = (s.metricName || s.name).toLowerCase();
+        return (
+          m.includes("辐照度") ||
+          m.includes("短波") ||
+          m.includes("irradiance") ||
+          m.includes("radiation")
+        );
+      });
+      const agc = groupSeries.find((s) => {
+        const m = (s.metricName || s.name).toLowerCase();
+        return m.includes("agc") || m.includes("指令");
+      });
+      const power = groupSeries.find((s) => {
+        const m = (s.metricName || s.name).toLowerCase();
+        return (
+          (m.includes("实际功率") ||
+            m.includes("功率") ||
+            m.includes("power") ||
+            m.includes("load") ||
+            m.includes("output")) &&
+          !m.includes("agc") &&
+          !m.includes("可用") &&
+          !m.includes("预测")
+        );
+      });
+      if (irrad && agc && power) {
+        if (!ranges[groupKey]) ranges[groupKey] = [];
+        const timeMap = {};
+        const addToMap = (s, type) => {
+          s.data.forEach((d) => {
+            const t = new Date(d.time).getTime();
+            if (!timeMap[t]) timeMap[t] = {};
+            timeMap[t][type] = d.value;
+          });
+        };
+        addToMap(irrad, "irrad");
+        addToMap(agc, "agc");
+        addToMap(power, "power");
+        const times = Object.keys(timeMap)
+          .map(Number)
+          .sort((a, b) => a - b);
+        let startRange = null;
+        let lastIrrad = 0; // 缓存上一个有效的辐照度值，应对时间戳不对齐
 
-				times.forEach((t) => {
+        const pushRange = (start, end) => {
+          let s = start,
+            e = end;
+          if (isCompareOverlap) {
+            const mapTime = (ts) => {
+              const dTime = new Date(ts);
+              const baseDate = new Date(2000, 0, 1);
+              if (granularity === "hour")
+                baseDate.setHours(
+                  dTime.getHours(),
+                  dTime.getMinutes(),
+                  dTime.getSeconds(),
+                );
+              else if (granularity === "day") baseDate.setDate(dTime.getDate());
+              else if (granularity === "month")
+                baseDate.setMonth(dTime.getMonth());
+              return baseDate.getTime();
+            };
+            s = mapTime(start);
+            e = mapTime(end);
+          }
+          ranges[groupKey].push([
+            { xAxis: new Date(s), startTime: start },
+            {
+              xAxis: new Date(e),
+              endTime: end,
+              itemStyle: {
+                color: hexToRgba(curtailmentColor, curtailmentOpacity),
+              },
+            },
+          ]);
+        };
+
+        				times.forEach((t) => {
 					const v = timeMap[t];
 					// 补全逻辑：如果当前点缺少辐照度但有上一个值，则沿用（应对 15min vs 5min 数据不对齐）
 					const currentIrrad = v.irrad !== undefined ? v.irrad : lastIrrad;
@@ -339,9 +489,13 @@ function App() {
 					if (currentIrrad !== undefined && v.agc !== undefined && v.power !== undefined) {
 						const diff = Math.abs(v.agc - v.power);
 						// 限电判据：相关性 (辐照度足够) && (AGC受限 或 实际功率紧贴AGC)
-						const isCurtailment = (currentIrrad > curtailmentIrrThreshold) && (v.agc < v.power || diff < curtailmentDiffThreshold);
+						const isPointCurtailed = (currentIrrad > curtailmentIrrThreshold) && (v.agc < v.power || diff < curtailmentDiffThreshold);
 						
-						if (isCurtailment) { 
+						// 记录点对点状态
+						if (!curtailmentStatusRef.current[groupKey]) curtailmentStatusRef.current[groupKey] = {};
+						curtailmentStatusRef.current[groupKey][t] = isPointCurtailed;
+
+						if (isPointCurtailed) { 
 							if (startRange === null) startRange = t; 
 						} else { 
 							if (startRange !== null) { 
@@ -355,1631 +509,2576 @@ function App() {
 						startRange = null; 
 					}
 				});
-				if (startRange !== null) pushRange(startRange, times[times.length - 1]);
-			}
-		});
-		return { ranges, groupDim: groupDimKey };
-	};
+        if (startRange !== null) pushRange(startRange, times[times.length - 1]);
+      }
+    });
+    return { ranges, groupDim: groupDimKey };
+  };
 
-	// --- 核心绘图更新 ---
-	const updateChart = () => {
-		if (!chartInstance.current || chartInstance.current.isDisposed()) return;
-		if (activeSeries.length === 0) { chartInstance.current.clear(); return; }
+  // --- 核心绘图更新 ---
+  const updateChart = () => {
+    if (!chartInstance.current || chartInstance.current.isDisposed()) return;
+    if (activeSeries.length === 0) {
+      chartInstance.current.clear();
+      return;
+    }
 
-		const isLight = theme === 'light';
-		const legendItems = [...new Set(activeSeries.map(s => s.displayName))];
+    const isLight = theme === "light";
+    const legendItems = [...new Set(activeSeries.map((s) => s.displayName))];
 
-		const yAxisConfig = uniqueMetrics.map((metric, index) => {
-			const customRange = axisRanges[metric] || {};
-			const isMetricVisible = (m) => {
-				const sameMetricDisplayNames = activeSeries.filter(s => (s.metricName || s.name.split(' (')[0]) === m).map(s => s.displayName);
-				return sameMetricDisplayNames.some(dn => legendSelected[dn] !== false);
-			};
-			const firstVisibleMetric = uniqueMetrics.find(m => isMetricVisible(m)) || uniqueMetrics[0];
-			const isActive = (hoveredMetric && isMetricVisible(hoveredMetric)) ? (metric === hoveredMetric) : (metric === firstVisibleMetric);
-			const isIrradiance = metric.includes('辐照度') || metric.includes('短波') || metric.includes('辐射') || metric.toLowerCase().includes('irradiance') || metric.toLowerCase().includes('radiation');
-			const factor = parseFloat(axisAdjustmentFactor) || 1.0;
-			let finalMin = customRange.min !== '' && customRange.min !== undefined ? parseFloat(customRange.min) : null;
-			let finalMax = customRange.max !== '' && customRange.max !== undefined ? parseFloat(customRange.max) : null;
+    const yAxisConfig = uniqueMetrics.map((metric, index) => {
+      const customRange = axisRanges[metric] || {};
+      const isMetricVisible = (m) => {
+        const sameMetricDisplayNames = activeSeries
+          .filter((s) => (s.metricName || s.name.split(" (")[0]) === m)
+          .map((s) => s.displayName);
+        return sameMetricDisplayNames.some(
+          (dn) => legendSelected[dn] !== false,
+        );
+      };
+      const firstVisibleMetric =
+        uniqueMetrics.find((m) => isMetricVisible(m)) || uniqueMetrics[0];
+      const isActive =
+        hoveredMetric && isMetricVisible(hoveredMetric)
+          ? metric === hoveredMetric
+          : metric === firstVisibleMetric;
+      const isIrradiance =
+        metric.includes("辐照度") ||
+        metric.includes("短波") ||
+        metric.includes("辐射") ||
+        metric.toLowerCase().includes("irradiance") ||
+        metric.toLowerCase().includes("radiation");
+      const factor = parseFloat(axisAdjustmentFactor) || 1.0;
+      let finalMin =
+        customRange.min !== "" && customRange.min !== undefined
+          ? parseFloat(customRange.min)
+          : null;
+      let finalMax =
+        customRange.max !== "" && customRange.max !== undefined
+          ? parseFloat(customRange.max)
+          : null;
 
-			if (finalMin === null && isIrradiance) finalMin = 0;
-			if (finalMax === null && isIrradiance) finalMax = 1000;
+      if (finalMin === null && isIrradiance) finalMin = 0;
+      if (finalMax === null && isIrradiance) finalMax = 1000;
 
-			if (finalMin === null || finalMax === null) {
-				const metricSeries = activeSeries.filter(s => (s.metricName || s.name.split(' (')[0]) === metric);
-				const vals = metricSeries.flatMap(s => s.data.map(d => d.value));
-				if (useDefaultLimits && (metric.includes('AGC远方指令') || metric.includes('超短期'))) {
-					if (finalMin === null) finalMin = 0;
-					if (finalMax === null) finalMax = 1000;
-				}
-				if (vals.length) {
-					const dataMax = Math.max(...vals); const dataMin = Math.min(...vals);
-					if (finalMin === null) finalMin = dataMin < 0 ? dataMin * 1.1 : dataMin - (Math.abs(dataMax - dataMin) * 0.05 || 1);
-					if (finalMax === null) finalMax = dataMax > 0 ? dataMax * 1.1 : dataMax + (Math.abs(dataMax - dataMin) * 0.05 || 1);
-				}
-			}
-			if (finalMin !== null) finalMin *= factor;
-			if (finalMax !== null) finalMax *= factor;
+      if (finalMin === null || finalMax === null) {
+        const metricSeries = activeSeries.filter(
+          (s) => (s.metricName || s.name.split(" (")[0]) === metric,
+        );
+        const vals = metricSeries.flatMap((s) => s.data.map((d) => d.value));
+        if (
+          useDefaultLimits &&
+          (metric.includes("AGC远方指令") || metric.includes("超短期"))
+        ) {
+          if (finalMin === null) finalMin = 0;
+          if (finalMax === null) finalMax = 1000;
+        }
+        if (vals.length) {
+          const dataMax = Math.max(...vals);
+          const dataMin = Math.min(...vals);
+          if (finalMin === null)
+            finalMin =
+              dataMin < 0
+                ? dataMin * 1.1
+                : dataMin - (Math.abs(dataMax - dataMin) * 0.05 || 1);
+          if (finalMax === null)
+            finalMax =
+              dataMax > 0
+                ? dataMax * 1.1
+                : dataMax + (Math.abs(dataMax - dataMin) * 0.05 || 1);
+        }
+      }
+      if (finalMin !== null) finalMin *= factor;
+      if (finalMax !== null) finalMax *= factor;
 
-			return {
-				type: 'value', name: metric,
-				nameTextStyle: { color: isActive ? (customMetricColors[metric] || getUserColor(index, metric)) : 'transparent', padding: [0, 0, 0, 0] },
-				nameGap: 8, position: 'left', show: isActive, scale: true, min: finalMin, max: finalMax,
-				axisLine: { show: isActive, lineStyle: { color: customMetricColors[metric] || getUserColor(index, metric), width: 2 } },
-				axisTick: { show: isActive },
-				axisLabel: { show: true, color: isLight ? '#1d1d1f' : '#ccc', margin: 12, width: 75, overflow: 'truncate', align: 'right', formatter: (val) => parseFloat(val.toFixed(2)).toString() },
-				splitLine: { show: isActive, lineStyle: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255, 255, 255, 0.05)' } }
-			};
-		});
+      return {
+        type: "value",
+        name: metric,
+        nameTextStyle: {
+          color: isActive
+            ? customMetricColors[metric] || getUserColor(index, metric)
+            : "transparent",
+          padding: [0, 0, 0, 0],
+          fontFamily: 'Open Sans, sans-serif',
+          fontWeight: 600,
+        },
+        nameGap: 10,
+        position: "left",
+        show: isActive,
+        scale: true,
+        min: finalMin,
+        max: finalMax,
+        axisLine: {
+          show: isActive,
+          lineStyle: {
+            color: customMetricColors[metric] || getUserColor(index, metric),
+            width: 2,
+          },
+        },
+        axisTick: { show: isActive },
+        axisLabel: {
+          show: true,
+          color: isLight ? "#1d1d1f" : "#ccc",
+          margin: 12,
+          width: 75,
+          overflow: "truncate",
+          align: "right",
+          fontFamily: 'Fira Code, monospace',
+          fontSize: 10,
+          formatter: (val) => parseFloat(val.toFixed(2)).toString(),
+        },
+        splitLine: {
+          show: isActive,
+          lineStyle: {
+            color: isLight ? "rgba(0,0,0,0.05)" : "rgba(255, 255, 255, 0.05)",
+          },
+        },
+      };
+    });
 
-		const { ranges: curtailmentRanges, groupDim } = getCurtailmentRanges(series, selectedDates);
+    const { ranges: curtailmentRanges, groupDim } = getCurtailmentRanges(
+      series,
+      selectedDates,
+    );
 
-		function hexToRgba(hex, opacity) {
-			let r = 255, g = 70, b = 70;
-			if (hex && typeof hex === 'string' && hex.startsWith('#')) {
-				const h = hex.replace('#', '');
-				if (h.length === 3) {
-					r = parseInt(h[0] + h[0], 16);
-					g = parseInt(h[1] + h[1], 16);
-					b = parseInt(h[2] + h[2], 16);
-				} else if (h.length === 6) {
-					r = parseInt(h.substring(0, 2), 16);
-					g = parseInt(h.substring(2, 4), 16);
-					b = parseInt(h.substring(4, 6), 16);
-				}
-			}
-			return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-		}
+    function hexToRgba(hex, opacity) {
+      let r = 255, g = 70, b = 70;
+      if (hex && typeof hex === "string" && hex.startsWith("#")) {
+        const h = hex.replace("#", "");
+        if (h.length === 3) {
+          r = parseInt(h[0] + h[0], 16);
+          g = parseInt(h[1] + h[1], 16);
+          b = parseInt(h[2] + h[2], 16);
+        } else if (h.length === 6) {
+          r = parseInt(h.substring(0, 2), 16);
+          g = parseInt(h.substring(2, 4), 16);
+          b = parseInt(h.substring(4, 6), 16);
+        }
+      }
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
 
-		const option = {
-			backgroundColor: 'transparent',
-			tooltip: {
-				trigger: 'axis',
-				backgroundColor: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(13, 13, 18, 0.9)',
-				borderColor: isLight ? '#ddd' : 'rgba(255, 255, 255, 0.2)',
-				borderWidth: 1,
-				textStyle: { color: isLight ? '#000' : '#fff' },
-				axisPointer: { type: 'cross' },
-				formatter: (params) => {
-					if (!params.length) return '';
-					const textColor = isLight ? '#000' : '#fff';
-					let html = `<div style="padding: 10px; min-width: 200px; color: ${textColor};"><div style="margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid ${isLight ? '#eee' : '#333'}; padding-bottom: 5px;">${params[0].axisValueLabel}</div>`;
-					params.forEach(item => {
-						const color = item.color;
-						const sIdx = item.seriesIndex;
-						const fullSeriesName = activeSeries[sIdx]?.name || item.seriesName;
-						const rawVal = item.value[1];
-						const displayVal = typeof rawVal === 'number' ? parseFloat(rawVal.toFixed(2)).toString() : rawVal;
-						html += `<div style="display: flex; align-items: center; margin-top: 5px;">
-							<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${color}; margin-right: 8px;"></span>
-							<span style="flex: 1; margin-right: 20px; font-size: 12px; color: ${textColor}; opacity: 0.9;">${fullSeriesName}</span>
-							<span style="font-weight: bold; font-family: monospace; color: ${textColor};">${displayVal}</span>
-						</div>`;
-					});
-					html += '</div>';
-					return html;
-				}
-			},
-			legend: {
-				data: legendItems,
-				selected: legendSelected,
-				textStyle: { color: isLight ? '#333' : '#ccc', fontSize: 11 },
-				top: 5,
-				type: 'scroll',
-				pageTextStyle: { color: isLight ? '#000' : '#fff' }
-			},
-			grid: {
-				top: '50',
-				left: '80',
-				right: '25',
-				bottom: '30',
-				containLabel: false
-			},
-			xAxis: {
-				type: 'time',
-				axisLine: { lineStyle: { color: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255, 255, 255, 0.2)' } },
-				splitNumber: granularity === 'hour' ? 12 : (granularity === 'day' ? 10 : 12),
-				axisLabel: {
-					color: isLight ? '#1d1d1f' : '#ccc',
-					formatter: (val) => {
-						const dt = new Date(val);
-						if (isCompareOverlap) {
-							if (granularity === 'day') return format(dt, 'd日');
-							if (granularity === 'month') return format(dt, 'M月');
-							return format(dt, 'HH:mm');
-						}
-						if (granularity === 'hour') {
-							return selectedDates.length > 1 ? format(dt, 'MM-dd HH:mm') : format(dt, 'HH:mm');
-						}
-						if (granularity === 'day') return format(dt, 'MM-dd');
-						if (granularity === 'month') return format(dt, 'yyyy-MM');
-						return format(dt, 'yyyy');
-					}
-				},
-				min: (value) => {
-					if (isCompareOverlap) {
-						const d = new Date(2000, 0, 1);
-						if (granularity === 'hour') d.setHours(rangeConfig.hour.start, 0, 0);
-						else if (granularity === 'day') d.setDate(rangeConfig.day.start);
-						else if (granularity === 'month') d.setMonth(rangeConfig.month.start - 1, 1);
-						return d;
-					}
-					if (granularity === 'hour') {
-						const d = new Date(value.min);
-						d.setHours(rangeConfig.hour.start, 0, 0, 0);
-						return d;
-					}
-					if (granularity === 'day') {
-						const d = new Date(value.min);
-						return new Date(d.getFullYear(), d.getMonth(), rangeConfig.day.start, 0, 0, 0);
-					}
-					if (granularity === 'month') {
-						const d = new Date(value.min);
-						return new Date(d.getFullYear(), rangeConfig.month.start - 1, 1, 0, 0, 0);
-					}
-					return null;
-				},
-				max: (value) => {
-					if (isCompareOverlap) {
-						const d = new Date(2000, 0, 1);
-						if (granularity === 'hour') d.setHours(rangeConfig.hour.end, 59, 59, 999);
-						else if (granularity === 'day') d.setDate(rangeConfig.day.end);
-						else if (granularity === 'month') d.setMonth(rangeConfig.month.end - 1, 31);
-						return d;
-					}
-					if (granularity === 'hour') {
-						const d = new Date(value.max);
-						d.setHours(rangeConfig.hour.end, 59, 59, 999);
-						return d;
-					}
-					if (granularity === 'day') {
-						const d = new Date(value.max);
-						return new Date(d.getFullYear(), d.getMonth(), rangeConfig.day.end, 23, 59, 59, 999);
-					}
-					if (granularity === 'month') {
-						const d = new Date(value.max);
-						return new Date(d.getFullYear(), rangeConfig.month.end - 1, 31, 23, 59, 59, 999);
-					}
-					return null;
-				},
-				splitLine: { show: false }
-			},
-			yAxis: yAxisConfig,
-			series: activeSeries.map((s, index) => {
-				const metricKey = s.metricName || s.name.split(' (')[0];
-				const axisIndex = uniqueMetrics.indexOf(metricKey);
-				const color = customMetricColors[metricKey] || getUserColor(axisIndex, metricKey);
-				const type = chartTypes[metricKey] || 'line';
-				const sameMetricSeries = activeSeries.filter(as => (as.metricName || as.name.split(' (')[0]) === metricKey);
-				const metricIdx = sameMetricSeries.findIndex(as => as.id === s.id);
-				const isDashed = metricIdx > 0;
+    // High Contrast 20-Color Palette
+    const defaultPalette = [
+      "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+      "#ec4899", "#06b6d4", "#84cc16", "#f97316", "#6366f1",
+      "#14b8a6", "#d946ef", "#eab308", "#f43f5e", "#a855f7",
+      "#22c55e", "#0ea5e9", "#facc15", "#fb7185", "#c084fc"
+    ];
 
-				let plotData = getAggregatedData(s.data, granularity);
-				if (isCompareOverlap) {
-					plotData = plotData.map(d => {
-						const dTime = d[0];
-						const baseDate = new Date(2000, 0, 1);
-						// 在重叠对比模式下，根据当前粒度映射时间
-						if (granularity === 'hour') {
-							baseDate.setHours(dTime.getHours(), dTime.getMinutes(), dTime.getSeconds());
-						} else if (granularity === 'day') {
-							baseDate.setDate(dTime.getDate());
-						} else if (granularity === 'month') {
-							baseDate.setMonth(dTime.getMonth());
-						}
-						return [baseDate, d[1]];
-					});
-				}
+    const option = {
+      backgroundColor: "transparent",
+      color: defaultPalette,
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: "rgba(15, 23, 42, 0.8)", // Use dark glass by default
+        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderWidth: 1,
+        padding: 0, // Reset padding for custom HTML
+        textStyle: { color: "#f1f5f9", fontFamily: "Open Sans, sans-serif" },
+        axisPointer: { type: "cross", label: { backgroundColor: "#3b82f6" } },
+        className: 'glass-tooltip', // Add class for backdrop-filter if supported
+        formatter: (params) => {
+          if (!params.length) return '';
+          const isDark = theme !== 'light';
+          const bg = isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+          const text = isDark ? '#f1f5f9' : '#1d1d1f';
+          const border = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+          const mute = isDark ? '#94a3b8' : '#86868b';
 
-				return {
-					name: s.displayName,
-					type: type,
-					yAxisIndex: axisIndex,
-					smooth: type === 'line',
-					barMaxWidth: 20,
-					showSymbol: granularity === 'hour' || plotData.length < 50,
-					symbol: 'circle',
-					symbolSize: 8,
-					data: plotData,
-					markArea: (() => {
-						const dimVal = (groupDim && s.dimensions) ? s.dimensions[groupDim] : 'default';
-						const groupKey = `${s.date}_${dimVal}`;
-						const ranges = curtailmentRanges[groupKey] || [];
-						// 只有在是“实际功率”相关的指标上才显示 markArea，避免每个系列都画背景导致颜色过深
-						const isMainPower = (s.displayName.includes('实际功率') || s.displayName.includes('功率') || s.displayName.includes('Power')) && !s.displayName.includes('可用');
-						return (showCurtailmentAnalysis && isMainPower && ranges.length > 0) ? { silent: true, data: ranges } : undefined;
-					})(),
-					lineStyle: {
-						width: 2.5,
-						type: isDashed ? 'dashed' : 'solid'
-					},
-					itemStyle: {
-						color: color,
-						borderWidth: 1.5
-					},
-					emphasis: {
-						focus: 'none',
-						scale: true,
-						symbolSize: 24,
-						itemStyle: {
-							shadowBlur: 20,
-							shadowColor: 'rgba(0,0,0,0.5)',
-							borderWidth: isLight ? 2 : 0,
-							borderColor: '#fff'
-						}
-					}
-				};
-			})
-		};
+          const timestamp = new Date(params[0].value[0]).getTime();
+          
+          // 汇总当前时刻各分组的限电状态
+          const curtailedGroups = [];
+          if (showCurtailmentAnalysis) {
+            Object.entries(curtailmentStatusRef.current).forEach(([groupKey, pointMap]) => {
+              if (pointMap[timestamp]) {
+                const groupName = groupKey.split('_').slice(1).join('_');
+                curtailedGroups.push(groupName === 'default' ? '全站' : groupName);
+              }
+            });
+          }
 
-		chartInstance.current.setOption(option, true);
-	};
+          let html = `<div style="
+            padding: 12px; 
+            min-width: 240px; 
+            background: ${bg}; 
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            font-family: 'Open Sans', sans-serif;
+          ">`;
+          
+          html += `<div style="
+            margin-bottom: 8px; 
+            padding-bottom: 8px; 
+            border-bottom: 1px solid ${border}; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+          ">
+            <span style="font-weight: 600; color: ${text}; font-family: 'Poppins', sans-serif;">
+              ${params[0].axisValueLabel}
+            </span>`;
+          
+          if (curtailedGroups.length > 0) {
+            html += `<span style="
+              background: #ef4444; 
+              color: white; 
+              font-size: 10px; 
+              padding: 2px 6px; 
+              border-radius: 4px; 
+              font-weight: 600;
+            ">限电 (${curtailedGroups.join(', ')})</span>`;
+          } else if (showCurtailmentAnalysis) {
+             html += `<span style="color: ${mute}; font-size: 10px;">正常</span>`;
+          }
 
-	// 监听状态变化并保存到 LocalStorage
-	useEffect(() => {
-		const stateToSave = {
-			series, selectedDates, axisRanges, chartTypes,
-			dimensionFilters, theme, showIntegral,
-			historyRecords, isCompareOverlap, granularity, legendSelected, rangeConfig, axisAdjustmentFactor,
-			useDefaultLimits, showCurtailmentAnalysis, curtailmentIrrThreshold, curtailmentDiffThreshold, curtailmentColor, curtailmentOpacity
-		};
-		Object.entries(stateToSave).forEach(([key, val]) => {
-			localStorage.setItem(`da_${key}`, JSON.stringify(val));
-		});
-		updateChart();
-	}, [series, selectedDates, axisRanges, hoveredMetric, dimensionFilters, theme, chartTypes, legendSelected, showIntegral, historyRecords, isCompareOverlap, granularity, rangeConfig, axisAdjustmentFactor, customMetricColors, useDefaultLimits, showCurtailmentAnalysis, curtailmentIrrThreshold, curtailmentDiffThreshold, curtailmentColor, curtailmentOpacity]);
+          html += `</div><div style="display: flex; flex-direction: column; gap: 4px;">`;
+          
+          params.forEach(item => {
+            const color = item.color;
+            const sIdx = item.seriesIndex;
+            const fullSeriesName = activeSeries[sIdx]?.name || item.seriesName;
+            const rawVal = item.value[1];
+            const displayVal = typeof rawVal === 'number' ? parseFloat(rawVal.toFixed(2)).toString() : rawVal;
+            
+            html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></span>
+                <span style="font-size: 11px; color: ${mute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">
+                  ${fullSeriesName}
+                </span>
+              </div>
+              <span style="font-weight: 600; font-family: 'Fira Code', monospace; color: ${text}; font-size: 12px;">
+                ${displayVal}
+              </span>
+            </div>`;
+          });
+          html += '</div></div>';
+          return html;
+        }
+      },
+      legend: {
+        data: legendItems,
+        selected: legendSelected,
+        textStyle: { color: isLight ? "#1d1d1f" : "#94a3b8", fontSize: 11, fontFamily: 'Open Sans, sans-serif' },
+        top: 0,
+        type: "scroll",
+        pageTextStyle: { color: isLight ? "#1d1d1f" : "#f1f5f9" },
+        itemWidth: 12,
+        itemHeight: 12,
+        icon: "circle",
+      },
+      grid: {
+        top: "40", // Optimized space
+        left: "50",
+        right: "20",
+        bottom: "25",
+        containLabel: true, // Ensure labels don't get cut off despite tight margins
+      },
+      xAxis: {
+        type: "time",
+        axisLine: {
+          lineStyle: {
+            color: isLight ? "rgba(0,0,0,0.1)" : "rgba(255, 255, 255, 0.2)",
+          },
+        },
+        splitNumber:
+          granularity === "hour" ? 12 : granularity === "day" ? 10 : 12,
+        axisLabel: {
+          color: isLight ? "#1d1d1f" : "#ccc",
+          formatter: (val) => {
+            const dt = new Date(val);
+            if (isCompareOverlap) {
+              if (granularity === "day") return format(dt, "d日");
+              if (granularity === "month") return format(dt, "M月");
+              return format(dt, "HH:mm");
+            }
+            if (granularity === "hour") {
+              return selectedDates.length > 1
+                ? format(dt, "MM-dd HH:mm")
+                : format(dt, "HH:mm");
+            }
+            if (granularity === "day") return format(dt, "MM-dd");
+            if (granularity === "month") return format(dt, "yyyy-MM");
+            return format(dt, "yyyy");
+          },
+        },
+        min: (value) => {
+          if (isCompareOverlap) {
+            const d = new Date(2000, 0, 1);
+            if (granularity === "hour")
+              d.setHours(rangeConfig.hour.start, 0, 0);
+            else if (granularity === "day") d.setDate(rangeConfig.day.start);
+            else if (granularity === "month")
+              d.setMonth(rangeConfig.month.start - 1, 1);
+            return d;
+          }
+          if (granularity === "hour") {
+            const d = new Date(value.min);
+            d.setHours(rangeConfig.hour.start, 0, 0, 0);
+            return d;
+          }
+          if (granularity === "day") {
+            const d = new Date(value.min);
+            return new Date(
+              d.getFullYear(),
+              d.getMonth(),
+              rangeConfig.day.start,
+              0,
+              0,
+              0,
+            );
+          }
+          if (granularity === "month") {
+            const d = new Date(value.min);
+            return new Date(
+              d.getFullYear(),
+              rangeConfig.month.start - 1,
+              1,
+              0,
+              0,
+              0,
+            );
+          }
+          return null;
+        },
+        max: (value) => {
+          if (isCompareOverlap) {
+            const d = new Date(2000, 0, 1);
+            if (granularity === "hour")
+              d.setHours(rangeConfig.hour.end, 59, 59, 999);
+            else if (granularity === "day") d.setDate(rangeConfig.day.end);
+            else if (granularity === "month")
+              d.setMonth(rangeConfig.month.end - 1, 31);
+            return d;
+          }
+          if (granularity === "hour") {
+            const d = new Date(value.max);
+            d.setHours(rangeConfig.hour.end, 59, 59, 999);
+            return d;
+          }
+          if (granularity === "day") {
+            const d = new Date(value.max);
+            return new Date(
+              d.getFullYear(),
+              d.getMonth(),
+              rangeConfig.day.end,
+              23,
+              59,
+              59,
+              999,
+            );
+          }
+          if (granularity === "month") {
+            const d = new Date(value.max);
+            return new Date(
+              d.getFullYear(),
+              rangeConfig.month.end - 1,
+              31,
+              23,
+              59,
+              59,
+              999,
+            );
+          }
+          return null;
+        },
+        splitLine: { show: false },
+      },
+      yAxis: yAxisConfig,
+      series: activeSeries.map((s, index) => {
+        const metricKey = s.metricName || s.name.split(" (")[0];
+        const axisIndex = uniqueMetrics.indexOf(metricKey);
+        const color =
+          customMetricColors[metricKey] || getUserColor(axisIndex, metricKey);
+        const type = chartTypes[metricKey] || "line";
+        const sameMetricSeries = activeSeries.filter(
+          (as) => (as.metricName || as.name.split(" (")[0]) === metricKey,
+        );
+        const metricIdx = sameMetricSeries.findIndex((as) => as.id === s.id);
+        const isDashed = metricIdx > 0;
 
-	// 3. 自动同步可用日期列表
-	useEffect(() => {
-		const dates = [...new Set(series.map(s => s.date))].sort();
-		setAvailableDates(dates);
-		// 如果没有任何选中日期，默认选中最新日期
-		if (dates.length > 0 && selectedDates.length === 0) {
-			setSelectedDates([dates[dates.length - 1]]);
-		}
-	}, [series]);
+        let plotData = getAggregatedData(s.data, granularity);
+        if (isCompareOverlap) {
+          plotData = plotData.map((d) => {
+            const dTime = d[0];
+            const baseDate = new Date(2000, 0, 1);
+            // 在重叠对比模式下，根据当前粒度映射时间
+            if (granularity === "hour") {
+              baseDate.setHours(
+                dTime.getHours(),
+                dTime.getMinutes(),
+                dTime.getSeconds(),
+              );
+            } else if (granularity === "day") {
+              baseDate.setDate(dTime.getDate());
+            } else if (granularity === "month") {
+              baseDate.setMonth(dTime.getMonth());
+            }
+            return [baseDate, d[1]];
+          });
+        }
 
-	// 4. Removed auto-init dimension effects
+        return {
+          name: s.displayName,
+          type: type,
+          yAxisIndex: axisIndex,
+          smooth: type === "line",
+          barMaxWidth: 20,
+          showSymbol: granularity === "hour" || plotData.length < 50,
+          symbol: "circle",
+          symbolSize: 8,
+          data: plotData,
+          markArea: (() => {
+            const dimVal =
+              groupDim && s.dimensions ? s.dimensions[groupDim] : "default";
+            const groupKey = `${s.date}_${dimVal}`;
+            const ranges = curtailmentRanges[groupKey] || [];
+            // 只有在是“实际功率”相关的指标上才显示 markArea，避免每个系列都画背景导致颜色过深
+            const isMainPower =
+              (s.displayName.includes("实际功率") ||
+                s.displayName.includes("功率") ||
+                s.displayName.includes("Power")) &&
+              !s.displayName.includes("可用");
+            return showCurtailmentAnalysis && isMainPower && ranges.length > 0
+              ? { silent: true, data: ranges }
+              : undefined;
+          })(),
+          lineStyle: {
+            width: 2.5,
+            type: isDashed ? "dashed" : "solid",
+          },
+          itemStyle: {
+            color: color,
+            borderWidth: 1.5,
+          },
+          emphasis: {
+            focus: "none",
+            scale: true,
+            symbolSize: 24,
+            itemStyle: {
+              shadowBlur: 20,
+              shadowColor: "rgba(0,0,0,0.5)",
+              borderWidth: isLight ? 2 : 0,
+              borderColor: "#fff",
+            },
+          },
+        };
+      }),
+    };
 
-	const handleFileUpload = (e) => {
-		let file = (e && e.target && e.target.files) ? e.target.files[0] : e;
-		if (!file || !(file instanceof File || file instanceof Blob)) return;
-		const reader = new FileReader();
-		reader.onload = (event) => {
-			const content = event.target.result;
-			if (file.name.endsWith('.csv')) {
-				parseCSV(content, file.name);
-			} else if (file.name.endsWith('.json')) {
-				parseJSON(content, file.name);
-			} else {
-				if (content.trim().startsWith('[') || content.trim().startsWith('{')) {
-					parseJSON(content, file.name);
-				} else {
-					parseCSV(content, file.name);
-				}
-			}
-		};
-		reader.readAsText(file);
-	};
+    chartInstance.current.setOption(option, true);
+  };
 
-	const handlePasteSubmit = () => {
-		if (!pasteContent.trim()) return;
-		const timestamp = format(new Date(), 'HHmm');
-		const name = `粘贴数据_${timestamp}`;
-		if (pasteContent.trim().startsWith('[') || pasteContent.trim().startsWith('{')) {
-			parseJSON(pasteContent, name);
-		} else {
-			parseCSV(pasteContent, name);
-		}
-		setPasteContent('');
-		setIsPasteModalOpen(false);
-	};
+  // 监听状态变化并保存到 LocalStorage
+  useEffect(() => {
+    const stateToSave = {
+      series,
+      selectedDates,
+      axisRanges,
+      chartTypes,
+      dimensionFilters,
+      theme,
+      showIntegral,
+      historyRecords,
+      isCompareOverlap,
+      granularity,
+      legendSelected,
+      rangeConfig,
+      axisAdjustmentFactor,
+      useDefaultLimits,
+      showCurtailmentAnalysis,
+      curtailmentIrrThreshold,
+      curtailmentDiffThreshold,
+      curtailmentColor,
+      curtailmentOpacity,
+    };
+    Object.entries(stateToSave).forEach(([key, val]) => {
+      localStorage.setItem(`da_${key}`, JSON.stringify(val));
+    });
+    updateChart();
+  }, [
+    series,
+    selectedDates,
+    axisRanges,
+    hoveredMetric,
+    dimensionFilters,
+    theme,
+    chartTypes,
+    legendSelected,
+    showIntegral,
+    historyRecords,
+    isCompareOverlap,
+    granularity,
+    rangeConfig,
+    axisAdjustmentFactor,
+    customMetricColors,
+    useDefaultLimits,
+    showCurtailmentAnalysis,
+    curtailmentIrrThreshold,
+    curtailmentDiffThreshold,
+    curtailmentColor,
+    curtailmentOpacity,
+  ]);
 
+  // 3. 自动同步可用日期列表
+  useEffect(() => {
+    const dates = [...new Set(series.map((s) => s.date))].sort();
+    setAvailableDates(dates);
+    // 如果没有任何选中日期，默认选中最新日期
+    if (dates.length > 0 && selectedDates.length === 0) {
+      setSelectedDates([dates[dates.length - 1]]);
+    }
+  }, [series]);
 
-	const onDrop = (e) => {
-		e.preventDefault(); e.stopPropagation();
-		setIsDragging(false);
-		const files = e.dataTransfer.files;
-		if (files.length > 0) handleFileUpload(files[0]);
-	};
-	const onDragOver = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
-	const onDragEnter = (e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
-	const onDragLeave = (e) => {
-		e.preventDefault(); e.stopPropagation();
-		if (e.currentTarget === e.target) setIsDragging(false);
-	};
+  // 4. Removed auto-init dimension effects
 
-	const parseCSV = (csvContent, fileName) => {
-		Papa.parse(csvContent, {
-			header: true, skipEmptyLines: true,
-			complete: (results) => processData(results.data, fileName)
-		});
-	};
+  const handleFileUpload = (e) => {
+    let file = e && e.target && e.target.files ? e.target.files[0] : e;
+    if (!file || !(file instanceof File || file instanceof Blob)) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      if (file.name.endsWith(".csv")) {
+        parseCSV(content, file.name);
+      } else if (file.name.endsWith(".json")) {
+        parseJSON(content, file.name);
+      } else {
+        if (content.trim().startsWith("[") || content.trim().startsWith("{")) {
+          parseJSON(content, file.name);
+        } else {
+          parseCSV(content, file.name);
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
 
-	const parseJSON = (jsonContent, fileName) => {
-		try { processData(JSON.parse(jsonContent), fileName); } catch (err) { console.error(err); }
-	};
+  const handlePasteSubmit = () => {
+    if (!pasteContent.trim()) return;
+    const timestamp = format(new Date(), "HHmm");
+    const name = `粘贴数据_${timestamp}`;
+    if (
+      pasteContent.trim().startsWith("[") ||
+      pasteContent.trim().startsWith("{")
+    ) {
+      parseJSON(pasteContent, name);
+    } else {
+      parseCSV(pasteContent, name);
+    }
+    setPasteContent("");
+    setIsPasteModalOpen(false);
+  };
 
-	const processData = (rawData, fileName) => {
-		const newSeries = processDataLogic(rawData, fileName);
-		if (newSeries.length === 0) {
-			alert(`导入失败: 无法从 "${fileName}" 中解析出有效的曲线数据。\n请确保文件包含 "日期"、"时间" 以及数值列。\n建议下载使用标准模版。`);
-			return;
-		}
-		setSeries(prev => [...prev, ...newSeries]);
-	};
+  const onDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) handleFileUpload(files[0]);
+  };
+  const onDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+  const onDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+  const onDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target) setIsDragging(false);
+  };
 
-	const calculateTotal = (seriesItem) => {
-		const { data, metricName, name, unit } = seriesItem;
-		if (!data || data.length < 2) return '0';
+  const parseCSV = (csvContent, fileName) => {
+    Papa.parse(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => processData(results.data, fileName),
+    });
+  };
 
-		const mKey = (metricName || name).toLowerCase();
-		const isWindSpeed = mKey.includes('风速') || (unit && unit.toLowerCase() === 'm/s');
+  const parseJSON = (jsonContent, fileName) => {
+    try {
+      processData(JSON.parse(jsonContent), fileName);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-		if (isWindSpeed) {
-			const avg = data.reduce((sum, d) => sum + d.value, 0) / data.length;
-			return `${parseFloat(avg.toFixed(2)).toString()} m/s (均值)`;
-		}
+  const processData = (rawData, fileName) => {
+    const newSeries = processDataLogic(rawData, fileName);
+    if (newSeries.length === 0) {
+      alert(
+        `导入失败: 无法从 "${fileName}" 中解析出有效的曲线数据。\n请确保文件包含 "日期"、"时间" 以及数值列。\n建议下载使用标准模版。`,
+      );
+      return;
+    }
+    setSeries((prev) => [...prev, ...newSeries]);
+  };
 
-		let total = 0;
-		const sorted = [...data].sort((a, b) => a.time.getTime() - b.time.getTime());
-		for (let i = 0; i < sorted.length - 1; i++) {
-			const p1 = sorted[i]; const p2 = sorted[i + 1];
-			const dt = (p2.time.getTime() - p1.time.getTime()) / (1000 * 3600);
-			total += (p1.value + p2.value) * dt / 2;
-		}
+  const calculateTotal = (seriesItem) => {
+    const { data, metricName, name, unit } = seriesItem;
+    if (!data || data.length < 2) return "0";
 
-		let unitStr = unit ? `${unit}·h` : '项';
-		let finalValue = total;
+    const mKey = (metricName || name).toLowerCase();
+    const isWindSpeed =
+      mKey.includes("风速") || (unit && unit.toLowerCase() === "m/s");
 
-		// 业务逻辑转换
-		const isPower = mKey.includes('实际功率') || mKey.includes('负荷') || mKey.includes('预测') || mKey.includes('出清') || (unit && unit.toUpperCase() === 'MW');
-		if (isPower) {
-			unitStr = 'MWh';
-		} else if (mKey.includes('辐照度')) {
-			unitStr = 'MJ/m²';
-			finalValue = total * 0.0036; // Wh/m2 -> MJ/m2 (3600/1e6)
-		}
+    if (isWindSpeed) {
+      const avg = data.reduce((sum, d) => sum + d.value, 0) / data.length;
+      return `${parseFloat(avg.toFixed(2)).toString()} m/s (均值)`;
+    }
 
-		return `${parseFloat(finalValue.toFixed(2)).toString()} ${unitStr}`;
-	};
+    let total = 0;
+    const sorted = [...data].sort(
+      (a, b) => a.time.getTime() - b.time.getTime(),
+    );
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const p1 = sorted[i];
+      const p2 = sorted[i + 1];
+      const dt = (p2.time.getTime() - p1.time.getTime()) / (1000 * 3600);
+      total += ((p1.value + p2.value) * dt) / 2;
+    }
 
-	const removeSeries = (id) => setSeries(prev => prev.filter(s => s.id !== id));
+    let unitStr = unit ? `${unit}·h` : "项";
+    let finalValue = total;
 
-	const openDataEditor = (s) => {
-		setEditingSeriesId(s.id);
-		setEditingSeriesName(s.name);
-		setEditingMetricName(s.metricName || '');
-		setEditingDataText(JSON.stringify(s.data.map(d => ({
-			time: format(new Date(d.time), 'yyyy-MM-dd HH:mm:ss'),
-			value: d.value
-		})), null, 2));
-		setIsDataEditorOpen(true);
-	};
+    // 业务逻辑转换
+    const isPower =
+      mKey.includes("实际功率") ||
+      mKey.includes("负荷") ||
+      mKey.includes("预测") ||
+      mKey.includes("出清") ||
+      (unit && unit.toUpperCase() === "MW");
+    if (isPower) {
+      unitStr = "MWh";
+    } else if (mKey.includes("辐照度")) {
+      unitStr = "MJ/m²";
+      finalValue = total * 0.0036; // Wh/m2 -> MJ/m2 (3600/1e6)
+    }
 
-	const saveEditedData = () => {
-		try {
-			const newData = JSON.parse(editingDataText).map(d => ({
-				...d,
-				time: new Date(d.time)
-			}));
-			setSeries(prev => prev.map(s => s.id === editingSeriesId ? {
-				...s,
-				name: editingSeriesName,
-				metricName: editingMetricName,
-				data: newData
-			} : s));
-			setIsDataEditorOpen(false);
-		} catch (err) {
-			alert('JSON 解析失败，请检查格式。支持编辑 time (yyyy-MM-dd HH:mm:ss) 和 value。');
-		}
-	};
+    return `${parseFloat(finalValue.toFixed(2)).toString()} ${unitStr}`;
+  };
 
-	const exportData = () => {
-		const activeSeries = series.filter(s => {
-			if (!s) return false;
-			const dateMatch = (selectedDates || []).includes(s.date);
-			if (!dateMatch) return false;
-			
-			return Object.entries(dimensionFilters).every(([dimKey, selectedVals]) => {
-				if (!selectedVals || selectedVals.length === 0) return true;
-				const sVal = s.dimensions ? s.dimensions[dimKey] : 'N/A';
-				return selectedVals.includes(sVal);
-			});
-		});
+  const removeSeries = (id) =>
+    setSeries((prev) => prev.filter((s) => s.id !== id));
 
-		if (activeSeries.length === 0) return;
+  const openDataEditor = (s) => {
+    setEditingSeriesId(s.id);
+    setEditingSeriesName(s.name);
+    setEditingMetricName(s.metricName || "");
+    setEditingDataText(
+      JSON.stringify(
+        s.data.map((d) => ({
+          time: format(new Date(d.time), "yyyy-MM-dd HH:mm:ss"),
+          value: d.value,
+        })),
+        null,
+        2,
+      ),
+    );
+    setIsDataEditorOpen(true);
+  };
 
-		// 1. 自动收集所有维度和指标
-		const dimensionKeys = new Set();
-		const metricNames = new Set();
-		activeSeries.forEach(s => {
-			Object.keys(s.dimensions).forEach(k => dimensionKeys.add(k));
-			const mName = s.metricName || s.name.split(' (')[0];
-			metricNames.add(mName);
-		});
+  const saveEditedData = () => {
+    try {
+      const newData = JSON.parse(editingDataText).map((d) => ({
+        ...d,
+        time: new Date(d.time),
+      }));
+      setSeries((prev) =>
+        prev.map((s) =>
+          s.id === editingSeriesId
+            ? {
+                ...s,
+                name: editingSeriesName,
+                metricName: editingMetricName,
+                data: newData,
+              }
+            : s,
+        ),
+      );
+      setIsDataEditorOpen(false);
+    } catch (err) {
+      alert(
+        "JSON 解析失败，请检查格式。支持编辑 time (yyyy-MM-dd HH:mm:ss) 和 value。",
+      );
+    }
+  };
 
-		const dimKeyList = Array.from(dimensionKeys).sort();
-		const metricNameList = Array.from(metricNames).sort();
+  const exportData = () => {
+    const activeSeries = series.filter((s) => {
+      if (!s) return false;
+      const dateMatch = (selectedDates || []).includes(s.date);
+      if (!dateMatch) return false;
 
-		// 2. 按时间、日期和维度组合数据
-		const dataRows = {}; // key: date|time|dimValues
+      return Object.entries(dimensionFilters).every(
+        ([dimKey, selectedVals]) => {
+          if (!selectedVals || selectedVals.length === 0) return true;
+          const sVal = s.dimensions ? s.dimensions[dimKey] : "N/A";
+          return selectedVals.includes(sVal);
+        },
+      );
+    });
 
-		const { ranges: curtailmentRanges, groupDim } = getCurtailmentRanges(series, selectedDates);
+    if (activeSeries.length === 0) return;
 
-		activeSeries.forEach(s => {
-			const mName = s.metricName || s.name.split(' (')[0];
-			s.data.forEach(d => {
-				const dateStr = s.date;
-				const timeStr = format(d.time, 'HH:mm:ss');
-				const dimValuesJoined = dimKeyList.map(k => s.dimensions[k] || '').join('|');
-				const rowKey = `${dateStr}|${timeStr}|${dimValuesJoined}`;
+    // 1. 自动收集所有维度和指标
+    const dimensionKeys = new Set();
+    const metricNames = new Set();
+    activeSeries.forEach((s) => {
+      Object.keys(s.dimensions).forEach((k) => dimensionKeys.add(k));
+      const mName = s.metricName || s.name.split(" (")[0];
+      metricNames.add(mName);
+    });
 
-				if (!dataRows[rowKey]) {
+    const dimKeyList = Array.from(dimensionKeys).sort();
+    const metricNameList = Array.from(metricNames).sort();
+
+    // 2. 按时间、日期和维度组合数据
+    const dataRows = {}; // key: date|time|dimValues
+
+    activeSeries.forEach((s) => {
+      const mName = s.metricName || s.name.split(" (")[0];
+      s.data.forEach((d) => {
+        const dateStr = s.date;
+        const timeStr = format(d.time, "HH:mm:ss");
+        const dimValuesJoined = dimKeyList
+          .map((k) => s.dimensions[k] || "")
+          .join("|");
+        const rowKey = `${dateStr}|${timeStr}|${dimValuesJoined}`;
+
+        				if (!dataRows[rowKey]) {
 					dataRows[rowKey] = {
 						date: dateStr,
 						time: timeStr,
 						dims: { ...s.dimensions },
-						metrics: {},
-						isCurtailment: 0
+						metrics: {}
 					};
 				}
 				dataRows[rowKey].metrics[mName] = d.value;
-
-				// 实时判断限电状态 (基于当前点所属的分组计算)
-				const dimVal = (groupDim && s.dimensions) ? s.dimensions[groupDim] : 'default';
-				const groupKey = `${s.date}_${dimVal}`;
-				const ranges = curtailmentRanges[groupKey] || [];
-				const t = d.time.getTime();
-				const isInside = ranges.some(r => {
-					const start = r[0].startTime;
-					const end = r[1].endTime;
-					return t >= start && t <= end;
-				});
-				if (isInside) dataRows[rowKey].isCurtailment = 1;
 			});
 		});
 
 		// 3. 构建 CSV 内容
-		const headers = ['日期', '时间', ...dimKeyList, ...metricNameList, '是否限电'];
+		const headers = ['日期', '时间', ...dimKeyList, ...metricNameList];
 		const rows = [headers];
 
-		// 按日期和时间排序 (解决多日期排序乱码)
-		const sortedRowKeys = Object.keys(dataRows).sort((a, b) => {
-			const [d1, t1, dim1] = a.split('|');
-			const [d2, t2, dim2] = b.split('|');
-			if (d1 !== d2) return d1.localeCompare(d2);
-			if (t1 !== t2) return t1.localeCompare(t2);
-			return dim1.localeCompare(dim2);
-		});
+    // 按日期和时间排序 (解决多日期排序乱码)
+    const sortedRowKeys = Object.keys(dataRows).sort((a, b) => {
+      const [d1, t1, dim1] = a.split("|");
+      const [d2, t2, dim2] = b.split("|");
+      if (d1 !== d2) return d1.localeCompare(d2);
+      if (t1 !== t2) return t1.localeCompare(t2);
+      return dim1.localeCompare(dim2);
+    });
 
-		sortedRowKeys.forEach(key => {
-			const rowData = dataRows[key];
-			const row = [
+    sortedRowKeys.forEach((key) => {
+      const rowData = dataRows[key];
+      			const row = [
 				rowData.date,
 				rowData.time,
 				...dimKeyList.map(k => rowData.dims[k] || ''),
-				...metricNameList.map(m => rowData.metrics[m] !== undefined ? rowData.metrics[m] : ''),
-				rowData.isCurtailment
+				...metricNameList.map(m => rowData.metrics[m] !== undefined ? rowData.metrics[m] : '')
 			];
-			rows.push(row);
-		});
+      rows.push(row);
+    });
 
-		// 4. 下载文件实现
-		const csvContent = rows.map(r => r.map(v => typeof v === 'string' && v.includes(',') ? `"${v}"` : v).join(',')).join('\n');
-		const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-		const link = document.createElement("a");
-		const url = URL.createObjectURL(blob);
-		link.setAttribute("href", url);
-		link.setAttribute("download", `新能源发电分析导出_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
-		link.style.visibility = 'hidden';
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		URL.revokeObjectURL(url);
-	};
+    // 4. 下载文件实现
+    const csvContent = rows
+      .map((r) =>
+        r
+          .map((v) => (typeof v === "string" && v.includes(",") ? `"${v}"` : v))
+          .join(","),
+      )
+      .join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `新能源发电分析导出_${format(new Date(), "yyyyMMdd_HHmm")}.csv`,
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
-	const clearAll = () => {
-		if (!confirm("确定要清空所有当前加载的数据吗？(历史存单将被保留)")) return;
-		setSeries([]);
-		setAvailableDates([]);
-		setSelectedDates([]);
-		resetSettings();
+  const clearAll = () => {
+    if (!confirm("确定要清空所有当前加载的数据吗？(历史存单将被保留)")) return;
+    setSeries([]);
+    setAvailableDates([]);
+    setSelectedDates([]);
+    resetSettings();
 
-		// 彻底清理相关 LocalStorage
-		['series', 'selectedDates'].forEach(key => localStorage.removeItem(`da_${key}`));
-	};
+    // 彻底清理相关 LocalStorage
+    ["series", "selectedDates"].forEach((key) =>
+      localStorage.removeItem(`da_${key}`),
+    );
+  };
 
-	const resetSettings = () => {
-		setAxisRanges({});
-		setChartTypes({});
-		setCustomMetricColors({});
-		setLegendSelected({});
-		setGranularity('hour');
-		setGranularity('hour');
-		setShowIntegral(false);
+  const resetSettings = () => {
+    setAxisRanges({});
+    setChartTypes({});
+    setCustomMetricColors({});
+    setLegendSelected({});
+    setGranularity("hour");
+    setGranularity("hour");
+    setShowIntegral(false);
 
-		setRangeConfig({
-			hour: { start: 0, end: 23 },
-			day: { start: 1, end: 31 },
-			month: { start: 1, end: 12 }
-		});
-		const keysToReset = ['axisRanges', 'chartTypes', 'customMetricColors', 'legendSelected', 'granularity', 'showIntegral', 'rangeConfig', 'dimensionFilters'];
-		keysToReset.forEach(key => localStorage.removeItem(`da_${key}`));
-	};
+    setRangeConfig({
+      hour: { start: 0, end: 23 },
+      day: { start: 1, end: 31 },
+      month: { start: 1, end: 12 },
+    });
+    const keysToReset = [
+      "axisRanges",
+      "chartTypes",
+      "customMetricColors",
+      "legendSelected",
+      "granularity",
+      "showIntegral",
+      "rangeConfig",
+      "dimensionFilters",
+    ];
+    keysToReset.forEach((key) => localStorage.removeItem(`da_${key}`));
+  };
 
-	const fetchAccessLogs = async (type = logType) => {
-		try {
-			const res = await fetch(`/api/logs?type=${type}`);
-			if (res.ok) {
-				const data = await res.json();
-				setAccessLogs(data.logs || []);
-				setLogType(type);
-				setIsLogModalOpen(true);
-			}
-		} catch (e) {
-			console.error('获取日志失败:', e);
-		}
-	};
+  const fetchAccessLogs = async (type = logType) => {
+    try {
+      const res = await fetch(`/api/logs?type=${type}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAccessLogs(data.logs || []);
+        setLogType(type);
+        setIsLogModalOpen(true);
+      }
+    } catch (e) {
+      console.error("获取日志失败:", e);
+    }
+  };
 
-	const exportLogs = () => {
-		const blob = new Blob([accessLogs.join('\n')], { type: 'text/plain' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `${logType}_logs_${format(new Date(), 'yyyyMMdd_HHmm')}.txt`;
-		a.click();
-	};
+  const exportLogs = () => {
+    const blob = new Blob([accessLogs.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${logType}_logs_${format(new Date(), "yyyyMMdd_HHmm")}.txt`;
+    a.click();
+  };
 
-	const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  const toggleTheme = () =>
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
 
-	/**
-	 * 获取历史辐照度数据
-	 */
-	/**
-	 * 打开辐照度获取配置窗口
-	 */
-	const fetchIrradiance = () => {
-		if (selectedDates.length === 0) {
-			alert('请先选择日期 (Date Picker)');
-			return;
-		}
+  /**
+   * 获取历史辐照度数据
+   */
+  /**
+   * 打开辐照度获取配置窗口
+   */
+  const fetchIrradiance = () => {
+    if (selectedDates.length === 0) {
+      alert("请先选择日期 (Date Picker)");
+      return;
+    }
 
-		// 智能识别场站名称：
-		// 1. 如果有活跃维度且有选中值，优先取第一个选中值
-		// 2. 从已有数据的维度中寻找场站关键字
-		let stationName = '';
-		const allSelectedVals = Object.values(dimensionFilters).flat();
-		if (allSelectedVals.length > 0) {
-			stationName = allSelectedVals[0];
-		} else if (series.length > 0) {
-			const activeDaySeries = series.filter(s => selectedDates.includes(s.date));
-			if (activeDaySeries.length > 0) {
-				const firstS = activeDaySeries[0];
-				const possibleKeys = ['场站', '电站', '名称', '调度名称', 'item', 'station', '项目'];
-				for (const key of possibleKeys) {
-					if (firstS.dimensions[key]) {
-						stationName = firstS.dimensions[key];
-						break;
-					}
-				}
-			}
-		}
+    // 智能识别场站名称：
+    // 1. 如果有活跃维度且有选中值，优先取第一个选中值
+    // 2. 从已有数据的维度中寻找场站关键字
+    let stationName = "";
+    const allSelectedVals = Object.values(dimensionFilters).flat();
+    if (allSelectedVals.length > 0) {
+      stationName = allSelectedVals[0];
+    } else if (series.length > 0) {
+      const activeDaySeries = series.filter((s) =>
+        selectedDates.includes(s.date),
+      );
+      if (activeDaySeries.length > 0) {
+        const firstS = activeDaySeries[0];
+        const possibleKeys = [
+          "场站名称",
+          "场站",
+          "电站",
+          "名称",
+          "调度名称",
+          "item",
+          "station",
+          "项目",
+        ];
+        for (const key of possibleKeys) {
+          if (firstS.dimensions[key]) {
+            stationName = firstS.dimensions[key];
+            break;
+          }
+        }
+      }
+    }
 
-		setStationSearchTerm(stationName);
-		setIsStationModalOpen(true);
-	};
+    setStationSearchTerm(stationName);
+    setIsStationModalOpen(true);
+  };
 
-	const fetchStations = async () => {
-		try {
-			const res = await fetch('/api/stations');
-			if (res.ok) setAvailableStations(await res.json());
-		} catch (e) { console.error('获取场站列表失败', e); }
-	};
+  const fetchStations = async () => {
+    try {
+      const res = await fetch("/api/stations");
+      if (res.ok) setAvailableStations(await res.json());
+    } catch (e) {
+      console.error("获取场站列表失败", e);
+    }
+  };
 
-	useEffect(() => { fetchStations(); }, []);
+  useEffect(() => {
+    fetchStations();
+  }, []);
 
-	const importStations = async () => {
-		if (!stationBatchInput.trim()) return;
-		const rows = stationBatchInput.split('\n').map(r => r.trim()).filter(Boolean);
-		const newStations = [];
-		rows.forEach((row, i) => {
-			if (i === 0 && (row.includes('场站') || row.includes('站名'))) return; // 跳过表头
-			const parts = row.split(/[,，\t]/);
-			// 支持多种列数格式：
-			// 1. 场站,经度,纬度,区域
-			// 2. 场站,方位角,倾角,经度,纬度,区域
-			if (parts.length >= 5) {
-				newStations.push({
-					name: parts[0],
-					azimuth: parseFloat(parts[1]),
-					tilt: parseFloat(parts[2]),
-					lon: parseFloat(parts[3]),
-					lat: parseFloat(parts[4]),
-					region: parts[5] || ''
-				});
-			} else if (parts.length >= 3) {
-				newStations.push({
-					name: parts[0],
-					lon: parseFloat(parts[1]),
-					lat: parseFloat(parts[2]),
-					region: parts[3] || '',
-					azimuth: 0,
-					tilt: 0
-				});
-			}
-		});
+  const importStations = async () => {
+    if (!stationBatchInput.trim()) return;
+    const rows = stationBatchInput
+      .split("\n")
+      .map((r) => r.trim())
+      .filter(Boolean);
+    const newStations = [];
+    rows.forEach((row, i) => {
+      if (i === 0 && (row.includes("场站") || row.includes("站名"))) return; // 跳过表头
+      const parts = row.split(/[,，\t]/);
+      // 支持多种列数格式：
+      // 1. 场站,经度,纬度,区域
+      // 2. 场站,方位角,倾角,经度,纬度,区域
+      if (parts.length >= 5) {
+        newStations.push({
+          name: parts[0],
+          azimuth: parseFloat(parts[1]),
+          tilt: parseFloat(parts[2]),
+          lon: parseFloat(parts[3]),
+          lat: parseFloat(parts[4]),
+          region: parts[5] || "",
+        });
+      } else if (parts.length >= 3) {
+        newStations.push({
+          name: parts[0],
+          lon: parseFloat(parts[1]),
+          lat: parseFloat(parts[2]),
+          region: parts[3] || "",
+          azimuth: 0,
+          tilt: 0,
+        });
+      }
+    });
 
-		if (newStations.length === 0) {
-			alert('无效的格式。格式要求：\n场站,经度,纬度,区域\n或：场站,方位角,角度,经度,纬度,区域');
-			return;
-		}
+    if (newStations.length === 0) {
+      alert(
+        "无效的格式。格式要求：\n场站,经度,纬度,区域\n或：场站,方位角,角度,经度,纬度,区域",
+      );
+      return;
+    }
 
-		try {
-			const res = await fetch('/api/stations', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(newStations)
-			});
-			if (res.ok) {
-				fetchStations();
-				setStationBatchInput('');
-				alert(`成功导入 ${newStations.length} 个场站`);
-			}
-		} catch (e) { console.error('导入场站失败', e); }
-	};
+    try {
+      const res = await fetch("/api/stations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newStations),
+      });
+      if (res.ok) {
+        fetchStations();
+        setStationBatchInput("");
+        alert(`成功导入 ${newStations.length} 个场站`);
+      }
+    } catch (e) {
+      console.error("导入场站失败", e);
+    }
+  };
 
-	const deleteStation = async (name) => {
-		if (!confirm(`确定删除场站 ${name} 吗？`)) return;
-		try {
-			const res = await fetch(`/api/stations/${encodeURIComponent(name)}`, { method: 'DELETE' });
-			if (res.ok) fetchStations();
-		} catch (e) { console.error('删除场站失败', e); }
-	};
+  const deleteStation = async (name) => {
+    if (!confirm(`确定删除场站 ${name} 吗？`)) return;
+    try {
+      const res = await fetch(`/api/stations/${encodeURIComponent(name)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) fetchStations();
+    } catch (e) {
+      console.error("删除场站失败", e);
+    }
+  };
 
-	const executeFetchIrradiance = async (inputName) => {
-		if (!inputName) return;
+  const executeFetchIrradiance = async (inputName) => {
+    if (!inputName) return;
 
-		setIsFetchingWeather(true);
-		let addedCount = 0;
-		let failList = [];
+    setIsFetchingWeather(true);
+    let addedCount = 0;
+    let failList = [];
 
-		for (const date of selectedDates) {
-			try {
-				const res = await fetch(`/api/weather/irradiance?stationName=${encodeURIComponent(inputName)}&date=${date}`);
-				if (!res.ok) {
-					const errData = await res.json();
-					failList.push(`${date}: ${errData.error}`);
-					continue;
-				}
-				const result = await res.json();
+    for (const date of selectedDates) {
+      try {
+        const res = await fetch(
+          `/api/weather/irradiance?stationName=${encodeURIComponent(inputName)}&date=${date}`,
+        );
+        if (!res.ok) {
+          const errData = await res.json();
+          failList.push(`${date}: ${errData.error}`);
+          continue;
+        }
+        const result = await res.json();
 
-				// 智能匹配维度键名：查找同日期下或全局已存在的序列所使用的场站维度名称
-				const stationDimKeyList = ['场站', '电站', 'Station', 'station', 'Name', '项目', '名称'];
-				const existingDimKey = (() => {
-					const sameDate = series.find(s => s.date === date && s.dimensions);
-					if (sameDate) {
-						const key = Object.keys(sameDate.dimensions).find(k => stationDimKeyList.includes(k));
-						if (key) return key;
-					}
-					const anyWithDim = series.find(s => s.dimensions);
-					if (anyWithDim) {
-						const key = Object.keys(anyWithDim.dimensions).find(k => stationDimKeyList.includes(k));
-						if (key) return key;
-					}
-					return '场站';
-				})();
+        // --- 增强的维度匹配逻辑 ---
+        // 1. 寻找一个与当前获取的场站和日期都匹配的、已存在的 series
+        const stationDimKeyList = [
+          "场站名称",
+          "场站",
+          "电站",
+          "Station",
+          "station",
+          "Name",
+          "项目",
+          "名称",
+        ];
+        let referenceDimensions = null;
+        const existingSeriesForDate = series.filter((s) => s.date === date);
+        const referenceSeries = existingSeriesForDate.find(
+          (s) =>
+            s.dimensions &&
+            Object.entries(s.dimensions).some(
+              ([key, value]) =>
+                stationDimKeyList.includes(key) && value === inputName,
+            ),
+        );
 
-				const newSeriesItem = {
-					id: `weather_${inputName}_${date}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-					name: `历史辐照度 (${inputName})`,
-					metricName: '历史辐照度',
-					date: date,
-					data: result.data.map(d => ({
-						time: new Date(d.time),
-						value: d.value
-					})),
-					dimensions: { [existingDimKey]: result.stationName || inputName }, // 使用匹配到的维度键名
-					unit: 'W/m²'
-				};
+        if (referenceSeries) {
+          // 2. 如果找到，直接复制它的完整 dimensions
+          referenceDimensions = { ...referenceSeries.dimensions };
+        } else {
+          // 3. 如果没找到，回退到旧的“智能猜测维度名”逻辑
+          const existingDimKey = (() => {
+            const anyWithDim = series.find((s) => s.dimensions);
+            if (anyWithDim) {
+              const key = Object.keys(anyWithDim.dimensions).find((k) =>
+                stationDimKeyList.includes(k),
+              );
+              if (key) return key;
+            }
+            return "场站名称"; // 默认值
+          })();
+          referenceDimensions = {
+            [existingDimKey]: result.stationName || inputName,
+          };
+        }
+        // --- 维度匹配逻辑结束 ---
 
-				setSeries(prev => {
-					// 避免重复添加
-					const exists = prev.some(s => s.metricName === '历史辐照度' && s.date === date && s.dimensions[existingDimKey] === inputName);
-					if (exists) return prev;
-					return [...prev, newSeriesItem];
-				});
-				addedCount++;
-			} catch (err) {
-				console.error(err);
-				failList.push(`${date}: 网络异常或超时`);
-			}
-		}
+        const newSeriesItem = {
+          id: `weather_${inputName}_${date}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          name: `历史辐照度 (${inputName})`,
+          metricName: "历史辐照度",
+          date: date,
+          data: result.data.map((d) => ({
+            time: new Date(d.time),
+            value: d.value,
+          })),
+          dimensions: referenceDimensions, // 使用匹配到的维度对象
+          unit: "W/m²",
+        };
 
-		setIsFetchingWeather(false);
+        setSeries((prev) => {
+          // 避免重复添加：检查指标名、日期和所有维度是否都一样
+          const exists = prev.some(
+            (s) =>
+              s.metricName === "历史辐照度" &&
+              s.date === date &&
+              JSON.stringify(s.dimensions) ===
+                JSON.stringify(referenceDimensions),
+          );
+          if (exists) return prev;
+          return [...prev, newSeriesItem];
+        });
+        addedCount++;
+      } catch (err) {
+        console.error(err);
+        failList.push(`${date}: 网络异常或超时`);
+      }
+    }
 
-		if (addedCount > 0) {
-			if (failList.length > 0) {
-				alert(`已成功获取 ${addedCount} 天的辐照度数据。\n部分日期失败: \n${failList.join('\n')}`);
-			}
-		} else {
-			alert(`获取失败: \n${failList.join('\n') || '未知原因'}`);
-		}
-	};
+    setIsFetchingWeather(false);
 
-	const saveSnapshot = async () => {
-		const name = prompt("请输入历史记录名称:", `记录_${format(new Date(), 'MM-dd HH:mm')}`);
-		if (!name) return;
+    if (addedCount > 0) {
+      if (failList.length > 0) {
+        alert(
+          `已成功获取 ${addedCount} 天的辐照度数据。\n部分日期失败: \n${failList.join("\n")}`,
+        );
+      }
+    } else {
+      alert(`获取失败: \n${failList.join("\n") || "未知原因"}`);
+    }
+  };
 
-		// 捕捉当前视角下的所有系列数据，实现“调阅”功能
-		const capturedSeries = series.filter(s => selectedDates.includes(s.date));
+  const saveSnapshot = async () => {
+    const name = prompt(
+      "请输入历史记录名称:",
+      `记录_${format(new Date(), "MM-dd HH:mm")}`,
+    );
+    if (!name) return;
 
-		const record = {
-			id: Date.now().toString(),
-			name,
-			selectedDates,
-			dimensionFilters,
-			axisRanges,
-			chartTypes,
-			rangeConfig, // 保存微调范围
-			capturedSeries // 保存数据副本
-		};
+    // 捕捉当前视角下的所有系列数据，实现“调阅”功能
+    const capturedSeries = series.filter((s) => selectedDates.includes(s.date));
 
-		try {
-			const res = await fetch('/api/snapshots', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(record)
-			});
-			if (res.ok) {
-				setHistoryRecords(prev => [record, ...prev]);
-			}
-		} catch (e) {
-			console.error('保存失败:', e);
-			// 降级使用 LocalStorage (暂不实现，避免数据不一致)
-		}
-	};
+    const record = {
+      id: Date.now().toString(),
+      name,
+      selectedDates,
+      dimensionFilters,
+      axisRanges,
+      chartTypes,
+      rangeConfig, // 保存微调范围
+      capturedSeries, // 保存数据副本
+    };
 
-	const loadSnapshot = (rec) => {
-		// 如果记录里有数据备份，将其合并进当前的 series 中（去重）
-		if (rec.capturedSeries && rec.capturedSeries.length > 0) {
-			setSeries(prev => {
-				const existingIds = new Set(prev.map(s => s.id));
-				const revitalizedNew = rec.capturedSeries.map(s => ({
-					...s,
-					data: s.data.map(d => ({ ...d, time: new Date(d.time) }))
-				}));
-				const filteredNew = revitalizedNew.filter(s => !existingIds.has(s.id));
-				return [...prev, ...filteredNew];
-			});
-		}
+    try {
+      const res = await fetch("/api/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(record),
+      });
+      if (res.ok) {
+        setHistoryRecords((prev) => [record, ...prev]);
+      }
+    } catch (e) {
+      console.error("保存失败:", e);
+      // 降级使用 LocalStorage (暂不实现，避免数据不一致)
+    }
+  };
 
-		setTimeout(() => {
-			setSelectedDates(rec.selectedDates);
-			setDimensionFilters(rec.dimensionFilters || {});
-			setAxisRanges(rec.axisRanges);
-			setChartTypes(rec.chartTypes);
-			if (rec.rangeConfig) setRangeConfig(rec.rangeConfig);
-			setActiveTab('controls'); // 自动切回控制台
-		}, 0);
-	};
+  const loadSnapshot = (rec) => {
+    // 如果记录里有数据备份，将其合并进当前的 series 中（去重）
+    if (rec.capturedSeries && rec.capturedSeries.length > 0) {
+      setSeries((prev) => {
+        const existingIds = new Set(prev.map((s) => s.id));
+        const revitalizedNew = rec.capturedSeries.map((s) => ({
+          ...s,
+          data: s.data.map((d) => ({ ...d, time: new Date(d.time) })),
+        }));
+        const filteredNew = revitalizedNew.filter(
+          (s) => !existingIds.has(s.id),
+        );
+        return [...prev, ...filteredNew];
+      });
+    }
 
-	const deleteSnapshot = async (e, id) => {
-		e.stopPropagation(); // 阻止事件冒泡到父级 onClick
-		if (!confirm("确定要删除这条历史存单吗？")) return;
-		try {
-			const res = await fetch(`/api/snapshots/${id}`, { method: 'DELETE' });
-			if (res.ok) {
-				setHistoryRecords(prev => prev.filter(r => r.id !== id));
-			}
-		} catch (error) {
-			console.error('删除失败:', error);
-		}
-	};
+    setTimeout(() => {
+      setSelectedDates(rec.selectedDates);
+      setDimensionFilters(rec.dimensionFilters || {});
+      setAxisRanges(rec.axisRanges);
+      setChartTypes(rec.chartTypes);
+      if (rec.rangeConfig) setRangeConfig(rec.rangeConfig);
+      setActiveTab("controls"); // 自动切回控制台
+    }, 0);
+  };
 
-	const clearAllHistory = async () => {
-		if (!confirm("确定要清空所有历史存单吗？此操作不可撤销！")) return;
-		try {
-			const res = await fetch('/api/snapshots', { method: 'DELETE' });
-			if (res.ok) {
-				setHistoryRecords([]);
-				alert("历史存单已成功清空");
-			} else {
-				throw new Error("后端响应异常");
-			}
-		} catch (e) {
-			console.error('清空历史失败:', e);
-			alert("清空失败: " + e.message);
-		}
-	};
+  const deleteSnapshot = async (e, id) => {
+    e.stopPropagation(); // 阻止事件冒泡到父级 onClick
+    if (!confirm("确定要删除这条历史存单吗？")) return;
+    try {
+      const res = await fetch(`/api/snapshots/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setHistoryRecords((prev) => prev.filter((r) => r.id !== id));
+      }
+    } catch (error) {
+      console.error("删除失败:", error);
+    }
+  };
 
-	const setAllLegends = (status) => {
-		const newSelected = { ...legendSelected };
-		activeSeries.forEach(s => {
-			newSelected[s.displayName] = status;
-		});
-		setLegendSelected(newSelected);
-	};
+  const clearAllHistory = async () => {
+    if (!confirm("确定要清空所有历史存单吗？此操作不可撤销！")) return;
+    try {
+      const res = await fetch("/api/snapshots", { method: "DELETE" });
+      if (res.ok) {
+        setHistoryRecords([]);
+        alert("历史存单已成功清空");
+      } else {
+        throw new Error("后端响应异常");
+      }
+    } catch (e) {
+      console.error("清空历史失败:", e);
+      alert("清空失败: " + e.message);
+    }
+  };
 
-	const toggleMetricLegend = (metric) => {
-		setLegendSelected(prev => ({
-			...prev,
-			[metric]: prev[metric] === false ? true : false
-		}));
-	};
+  const setAllLegends = (status) => {
+    const newSelected = { ...legendSelected };
+    activeSeries.forEach((s) => {
+      newSelected[s.displayName] = status;
+    });
+    setLegendSelected(newSelected);
+  };
 
-	const toggleDate = (date) => {
-		setSelectedDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
-	};
+  const toggleMetricLegend = (metric) => {
+    setLegendSelected((prev) => ({
+      ...prev,
+      [metric]: prev[metric] === false ? true : false,
+    }));
+  };
 
+  const toggleDate = (date) => {
+    setSelectedDates((prev) =>
+      prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date],
+    );
+  };
 
+  return (
+    <div
+      className={`app-container ${isDragging ? "dragging" : ""} ${theme === "light" ? "light-theme" : ""}`}
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+    >
+      {isDragging && (
+        <div className="drag-overlay">
+          <div className="drag-message">
+            <Upload size={64} />
+            <h2>松开鼠标导入文件</h2>
+          </div>
+        </div>
+      )}
 
-	return (
-		<div
-			className={`app-container ${isDragging ? 'dragging' : ''} ${theme === 'light' ? 'light-theme' : ''}`}
-			onDrop={onDrop}
-			onDragOver={onDragOver}
-			onDragEnter={onDragEnter}
-			onDragLeave={onDragLeave}
-		>
-			{isDragging && (
-				<div className="drag-overlay">
-					<div className="drag-message">
-						<Upload size={64} />
-						<h2>松开鼠标导入文件</h2>
-					</div>
-				</div>
-			)}
+      <nav className="navbar glass-panel">
+        <div className="logo">
+          <button
+            className="sidebar-toggle-btn"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            title={isSidebarCollapsed ? "展开" : "折叠"}
+          >
+            <Layout size={20} />
+          </button>
+          <img src="/logo.png" alt="Logo" className="logo-img" />
+          <span>
+            <strong>新能源发电分析系统</strong>
+          </span>
+          <div className={`backend-status-badge ${backendStatus}`}>
+            <span className="status-dot"></span>
+            {backendStatus === "online" ? "后端: 在线" : "后端: 离线"}
+          </div>
+          <div className="version-tag">{systemVersion}</div>
+        </div>
+        <div className="nav-actions">
+          <label
+            className="upload-btn premium-button"
+            title="从本地选取 CSV/JSON 文件"
+          >
+            <Upload size={14} /> 导入文件
+            <input type="file" onChange={handleFileUpload} hidden />
+          </label>
+          <button
+            className="nav-btn premium-button"
+            onClick={() => setIsPasteModalOpen(true)}
+            title="粘贴文本数据"
+          >
+            <ClipboardPaste size={14} /> 粘贴导入
+          </button>
+          <div className="nav-divider"></div>
+          <button
+            className="premium-button"
+            onClick={saveSnapshot}
+            title="保存当前画面快照"
+          >
+            <Archive size={15} /> 存入历史
+          </button>
+          <button
+            className="icon-btn-mini"
+            onClick={resetSettings}
+            title="恢复默认面板设置 (不删除数据)"
+          >
+            <RotateCcw size={15} /> 重置面板
+          </button>
+          <button
+            className="clear-btn"
+            onClick={clearAll}
+            title="清空当前所有图表数据"
+          >
+            <Trash2 size={15} /> 清空当前
+          </button>
+          <div className="nav-divider"></div>
+          <button
+            className={`nav-btn premium-button ${isFetchingWeather ? "loading" : ""}`}
+            onClick={fetchIrradiance}
+            disabled={isFetchingWeather}
+            title="根据场站名自动匹配坐标，从气象 API 获取历史辐照度 (15分钟分辨率)"
+          >
+            {isFetchingWeather ? (
+              <RotateCcw size={14} className="spin" />
+            ) : (
+              <Sun size={14} />
+            )}
+            {isFetchingWeather ? "获取中..." : "历史辐照度"}
+          </button>
+          <div className="nav-divider"></div>
+          {selectedDates.length > 0 && (
+            <button
+              className="export-btn"
+              onClick={exportData}
+              title="导出当前显示的数据为 CSV"
+            >
+              <Download size={14} /> 导出 CSV
+            </button>
+          )}
+          <div className="nav-divider"></div>
+          <button
+            className="icon-btn-mini"
+            onClick={() => fetchAccessLogs("access")}
+            title="查看系统运行日志"
+          >
+            <Activity size={18} />
+          </button>
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            title="切换深/浅色主题"
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
+      </nav>
 
-			<nav className="navbar glass-panel">
-				<div className="logo">
-					<button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title={isSidebarCollapsed ? "展开" : "折叠"}>
-						<Layout size={20} />
-					</button>
-					<img src="/logo.png" alt="Logo" className="logo-img" />
-					<span><strong>新能源发电分析系统</strong></span>
-					<div className={`backend-status-badge ${backendStatus}`}>
-						<span className="status-dot"></span>
-						{backendStatus === 'online' ? '后端: 在线' : '后端: 离线'}
-					</div>
-					<div className="version-tag">{systemVersion}</div>
-				</div>
-				<div className="nav-actions">
-					<label className="upload-btn premium-button" title="从本地选取 CSV/JSON 文件">
-						<Upload size={14} /> 导入文件
-						<input type="file" onChange={handleFileUpload} hidden />
-					</label>
-					<button className="nav-btn premium-button" onClick={() => setIsPasteModalOpen(true)} title="粘贴文本数据">
-						<ClipboardPaste size={14} /> 粘贴导入
-					</button>
-					<div className="nav-divider"></div>
-					<button className="premium-button" onClick={saveSnapshot} title="保存当前画面快照">
-						<Archive size={15} /> 存入历史
-					</button>
-					<button className="icon-btn-mini" onClick={resetSettings} title="恢复默认面板设置 (不删除数据)">
-						<RotateCcw size={15} /> 重置面板
-					</button>
-					<button className="clear-btn" onClick={clearAll} title="清空当前所有图表数据">
-						<Trash2 size={15} /> 清空当前
-					</button>
-					<div className="nav-divider"></div>
-					<button 
-						className={`nav-btn premium-button ${isFetchingWeather ? 'loading' : ''}`} 
-						onClick={fetchIrradiance} 
-						disabled={isFetchingWeather}
-						title="根据场站名自动匹配坐标，从气象 API 获取历史辐照度 (15分钟分辨率)"
-					>
-						{isFetchingWeather ? <RotateCcw size={14} className="spin" /> : <Sun size={14} />} 
-						{isFetchingWeather ? '获取中...' : '历史辐照度'}
-					</button>
-					<div className="nav-divider"></div>
-					{selectedDates.length > 0 && (
-						<button className="export-btn" onClick={exportData} title="导出当前显示的数据为 CSV">
-							<Download size={14} /> 导出 CSV
-						</button>
-					)}
-					<div className="nav-divider"></div>
-					<button className="icon-btn-mini" onClick={() => fetchAccessLogs('access')} title="查看系统运行日志">
-						<Activity size={18} />
-					</button>
-					<button className="theme-toggle" onClick={toggleTheme} title="切换深/浅色主题">
-						{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-					</button>
-				</div>
-			</nav>
+      <main className="main-content">
+        <aside
+          className={`sidebar glass-panel ${isSidebarCollapsed ? "collapsed" : ""} ${isSidebarWide ? "wide" : ""}`}
+          style={{ width: isSidebarCollapsed ? 0 : isSidebarWide ? 420 : 280 }}
+        >
+          <div className="sidebar-tabs">
+            <button
+              className={`tab-btn ${activeTab === "controls" ? "active" : ""}`}
+              onClick={() => setActiveTab("controls")}
+            >
+              <Layout size={14} /> 控制台
+            </button>
+            <button
+              className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
+              onClick={() => setActiveTab("history")}
+            >
+              <History size={14} /> 历史存单
+            </button>
+          </div>
 
-			<main className="main-content">
-				<aside
-					className={`sidebar glass-panel ${isSidebarCollapsed ? 'collapsed' : ''} ${isSidebarWide ? 'wide' : ''}`}
-					style={{ width: isSidebarCollapsed ? 0 : (isSidebarWide ? 420 : 280) }}
-				>
-					<div className="sidebar-tabs">
-						<button className={`tab-btn ${activeTab === 'controls' ? 'active' : ''}`} onClick={() => setActiveTab('controls')}>
-							<Layout size={14} /> 控制台
-						</button>
-						<button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
-							<History size={14} /> 历史存单
-						</button>
-					</div>
+          <div className="sidebar-header-improved">
+            <div className="sidebar-title-row">
+              <h3>{activeTab === "controls" ? "分析控制台" : "历史快照库"}</h3>
+              <div className="header-actions">
+                <button
+                  className="icon-btn-mini"
+                  onClick={() => setIsSidebarWide(!isSidebarWide)}
+                  title={isSidebarWide ? "折叠宽度" : "增加宽度"}
+                >
+                  <Layout size={14} />
+                </button>
+                {activeTab === "history" && historyRecords.length > 0 && (
+                  <button
+                    className="delete-all-btn-styled-large"
+                    onClick={clearAllHistory}
+                    title="清空所有存单记录"
+                  >
+                    <Trash2 size={12} style={{ marginRight: "4px" }} /> 清空历史
+                  </button>
+                )}
+              </div>
+            </div>
+            {activeTab === "history" && (
+              <div className="header-search-row">
+                <History size={14} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="搜索存单名称或日期..."
+                  value={historySearchTerm}
+                  onChange={(e) => setHistorySearchTerm(e.target.value)}
+                />
+                {historySearchTerm && (
+                  <button
+                    className="clear-search"
+                    onClick={() => setHistorySearchTerm("")}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
-					<div className="sidebar-header-improved">
-						<div className="sidebar-title-row">
-							<h3>{activeTab === 'controls' ? '分析控制台' : '历史快照库'}</h3>
-							<div className="header-actions">
-								<button className="icon-btn-mini" onClick={() => setIsSidebarWide(!isSidebarWide)} title={isSidebarWide ? "折叠宽度" : "增加宽度"}>
-									<Layout size={14} />
-								</button>
-								{activeTab === 'history' && historyRecords.length > 0 && (
-									<button className="delete-all-btn-styled-large" onClick={clearAllHistory} title="清空所有存单记录">
-										<Trash2 size={12} style={{ marginRight: '4px' }} /> 清空历史
-									</button>
-								)}
-							</div>
-						</div>
-						{activeTab === 'history' && (
-							<div className="header-search-row">
-								<History size={14} className="search-icon" />
-								<input
-									type="text"
-									placeholder="搜索存单名称或日期..."
-									value={historySearchTerm}
-									onChange={(e) => setHistorySearchTerm(e.target.value)}
-								/>
-								{historySearchTerm && <button className="clear-search" onClick={() => setHistorySearchTerm('')}><X size={12} /></button>}
-							</div>
-						)}
-					</div>
+          {activeTab === "controls" ? (
+            <div className="sidebar-scroll-area">
+              <div className="date-selector section-item">
+                <p className="label">日期筛选 (可多选对比)</p>
+                <div className="dimension-tags">
+                  {availableDates.map((date) => (
+                    <button
+                      key={date}
+                      className={`dim-tag ${selectedDates.includes(date) ? "active" : ""}`}
+                      onClick={() => toggleDate(date)}
+                    >
+                      {date}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-					{activeTab === 'controls' ? (
-						<div className="sidebar-scroll-area">
-							<div className="date-selector section-item">
-								<p className="label">日期筛选 (可多选对比)</p>
-								<div className="dimension-tags">
-									{availableDates.map(date => (
-										<button
-											key={date}
-											className={`dim-tag ${selectedDates.includes(date) ? 'active' : ''}`}
-											onClick={() => toggleDate(date)}
-										>
-											{date}
-										</button>
-									))}
-								</div>
-							</div>
+              {selectedDates.length > 0 && (
+                <div className="section-item">
+                  <div className="section-header">
+                    <span className="label">维度筛选</span>
+                    <div className="dimension-actions">
+                      <button
+                        className="text-btn-mini"
+                        onClick={() => {
+                          const newFilters = { ...dimensionFilters };
+                          const currentSeries = series.filter((s) => selectedDates.includes(s.date));
+                          Object.keys(newFilters).forEach((dim) => {
+                             const allVals = [
+                               ...new Set(
+                                 currentSeries
+                                   .map((s) => s.dimensions?.[dim])
+                                   .filter(Boolean)
+                               )
+                             ];
+                             newFilters[dim] = allVals;
+                          });
+                          setDimensionFilters(newFilters);
+                        }}
+                      >
+                        全选
+                      </button>
+                      <span className="divider-vertical"></span>
+                      <button
+                        className="text-btn-mini"
+                        onClick={() => {
+                          const newFilters = { ...dimensionFilters };
+                          Object.keys(newFilters).forEach(key => newFilters[key] = []);
+                          setDimensionFilters(newFilters);
+                        }}
+                      >
+                        清空
+                      </button>
+                    </div>
+                  </div>
+                  {(() => {
+                      const currentSeries = series.filter((s) => selectedDates.includes(s.date));
+                      const allDimKeys = [
+                        ...new Set(
+                          currentSeries.flatMap((s) =>
+                            s.dimensions ? Object.keys(s.dimensions) : [],
+                          ),
+                        ),
+                      ].sort();
 
-							{selectedDates.length > 0 && (
-								<div className="dimension-selector-outer section-item">
-									<div className="filter-group">
-										<p className="label" style={{ marginBottom: '8px' }}>维度筛选</p>
-										{(() => {
-											const currentSeries = series.filter(s => selectedDates.includes(s.date));
-											const allDimKeys = [...new Set(currentSeries.flatMap(s => s.dimensions ? Object.keys(s.dimensions) : []))].sort();
-											
-											if (allDimKeys.length === 0) return <div style={{fontSize:'12px', opacity:0.6}}>无可用维度</div>;
+                      if (allDimKeys.length === 0)
+                        return (
+                          <div style={{ fontSize: "12px", opacity: 0.6 }}>
+                            无可用维度
+                          </div>
+                        );
 
-											return allDimKeys.map(dimKey => {
-												const allValues = [...new Set(currentSeries.map(s => s.dimensions?.[dimKey]).filter(Boolean))].sort();
-												const selected = dimensionFilters[dimKey] || [];
-												
-												return (
-													<div key={dimKey} className="dimension-block" style={{ marginBottom: '12px' }}>
-														<div className="section-title-row">
-															<p className="label" style={{ marginBottom: 0, fontSize: '11px', fontWeight: 600 }}>{dimKey}</p>
-															<div className="mini-actions" style={{ display: 'flex', gap: '8px' }}>
-																<button style={{ fontSize: '10px', padding: '1px 4px' }} onClick={() => setDimensionFilters(prev => ({ ...prev, [dimKey]: allValues }))}>全选</button>
-																<button style={{ fontSize: '10px', padding: '1px 4px' }} onClick={() => setDimensionFilters(prev => { const n = { ...prev }; delete n[dimKey]; return n; })}>全消</button>
-															</div>
-														</div>
-														<div className="tag-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '4px' }}>
-															{allValues.map(val => (
-																<button
-																	key={val}
-																	className={`dim-tag ${selected.includes(val) ? 'active' : ''}`}
-																	onClick={() => {
-																		setDimensionFilters(prev => {
-																			const current = prev[dimKey] || [];
-																			const next = current.includes(val) ? current.filter(v => v !== val) : [...current, val];
-																			if (next.length === 0) {
-																				const n = { ...prev };
-																				delete n[dimKey];
-																				return n;
-																			}
-																			return { ...prev, [dimKey]: next };
-																		});
-																	}}
-																>
-																	{val}
-																</button>
-															))}
-														</div>
-													</div>
-												);
-											});
-										})()}
-									</div>
-								</div>
-							)}
+                      return allDimKeys.map((dimKey) => {
+                        const allValues = [
+                          ...new Set(
+                            currentSeries
+                              .map((s) => s.dimensions?.[dimKey])
+                              .filter(Boolean),
+                          ),
+                        ].sort();
+                        const selected = dimensionFilters[dimKey] || [];
+                        const isAllSelected = selected.length === allValues.length;
 
-							<div className="analysis-options section-item">
-								<div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-									<div className="granularity-selector">
-										<p className="label">时间粒度</p>
-										<div className="mini-toggle-group">
-											{['hour', 'day', 'month'].map(g => (
-												<button
-													key={g}
-													className={granularity === g ? 'active' : ''}
-													onClick={() => setGranularity(g)}
-												>
-													{g === 'hour' ? '日' : g === 'day' ? '月' : '年'}
-												</button>
-											))}
-										</div>
-									</div>
-									<div className="range-fine-tune">
-										<p className="label">范围微调 ({granularity === 'hour' ? '时' : granularity === 'day' ? '日' : '月'})</p>
-										<div className="tune-inputs">
-											<select
-												value={rangeConfig[granularity]?.start || 0}
-												onChange={(e) => setRangeConfig(prev => ({ ...prev, [granularity]: { ...prev[granularity], start: parseInt(e.target.value) } }))}
-											>
-												{Array.from({ length: granularity === 'hour' ? 24 : (granularity === 'day' ? 31 : 12) }, (_, i) => i + (granularity === 'hour' ? 0 : 1)).map(v => (
-													<option key={v} value={v}>{v}</option>
-												))}
-											</select>
-											<span>至</span>
-											<select
-												value={rangeConfig[granularity]?.end || (granularity === 'hour' ? 23 : (granularity === 'day' ? 31 : 12))}
-												onChange={(e) => setRangeConfig(prev => ({ ...prev, [granularity]: { ...prev[granularity], end: parseInt(e.target.value) } }))}
-											>
-												{Array.from({ length: granularity === 'hour' ? 24 : (granularity === 'day' ? 31 : 12) }, (_, i) => i + (granularity === 'hour' ? 0 : 1)).map(v => (
-													<option key={v} value={v}>{v}</option>
-												))}
-											</select>
-										</div>
-									</div>
-									<label className="checkbox-label">
-										<input type="checkbox" checked={showIntegral} onChange={(e) => setShowIntegral(e.target.checked)} />
-										<span>显示总计 (积分/均值)</span>
-									</label>
-									{selectedDates.length > 1 && (
-										<label className="checkbox-label">
-											<input type="checkbox" checked={isCompareOverlap} onChange={(e) => setIsCompareOverlap(e.target.checked)} />
-											<span>多日 24h 重叠对比</span>
-										</label>
-									)}
-									<label className="checkbox-label" title="勾选后，所有功率类指标（含AGC、超短期、负荷等）将共用相同的坐标轴上下限">
-										<input type="checkbox" checked={useDefaultLimits} onChange={(e) => setUseDefaultLimits(e.target.checked)} />
-										<span>统一上下限</span>
-									</label>
+                        return (
+                          <div
+                            key={dimKey}
+                            style={{ marginBottom: "8px" }}
+                          >
+                            <div className="dim-header-row">
+                              <span className="dim-name">{dimKey}</span>
+                              <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                                <span className="dim-count">
+                                  {selected.length}/{allValues.length}
+                                </span>
+                                <button 
+                                  className="text-btn-mini" 
+                                  onClick={() => setDimensionFilters(prev => ({...prev, [dimKey]: isAllSelected ? [] : allValues}))}
+                                  title={isAllSelected ? "清空此维度" : "全选此维度"}
+                                >
+                                  {isAllSelected ? "消" : "全"}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="dimension-tags">
+                              {allValues.map((val) => (
+                                <button
+                                  key={val}
+                                  className={`dim-tag ${selected.includes(val) ? "active" : ""}`}
+                                  onClick={() => {
+                                    setDimensionFilters((prev) => {
+                                      const current = prev[dimKey] || [];
+                                      const next = current.includes(val)
+                                        ? current.filter((v) => v !== val)
+                                        : [...current, val];
+                                      return { ...prev, [dimKey]: next };
+                                    });
+                                  }}
+                                >
+                                  {val}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                </div>
+              )}
 
-									<div className="curtailment-box glass-panel" style={{ marginTop: '8px', padding: '8px', background: 'rgba(255,100,100,0.05)', border: '1px solid rgba(255,100,100,0.1)' }}>
-										<label className="checkbox-label" style={{ marginBottom: '4px' }}>
-											<input type="checkbox" checked={showCurtailmentAnalysis} onChange={(e) => setShowCurtailmentAnalysis(e.target.checked)} />
-											<span style={{ fontWeight: 600, color: 'var(--text-main)' }}>启用限电分析 (MarkArea)</span>
-										</label>
-										{showCurtailmentAnalysis && (
-											<div className="tune-inputs" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 12px', marginTop: '4px' }}>
-												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-													<span style={{ fontSize: '11px', opacity: 0.8 }}>辐照度 &gt;</span>
-													<input type="number" value={curtailmentIrrThreshold} onChange={(e) => setCurtailmentIrrThreshold(parseFloat(e.target.value))} style={{ width: '45px', height: '18px', fontSize: '11px', padding: '0 2px' }} />
-												</div>
-												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-													<span style={{ fontSize: '11px', opacity: 0.8 }}>|差值| &lt;</span>
-													<input type="number" value={curtailmentDiffThreshold} onChange={(e) => setCurtailmentDiffThreshold(parseFloat(e.target.value))} style={{ width: '45px', height: '18px', fontSize: '11px', padding: '0 2px' }} />
-												</div>
-												<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gridColumn: 'span 2', marginTop: '4px' }}>
-													<span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap', marginRight: '10px' }}>背景色 &amp; 透明度</span>
-													<div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-														<input 
-															type="color" 
-															value={curtailmentColor} 
-															onChange={(e) => setCurtailmentColor(e.target.value)} 
-															style={{ width: '24px', height: '24px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', flexShrink: 0 }} 
-															title="选择背景颜色"
-														/>
-														<input 
-															type="range" 
-															min="0" 
-															max="1" 
-															step="0.05" 
-															value={curtailmentOpacity} 
-															onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))} 
-															style={{ width: '90px', height: '4px', cursor: 'grab' }} 
-															title={`透明度: ${curtailmentOpacity}`} 
-														/>
-													</div>
-												</div>
-											</div>
-										)}
-									</div>
-								</div>
-							</div>
+              <div className="section-item">
+                 <div className="section-header">
+                    <span className="label">时间与范围</span>
+                 </div>
+                 
+                 <div className="toggle-group-modern" style={{marginBottom: '10px'}}>
+                    {["hour", "day", "month"].map((g) => (
+                      <button
+                        key={g}
+                        className={granularity === g ? "active" : ""}
+                        onClick={() => setGranularity(g)}
+                      >
+                        {g === "hour" ? "日" : g === "day" ? "月" : "年"}
+                      </button>
+                    ))}
+                 </div>
 
-							<div className="series-list section-item">
-								<div className="series-list-header">
-									<p className="label">选中数据详情 ({series.filter(s => selectedDates.includes(s.date)).length} 项)</p>
-									<div className="legend-bulk-actions">
-										<button onClick={() => setAllLegends(true)}>全选</button>
-										<button onClick={() => setAllLegends(false)}>全消</button>
-									</div>
-								</div>
-								<ul>
-									{activeSeries.map(s => {
-										const displayName = s.displayName;
-										const metricKey = s.metricName || s.name.split(' (')[0];
-										const isHidden = legendSelected[displayName] === false;
-										return (
-											<li key={s.id} className={`series-item ${isHidden ? 'hidden' : ''}`} onClick={() => toggleMetricLegend(displayName)} style={{ cursor: 'pointer' }}>
-												<div className="series-main-info">
-													<span className="series-color-dot" style={{
-														backgroundColor: isHidden ? 'transparent' : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey)),
-														border: isHidden ? '1px solid #666' : 'none'
-													}}></span>
-													<div className="series-text-main">
-														<div className="series-name-row">
-															<span className="s-name">{s.name}</span>
-															<div className="series-actions-right">
-																{showIntegral && <span className="series-auc">{calculateTotal(s)}</span>}
-																<button className="delete-btn" onClick={(e) => { e.stopPropagation(); openDataEditor(s); }} title="手动修改此数据序列"><FileText size={12} /></button>
-																<button className="delete-btn" onClick={(e) => { e.stopPropagation(); removeSeries(s.id); }} title="移除此系列"><X size={12} /></button>
-															</div>
-														</div>
-														<div className="series-meta">
-															<span>{s.date}</span>
-															{Object.entries(s.dimensions || {}).map(([k, v]) => (
-																<span key={k} className="dim-info">{k}: {v}</span>
-															))}
-														</div>
-													</div>
-												</div>
-											</li>
-										);
-									})}
-								</ul>
-							</div>
-						</div>
-					) : (
-						<div className="sidebar-scroll-area">
-							<div className="history-section-full">
-								<div className="history-list-large">
-									{historyRecords
-										.filter(rec => rec.name.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
-											rec.selectedDates.some(d => d.includes(historySearchTerm)))
-										.length === 0 ? (
-										<div className="empty-mini">未找到匹配存单</div>
-									) : (
-										historyRecords
-											.filter(rec => rec.name.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
-												rec.selectedDates.some(d => d.includes(historySearchTerm)))
-											.map(rec => (
-												<div key={rec.id} className="history-item-compact glass-panel">
-													<div className="history-content-row" onClick={() => loadSnapshot(rec)}>
-														<div className="h-avatar">{rec.name.charAt(0)}</div>
-														<div className="history-text">
-															<span className="h-name">{rec.name}</span>
-															<span className="h-date">{rec.selectedDates.join(', ')}</span>
-														</div>
-													</div>
-													<button className="delete-history-btn" onClick={(e) => deleteSnapshot(e, rec.id)}><X size={14} /></button>
-												</div>
-											))
-									)}
-								</div>
-							</div>
-						</div>
-					)}
+                 <div className="range-fine-tune-compact">
+                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'var(--text-secondary)', marginBottom:'4px'}}>
+                        <span>范围 ({granularity})</span>
+                    </div>
+                    <div className="tune-inputs">
+                      <select
+                        value={rangeConfig[granularity]?.start || 0}
+                        onChange={(e) =>
+                          setRangeConfig((prev) => ({
+                            ...prev,
+                            [granularity]: {
+                              ...prev[granularity],
+                              start: parseInt(e.target.value),
+                            },
+                          }))
+                        }
+                      >
+                         {Array.from({ length: granularity === "hour" ? 24 : granularity === "day" ? 31 : 12 }).map((_, i) => {
+                            const val = i + (granularity === "hour" ? 0 : 1);
+                            return <option key={val} value={val}>{val}</option>;
+                         })}
+                      </select>
+                      <span className="separator">-</span>
+                      <select
+                        value={rangeConfig[granularity]?.end || 0}
+                        onChange={(e) =>
+                          setRangeConfig((prev) => ({
+                            ...prev,
+                            [granularity]: {
+                              ...prev[granularity],
+                              end: parseInt(e.target.value),
+                            },
+                          }))
+                        }
+                      >
+                         {Array.from({ length: granularity === "hour" ? 24 : granularity === "day" ? 31 : 12 }).map((_, i) => {
+                            const val = i + (granularity === "hour" ? 0 : 1);
+                            return <option key={val} value={val}>{val}</option>;
+                         })}
+                      </select>
+                    </div>
+                 </div>
 
-					{selectedDates.length > 0 && (
-						<div className="axis-section">
-							<p className="label fixed-header">坐标轴与单位设置</p>
-							<div className="axis-list-scrollable">
-								{(() => {
-									const currentActiveSeries = series.filter(s => selectedDates.includes(s.date));
-									const uniqueMetricsInView = [...new Set(currentActiveSeries.map(s => s.metricName || s.name.split(' (')[0]))];
-									const powerMetrics = uniqueMetricsInView.filter(m => {
-										const low = m.toLowerCase();
-										return low.includes('功率') || low.includes('power') || low.includes('预测') || low.includes('出清') || low.includes('负荷') || low.includes('agc') || low.includes('超短期');
-									});
-									const isPowerMetric = (m) => {
-										const low = m.toLowerCase();
-										return low.includes('功率') || low.includes('power') || low.includes('预测') || low.includes('出清') || low.includes('负荷') || low.includes('agc') || low.includes('超短期');
-									};
+                 <div className="checkbox-group-vertical" style={{marginTop:'10px'}}>
+                    <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={showIntegral}
+                          onChange={(e) => setShowIntegral(e.target.checked)}
+                        />
+                        <span>显示总计 (积分/均值)</span>
+                    </label>
+                    {selectedDates.length > 1 && (
+                        <label className="checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={isCompareOverlap}
+                            onChange={(e) => setIsCompareOverlap(e.target.checked)}
+                          />
+                          <span>多日 24h 重叠对比</span>
+                        </label>
+                    )}
+                    <label
+                      className="checkbox-label"
+                      title="勾选后，所有功率类指标（含AGC、超短期、负荷等）将共用相同的坐标轴上下限"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={useDefaultLimits}
+                        onChange={(e) => setUseDefaultLimits(e.target.checked)}
+                      />
+                      <span>统一上下限</span>
+                    </label>
+                 </div>
 
-									return (
-										<>
-											<div className="axis-row-compact global-adjuster-slim glass-panel" style={{ marginBottom: '8px', gap: '12px', padding: '4px 12px', borderLeft: 'none' }}>
-												<input type="range" min="0.2" max="1.8" step="0.05" value={axisAdjustmentFactor} onChange={(e) => setAxisAdjustmentFactor(parseFloat(e.target.value))} style={{ flex: 1, padding: 0 }} title={`全局 Y 轴缩放: x${axisAdjustmentFactor.toFixed(2)}`} />
-												<button className="icon-btn-text" style={{ padding: '2px 8px', fontSize: '10px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-main)', borderRadius: '4px', fontWeight: 600, border: '1px solid var(--border-color)' }} onClick={() => setAxisAdjustmentFactor(1.0)}>重置</button>
-											</div>
-											{powerMetrics.length > 1 && (
-												<div className="axis-row-compact power-unified-box glass-panel" style={{ marginBottom: '8px', padding: '4px 12px', borderLeft: 'none', gap: '12px', display: 'flex', alignItems: 'center' }}>
-													<span style={{ flex: 'none', fontSize: '14px', opacity: 0.8 }}>⚡</span>
-													<div className="axis-inputs" style={{ flex: 1, justifyContent: 'flex-start' }}>
-														<input
-															type="number"
-															placeholder="最小"
-															onChange={(e) => {
-																const val = e.target.value;
-																setAxisRanges(prev => {
-																	const next = { ...prev };
-																	powerMetrics.forEach(pm => next[pm] = { ...next[pm], min: val });
-																	return next;
-																});
-															}}
-														/>
-														<span>-</span>
-														<input
-															type="number"
-															placeholder="最大"
-															onChange={(e) => {
-																const val = e.target.value;
-																setAxisRanges(prev => {
-																	const next = { ...prev };
-																	powerMetrics.forEach(pm => next[pm] = { ...next[pm], max: val });
-																	return next;
-																});
-															}}
-														/>
-													</div>
-												</div>
-											)}
-											{uniqueMetricsInView.map((metric, index) => {
-												const isHidden = legendSelected[metric] === false;
-												const metricColor = customMetricColors[metric] || getUserColor(index, metric);
-												const metricColorAlpha = isHidden ? 'transparent' : (metricColor + '22');
-												const isIrradiance = metric.includes('辐照度') || metric.includes('短波') || metric.includes('辐射');
+                 <div className="curtailment-section-compact" style={{marginTop: '10px', borderTop:'1px solid var(--border-color)', paddingTop:'8px'}}>
+                    <label className="checkbox-label" style={{justifyContent: 'space-between'}}>
+                        <span>启用限电分析</span>
+                        <input
+                            type="checkbox"
+                            checked={showCurtailmentAnalysis}
+                            onChange={(e) => setShowCurtailmentAnalysis(e.target.checked)}
+                        />
+                    </label>
+                    
+                    {showCurtailmentAnalysis && (
+                       <div className="curtailment-params-grid">
+                          <div className="param-item">
+                             <span>辐照 &gt;</span>
+                             <input
+                                type="number"
+                                value={curtailmentIrrThreshold}
+                                onChange={(e) => setCurtailmentIrrThreshold(parseFloat(e.target.value))}
+                             />
+                          </div>
+                          <div className="param-item">
+                             <span>偏差 &lt;</span>
+                             <input
+                                type="number"
+                                value={curtailmentDiffThreshold}
+                                onChange={(e) => setCurtailmentDiffThreshold(parseFloat(e.target.value))}
+                             />
+                          </div>
+                          <div className="param-item full-width">
+                              <span>样式</span>
+                              <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                                 <input type="color" value={curtailmentColor} onChange={(e) => setCurtailmentColor(e.target.value)} />
+                                 <input type="range" min="0" max="1" step="0.1" value={curtailmentOpacity} onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))} style={{width:'60px'}} />
+                              </div>
+                          </div>
+                       </div>
+                    )}
+                 </div>
+              </div>
 
-												const vals = currentActiveSeries.filter(s => (s.metricName === metric || s.name.startsWith(metric))).flatMap(s => s.data.map(d => d.value));
-												const dataMin = vals.length ? Math.min(...vals) : 0;
-												const dataMax = vals.length ? Math.max(...vals) : 100;
+              <div className="section-item" style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div className="section-header">
+                  <span className="label">
+                    数据 ({series.filter((s) => selectedDates.includes(s.date)).length})
+                  </span>
+                  <div className="legend-bulk-actions">
+                    <button onClick={() => setAllLegends(true)}>全显</button>
+                    <button onClick={() => setAllLegends(false)}>全隐</button>
+                  </div>
+                </div>
+                <div className="series-list-scroll-container" style={{overflowY: 'auto', flex: 1}}>
+                    <ul className="series-list-compact">
+                      {activeSeries.map((s) => {
+                        const displayName = s.displayName;
+                        const metricKey = s.metricName || s.name.split(" (")[0];
+                        const isHidden = legendSelected[displayName] === false;
 
-												// 计算默认缓冲轴界 (与 updateChart 逻辑一致)
-												let bufferedMin = dataMin < 0 ? dataMin * 1.1 : dataMin - (Math.abs(dataMax - dataMin) * 0.05 || 1);
-												let bufferedMax = dataMax > 0 ? dataMax * 1.1 : dataMax + (Math.abs(dataMax - dataMin) * 0.05 || 1);
+                        return (
+                          <li
+                            key={s.id}
+                            className={`series-item-compact ${isHidden ? "hidden" : ""}`}
+                            onClick={() => toggleMetricLegend(displayName)}
+                          >
+                             <div className="series-row-main">
+                                <span
+                                    className="series-dot"
+                                    style={{
+                                      backgroundColor: isHidden ? "transparent" : customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey),
+                                      border: isHidden ? "1px solid var(--text-secondary)" : "none"
+                                    }}
+                                ></span>
+                                <div className="series-info">
+                                   <div className="s-name" title={s.name}>{s.name}</div>
+                                   <div className="s-meta">
+                                      {/* Dimensions inline */}
+                                      {Object.entries(s.dimensions || {}).map(([k,v]) => <span key={k}>{v}</span>)}
+                                   </div>
+                                </div>
+                                <div className="series-actions-hover">
+                                    {showIntegral && <span className="s-val">{calculateTotal(s)}</span>}
+                                    <button className="icon-btn-text" onClick={(e) => { e.stopPropagation(); openDataEditor(s); }}>
+                                        <FilePen size={10} />
+                                    </button>
+                                    <button className="icon-btn-text" onClick={(e) => { e.stopPropagation(); removeSeries(s.id); }}>
+                                        <X size={10} />
+                                    </button>
+                                </div>
+                             </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="sidebar-scroll-area">
+              <div className="history-section-full">
+                <div className="history-list-large">
+                  {historyRecords.filter(
+                    (rec) =>
+                      rec.name
+                        .toLowerCase()
+                        .includes(historySearchTerm.toLowerCase()) ||
+                      rec.selectedDates.some((d) =>
+                        d.includes(historySearchTerm),
+                      ),
+                  ).length === 0 ? (
+                    <div className="empty-mini">未找到匹配存单</div>
+                  ) : (
+                    historyRecords
+                      .filter(
+                        (rec) =>
+                          rec.name
+                            .toLowerCase()
+                            .includes(historySearchTerm.toLowerCase()) ||
+                          rec.selectedDates.some((d) =>
+                            d.includes(historySearchTerm),
+                          ),
+                      )
+                      .map((rec) => (
+                        <div
+                          key={rec.id}
+                          className="history-item-compact glass-panel"
+                        >
+                          <div
+                            className="history-content-row"
+                            onClick={() => loadSnapshot(rec)}
+                          >
+                            <div className="h-avatar">{rec.name.charAt(0)}</div>
+                            <div className="history-text">
+                              <span className="h-name">{rec.name}</span>
+                              <span className="h-date">
+                                {rec.selectedDates.join(", ")}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            className="delete-history-btn"
+                            onClick={(e) => deleteSnapshot(e, rec.id)}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-												if (isIrradiance && axisRanges[metric]?.min === undefined) bufferedMin = 0;
-												if (isIrradiance && axisRanges[metric]?.max === undefined) bufferedMax = 1000;
+          {selectedDates.length > 0 && (
+            <div className="axis-section">
+              <p className="label fixed-header">坐标轴与单位设置</p>
+              <div className="axis-list-scrollable">
+                {(() => {
+                  const currentActiveSeries = series.filter((s) =>
+                    selectedDates.includes(s.date),
+                  );
+                  const uniqueMetricsInView = [
+                    ...new Set(
+                      currentActiveSeries.map(
+                        (s) => s.metricName || s.name.split(" (")[0],
+                      ),
+                    ),
+                  ];
+                  const powerMetrics = uniqueMetricsInView.filter((m) => {
+                    const low = m.toLowerCase();
+                    return (
+                      low.includes("功率") ||
+                      low.includes("power") ||
+                      low.includes("预测") ||
+                      low.includes("出清") ||
+                      low.includes("负荷") ||
+                      low.includes("agc") ||
+                      low.includes("超短期")
+                    );
+                  });
+                  const isPowerMetric = (m) => {
+                    const low = m.toLowerCase();
+                    return (
+                      low.includes("功率") ||
+                      low.includes("power") ||
+                      low.includes("预测") ||
+                      low.includes("出清") ||
+                      low.includes("负荷") ||
+                      low.includes("agc") ||
+                      low.includes("超短期")
+                    );
+                  };
 
-												const dMinDisplay = parseFloat(bufferedMin.toFixed(2));
-												const dMaxDisplay = parseFloat(bufferedMax.toFixed(2));
+                  return (
+                    <div style={{display:'flex', flexDirection:'column', gap:'8px'}}>
+                      <div className="axis-control-card glass-panel">
+                         <div className="control-row-dense">
+                            <span className="label-mini">全局缩放</span>
+                            <div style={{flex:1, display:'flex', alignItems:'center', gap:'8px'}}>
+                               <input
+                                  type="range"
+                                  min="0.2" max="1.8" step="0.05"
+                                  value={axisAdjustmentFactor}
+                                  onChange={(e) => setAxisAdjustmentFactor(parseFloat(e.target.value))}
+                                  style={{flex:1, height:'4px'}}
+                               />
+                               <span className="value-badge">{axisAdjustmentFactor.toFixed(2)}x</span>
+                               <button className="icon-btn-text" onClick={() => setAxisAdjustmentFactor(1.0)} title="重置">
+                                  <RotateCcw size={10} />
+                               </button>
+                            </div>
+                         </div>
+                      </div>
 
-												const stepVal = (Math.max(Math.abs(dataMin), Math.abs(dataMax)) * 0.05).toFixed(2);
-												const finalStep = stepVal > 0 ? stepVal : 0.1;
+                      {powerMetrics.length > 1 && (
+                        <div className="axis-control-card glass-panel power-box">
+                           <div className="control-row-dense">
+                              <span className="icon-indicator">⚡</span>
+                              <span className="label-mini" style={{flex:1}}>功率统一 (Min-Max)</span>
+                              <input
+                                type="checkbox"
+                                checked={useDefaultLimits}
+                                onChange={(e) => setUseDefaultLimits(e.target.checked)}
+                                title="统一所有功率类指标的上下限"
+                              />
+                           </div>
+                           <div className="inputs-row">
+                              <input
+                                className="axis-input"
+                                type="number"
+                                placeholder="Min"
+                                value={axisRanges[powerMetrics[0]]?.min ?? ""}
+                                onChange={(e) => {
+                                   const val = e.target.value;
+                                   setAxisRanges(prev => {
+                                      const next = {...prev};
+                                      powerMetrics.forEach(pm => next[pm] = {...next[pm], min: val});
+                                      return next;
+                                   });
+                                }}
+                              />
+                              <span className="sep">-</span>
+                              <input
+                                className="axis-input"
+                                type="number"
+                                placeholder="Max"
+                                value={axisRanges[powerMetrics[0]]?.max ?? ""}
+                                onChange={(e) => {
+                                   const val = e.target.value;
+                                   setAxisRanges(prev => {
+                                      const next = {...prev};
+                                      powerMetrics.forEach(pm => next[pm] = {...next[pm], max: val});
+                                      return next;
+                                   });
+                                }}
+                              />
+                           </div>
+                        </div>
+                      )}
 
-												return (
-													<div
-														key={metric}
-														className={`axis-row-compact glass-panel ${isHidden ? 'is-hidden-metric' : ''}`}
-														style={{
-															borderLeftColor: isHidden ? 'transparent' : metricColor,
-															'--metric-color-alpha': metricColorAlpha,
-															opacity: isHidden ? 0.5 : 1
-														}}
-													>
-														<span className="axis-label-text" title={metric} style={{ color: isHidden ? '#888' : (theme === 'light' ? '#1d1d1f' : 'inherit'), fontWeight: 600 }}>{metric}</span>
-														<div className="axis-inputs">
-															<input
-																type="number"
-																placeholder={dMinDisplay}
-																step={finalStep}
-																value={axisRanges[metric]?.min !== undefined ? axisRanges[metric]?.min : dMinDisplay}
-																onChange={(e) => {
-																	const val = e.target.value;
-																	setAxisRanges(prev => {
-																		const next = { ...prev, [metric]: { ...prev[metric], min: val } };
-																		if (useDefaultLimits && isPowerMetric(metric)) {
-																			powerMetrics.forEach(pm => { next[pm] = { ...next[pm], min: val }; });
-																		}
-																		return next;
-																	});
-																}}
-																onKeyDown={(e) => {
-																	if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-																		e.preventDefault();
-																		const currentRaw = axisRanges[metric]?.min;
-																		const step = parseFloat(finalStep);
-																		let startVal = (currentRaw === '' || currentRaw === undefined) ? dMinDisplay : parseFloat(currentRaw);
-																		const newVal = e.key === 'ArrowUp' ? startVal + step : startVal - step;
-																		const nextVal = parseFloat(newVal.toFixed(2)).toString();
-																		setAxisRanges(prev => {
-																			const next = { ...prev, [metric]: { ...prev[metric], min: nextVal } };
-																			if (useDefaultLimits && isPowerMetric(metric)) {
-																				powerMetrics.forEach(pm => { next[pm] = { ...next[pm], min: nextVal }; });
-																			}
-																			return next;
-																		});
-																	}
-																}}
-																style={{ borderBottomColor: metricColor, borderBottomStyle: 'solid' }}
-															/>
-															<span>-</span>
-															<input
-																type="number"
-																placeholder={dMaxDisplay}
-																step={finalStep}
-																value={axisRanges[metric]?.max !== undefined ? axisRanges[metric]?.max : dMaxDisplay}
-																onChange={(e) => {
-																	const val = e.target.value;
-																	setAxisRanges(prev => {
-																		const next = { ...prev, [metric]: { ...prev[metric], max: val } };
-																		if (useDefaultLimits && isPowerMetric(metric)) {
-																			powerMetrics.forEach(pm => { next[pm] = { ...next[pm], max: val }; });
-																		}
-																		return next;
-																	});
-																}}
-																onKeyDown={(e) => {
-																	if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-																		e.preventDefault();
-																		const currentRaw = axisRanges[metric]?.max;
-																		const step = parseFloat(finalStep);
-																		let startVal = (currentRaw === '' || currentRaw === undefined) ? dMaxDisplay : parseFloat(currentRaw);
-																		const newVal = e.key === 'ArrowUp' ? startVal + step : startVal - step;
-																		const nextVal = parseFloat(newVal.toFixed(2)).toString();
-																		setAxisRanges(prev => {
-																			const next = { ...prev, [metric]: { ...prev[metric], max: nextVal } };
-																			if (useDefaultLimits && isPowerMetric(metric)) {
-																				powerMetrics.forEach(pm => { next[pm] = { ...next[pm], max: nextVal }; });
-																			}
-																			return next;
-																		});
-																	}
-																}}
-																style={{ borderBottomColor: metricColor, borderBottomStyle: 'solid' }}
-															/>
-														</div>
-														<div className="axis-actions">
-															<input
-																type="color"
-																value={metricColor}
-																onChange={(e) => setCustomMetricColors(prev => ({ ...prev, [metric]: e.target.value }))}
-																className="color-picker-mini"
-																title="调整指标颜色"
-															/>
-															<button
-																className={`type-toggle-btn ${chartTypes[metric] === 'bar' ? 'active' : ''}`}
-																onClick={() => setChartTypes(prev => ({ ...prev, [metric]: prev[metric] === 'bar' ? 'line' : 'bar' }))}
-																title="切换折线/柱状图"
-															>
-																{chartTypes[metric] === 'bar' ? <BarChart3 size={14} /> : <FileText size={14} />}
-															</button>
-															<button onClick={() => setAxisRanges(prev => { const n = { ...prev }; delete n[metric]; return n; })} title="恢复默认范围"><RotateCcw size={14} /></button>
-														</div>
-													</div>
-												);
-											})}
-										</>
-									);
-								})()}
-							</div>
-						</div>
-					)}
-				</aside>
+                      {uniqueMetricsInView.map((metric, i) => {
+                        const originalColor = getUserColor(i, metric);
+                        const metricColor = customMetricColors[metric] || originalColor;
+                        let metricColorAlpha = "1";
+                        if (metricColor.startsWith("#")) {
+                          const r = parseInt(metricColor.slice(1, 3), 16);
+                          const g = parseInt(metricColor.slice(3, 5), 16);
+                          const b = parseInt(metricColor.slice(5, 7), 16);
+                          metricColorAlpha = `${r}, ${g}, ${b}`;
+                        } else if (metricColor.startsWith("rgb")) {
+                          const match = metricColor.match(/\d+/g);
+                          if (match) metricColorAlpha = match.join(", ");
+                        }
 
-				<section className="chart-area glass-panel">
-					{!selectedDates.length && (
-						<div className="empty-state">
-							<h2>开始分析</h2>
-							<p>支持拖拽文件或粘贴数据</p>
-							<div className="guide-box">
-								<div className="guide-step"><span>1</span> 准备数据：<a href="./import_template.csv" download="import_template.csv" className="sample-link">点击下载导入标准模版</a></div>
-								<div className="guide-step"><span>2</span> 导入方式：拖拽文件至网页、点击右上角“导入文件”或“粘贴导入”</div>
-								<div className="guide-step"><span>3</span> 数据要求：首行需包含“日期”、“时间”字样，数值列名称建议包含“功率”、“价格”等关键词</div>
-								<div className="guide-step"><span>4</span> 对比分析：在左侧勾选日期可叠加曲线，点击图表圆点可快速切换主要坐标轴</div>
-							</div>
-						</div>
-					)}
-					<div ref={chartRef} className="chart-container" style={{ flex: 1, width: '100%', height: '100%', opacity: selectedDates.length ? 1 : 0, pointerEvents: selectedDates.length ? 'auto' : 'none' }}></div>
-				</section>
-			</main>
+                        // 判断该指标下的所有系列是否全部被隐藏
+                        const sameMetricSeries = series.filter(s => (s.metricName || s.name.split(' (')[0]) === metric);
+                        const isAllHidden = sameMetricSeries.every(s => legendSelected[s.displayName] === false); // Use strict check against false, undefined (default) is true
 
-			{isStationModalOpen && (
-				<div className="modal-overlay">
-					<div className="modal-content glass-panel" style={{ width: '400px' }}>
-						<div className="modal-header"><h3>获取历史辐照度 - 选择场站</h3><button onClick={() => setIsStationModalOpen(false)}><X size={20} /></button></div>
-						<div style={{ padding: '0 20px 20px' }}>
-							<p className="label">搜索或输入场站名称 (支持模糊匹配)</p>
-							<input
-								type="text"
-								className="styled-select"
-								placeholder="输入名称搜索..."
-								value={stationSearchTerm}
-								onChange={(e) => setStationSearchTerm(e.target.value)}
-								autoFocus
-								style={{ width: '100%', marginBottom: '6px' }}
-							/>
-							<select
-								className="styled-select"
-								style={{ width: '100%', marginBottom: '10px' }}
-								value={stationSearchTerm}
-								onChange={(e) => setStationSearchTerm(e.target.value)}
-							>
-								<option value="">-- 选择或搜索场站 --</option>
-								{availableStations.map(s => <option key={s.name} value={s.name}>{s.name} ({s.region || '未分区'})</option>)}
-							</select>
-							<div className="station-list-scroll" style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
-								{availableStations
-									.filter(s => s.name.toLowerCase().includes(stationSearchTerm.toLowerCase()))
-									.map(s => (
-										<div
-											key={s.name}
-											className="station-item-row"
-											style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: stationSearchTerm === s.name ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent' }}
-											onClick={() => setStationSearchTerm(s.name)}
-										>
-											<span style={{ fontWeight: 500, fontSize: '13px' }}>{s.name}</span>
-											<span style={{ fontSize: '11px', opacity: 0.6, background: 'rgba(128,128,128,0.1)', padding: '2px 6px', borderRadius: '4px' }}>{s.region}</span>
-										</div>
-									))
-								}
-								{availableStations.filter(s => s.name.toLowerCase().includes(stationSearchTerm.toLowerCase())).length === 0 && stationSearchTerm && (
-									<div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', opacity: 0.6 }}>
-										系统中无此预置场站<br/>将尝试作为"自定义名称"搜索
-									</div>
-								)}
-							</div>
-						</div>
-						<div className="modal-actions" style={{ padding: '0 20px 20px' }}>
-							<button onClick={() => setIsStationManagerOpen(true)} style={{ marginRight: 'auto', background: 'transparent', border: '1px dashed var(--primary-color)', color: 'var(--primary-color)' }}>配置场站库</button>
-							<button onClick={() => setIsStationModalOpen(false)}>取消</button>
-							<button className="premium-button" onClick={() => { executeFetchIrradiance(stationSearchTerm); setIsStationModalOpen(false); }}>确认获取</button>
-						</div>
-					</div>
-				</div>
-			)}
-			{isStationManagerOpen && (
-				<div className="modal-overlay">
-					<div className="modal-content glass-panel" style={{ width: '700px', maxHeight: '95vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-						<div className="modal-header"><h3>场站库管理</h3><button onClick={() => setIsStationManagerOpen(false)}><X size={20} /></button></div>
-						<div className="station-manager-body" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', padding: '0 20px 20px', overflow: 'hidden', flex: 1 }}>
-							<div className="station-list-container" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-								<p className="label">当前场站列表 ({availableStations.length})</p>
-								<div className="station-list-scroll" style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'rgba(0,0,0,0.05)' }}>
-									{availableStations.map(s => (
-										<div key={s.name} className="station-row" style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-											<div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-												<span style={{ fontSize: '13px', fontWeight: 600 }}>{s.name}</span>
-												<span style={{ fontSize: '11px', opacity: 0.6 }}>{s.region || '未设区域'} | {s.lon?.toFixed(4)}, {s.lat?.toFixed(4)}</span>
-											</div>
-											<button onClick={() => deleteStation(s.name)} style={{ padding: '4px', color: '#ff4d4f', background: 'transparent', border: 'none', cursor: 'pointer' }} title="删除场站"><Trash2 size={14} /></button>
-										</div>
-									))}
-								</div>
-							</div>
-							<div className="station-import-container" style={{ display: 'flex', flexDirection: 'column' }}>
-								<p className="label">批量导入/配置 (粘贴文本)</p>
-								<p style={{ fontSize: '11px', opacity: 0.7, marginBottom: '8px' }}>格式：场站,经度,纬度,区域<br/>(支持以逗号或制表符分隔)</p>
-								<textarea 
-									placeholder="峙书,107.28,22.12,宁明..." 
-									value={stationBatchInput} 
-									onChange={(e) => setStationBatchInput(e.target.value)} 
-									style={{ width: '100%', flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#fff', resize: 'none', fontFamily: 'monospace' }}
-								/>
-								<button className="premium-button" onClick={importStations} style={{ width: '100%', marginTop: '10px' }}>确认导入/更新</button>
-								<p style={{ fontSize: '10px', opacity: 0.5, marginTop: '8px', textAlign: 'center' }}>* 名称相同将自动覆盖原有配置</p>
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
+                        // Check if any visible series uses this metric
+                        const isAnyVisible = sameMetricSeries.some(s => legendSelected[s.displayName] !== false);
+                        const isHidden = !isAnyVisible;
 
-			{isPasteModalOpen && (
-				<div className="modal-overlay">
-					<div className="modal-content glass-panel">
-						<div className="modal-header"><h3>粘贴数据导入</h3><button onClick={() => setIsPasteModalOpen(false)}><X size={20} /></button></div>
-						<textarea className="paste-area" placeholder="在此处粘贴您的数据..." value={pasteContent} onChange={(e) => setPasteContent(e.target.value)} />
-						<div className="modal-actions">
-							<button onClick={() => setIsPasteModalOpen(false)}>取消</button>
-							<button className="premium-button" onClick={handlePasteSubmit}>确认导入</button>
-						</div>
-					</div>
-				</div>
-			)}
-			{isLogModalOpen && (
-				<div className="modal-overlay">
-					<div className="modal-content log-modal large-glass">
-						<div className="modal-header">
-							<div className="header-left">
-								<Activity size={20} className="pulse-icon" />
-								<h3>系统运行日志</h3>
-								<div className="log-type-tabs">
-									<button className={logType === 'access' ? 'active' : ''} onClick={() => { setLogSearchTerm(''); fetchAccessLogs('access'); }}>访问</button>
-									<button className={logType === 'error' ? 'active' : ''} onClick={() => { setLogSearchTerm(''); fetchAccessLogs('error'); }}>告警</button>
-								</div>
-							</div>
-							<div className="header-actions">
-								<div className="search-box-mini">
-									<input
-										type="text"
-										placeholder="搜索日志内容..."
-										value={logSearchTerm}
-										onChange={(e) => setLogSearchTerm(e.target.value)}
-									/>
-								</div>
-								<button className="icon-btn-text" onClick={exportLogs} title="导出当前日志">
-									<Download size={16} /> 导出
-								</button>
-								<button className="icon-btn" onClick={() => setIsLogModalOpen(false)}><X size={20} /></button>
-							</div>
-						</div>
-						<div className="log-area coder-style">
-							{accessLogs
-								.filter(log => log.toLowerCase().includes(logSearchTerm.toLowerCase()))
-								.map((log, i) => (
-									<div key={i} className={`log-line ${log.includes('ERROR') ? 'error-line' : ''}`}>{log}</div>
-								))
-							}
-							{accessLogs.length === 0 && <div className="empty-mini">暂无当前类型的日志记录</div>}
-						</div>
-					</div>
-				</div>
-			)}
-			{isDataEditorOpen && (
-				<div className="modal-overlay">
-					<div className="modal-content log-modal large-glass">
-						<div className="modal-header">
-							<h3>编辑序列源数据</h3>
-							<button className="icon-btn" onClick={() => setIsDataEditorOpen(false)}><X size={20} /></button>
-						</div>
-						<div className="editor-top-fields" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', padding: '0 20px', marginBottom: '15px' }}>
-							<div>
-								<p className="label">系列显示名称</p>
-								<input
-									type="text" className="styled-select"
-									value={editingSeriesName}
-									onChange={(e) => setEditingSeriesName(e.target.value)}
-								/>
-							</div>
-							<div>
-								<p className="label">核心指标名称 (影响坐标轴分组)</p>
-								<input
-									type="text" className="styled-select"
-									value={editingMetricName}
-									onChange={(e) => setEditingMetricName(e.target.value)}
-								/>
-							</div>
-						</div>
-						<p className="label" style={{ padding: '0 20px', marginBottom: '10px' }}>源数据点调整 (JSON 格式)</p>
-						<textarea
-							className="paste-area coder-style"
-							style={{ height: '400px', fontSize: '12px', fontFamily: 'monospace' }}
-							value={editingDataText}
-							onChange={(e) => setEditingDataText(e.target.value)}
-						/>
-						<div className="modal-actions" style={{ padding: '20px' }}>
-							<button onClick={() => setIsDataEditorOpen(false)}>取消</button>
-							<button className="premium-button" onClick={saveEditedData}>应用修改</button>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
+                        // 计算当前指标的数据范围 (用于 placeholder)
+                        let dMin = Infinity,
+                          dMax = -Infinity;
+                        let step = 1;
+                        series.forEach((s) => {
+                          const mName = s.metricName || s.name.split(" (")[0];
+                          if (mName === metric && selectedDates.includes(s.date)) {
+                            s.data.forEach((d) => {
+                              if (d.value < dMin) dMin = d.value;
+                              if (d.value > dMax) dMax = d.value;
+                            });
+                          }
+                        });
+                        if (dMin === Infinity) {
+                          dMin = 0;
+                          dMax = 100;
+                        }
+                        // 简单的步长估算
+                        const range = dMax - dMin;
+                        if (range > 0) {
+                          step = Math.pow(10, Math.floor(Math.log10(range)) - 1);
+                        }
+                        const finalStep = step > 0 ? step : 1;
+                        const dMinDisplay = Math.floor(dMin * axisAdjustmentFactor);
+                        const dMaxDisplay = Math.ceil(dMax * axisAdjustmentFactor);
+
+                         const isUnified = useDefaultLimits && isPowerMetric(metric);
+                         return (
+                            <div key={metric} className="axis-control-card glass-panel"
+                            style={{borderLeft: `3px solid ${metricColor}`}}>
+                               <div className="control-row-dense header">
+                                  <span className="metric-name" title={metric}>{metric}</span>
+                                  <div className="header-tools">
+                                      <input 
+                                         type="color" 
+                                         value={metricColor}
+                                         onChange={(e) => setCustomMetricColors(prev => ({...prev, [metric]: e.target.value}))}
+                                         className="color-picker-mini"
+                                      />
+                                      <button
+                                        className={`icon-btn-text ${chartTypes[metric] === "bar" ? "active" : ""}`}
+                                        onClick={() => setChartTypes(prev => ({...prev, [metric]: prev[metric] === "bar" ? "line" : "bar"}))}
+                                        title="切换折线/柱状图"
+                                      >
+                                        {chartTypes[metric] === "bar" ? <BarChart3 size={10} /> : <FileText size={10} />}
+                                      </button>
+                                      <button className="icon-btn-text" onClick={() => setAxisRanges(prev => { const n={...prev}; delete n[metric]; return n; })} title="重置">
+                                        <RotateCcw size={10} />
+                                      </button>
+                                  </div>
+                               </div>
+                               <div className="inputs-row">
+                                  <input
+                                     className="axis-input"
+                                     type="number"
+                                     placeholder={isUnified ? "Unified" : dMinDisplay}
+                                     disabled={isUnified}
+                                     value={axisRanges[metric]?.min ?? ""}
+                                     onChange={(e) => setAxisRanges(prev => ({...prev, [metric]: {...prev[metric], min: e.target.value}}))}
+                                  />
+                                  <span className="sep">-</span>
+                                  <input
+                                     className="axis-input"
+                                     type="number"
+                                     placeholder={isUnified ? "Unified" : dMaxDisplay}
+                                     disabled={isUnified}
+                                     value={axisRanges[metric]?.max ?? ""}
+                                     onChange={(e) => setAxisRanges(prev => ({...prev, [metric]: {...prev[metric], max: e.target.value}}))}
+                                  />
+                               </div>
+                            </div>
+
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        <section className="chart-area glass-panel">
+          {!selectedDates.length && (
+            <div className="empty-state">
+              <h2>开始分析</h2>
+              <p>支持拖拽文件或粘贴数据</p>
+              <div className="guide-box">
+                <div className="guide-step">
+                  <span>1</span> 准备数据：
+                  <a
+                    href="./import_template.csv"
+                    download="import_template.csv"
+                    className="sample-link"
+                  >
+                    点击下载导入标准模版
+                  </a>
+                </div>
+                <div className="guide-step">
+                  <span>2</span>{" "}
+                  导入方式：拖拽文件至网页、点击右上角“导入文件”或“粘贴导入”
+                </div>
+                <div className="guide-step">
+                  <span>3</span>{" "}
+                  数据要求：首行需包含“日期”、“时间”字样，数值列名称建议包含“功率”、“价格”等关键词
+                </div>
+                <div className="guide-step">
+                  <span>4</span>{" "}
+                  对比分析：在左侧勾选日期可叠加曲线，点击图表圆点可快速切换主要坐标轴
+                </div>
+              </div>
+            </div>
+          )}
+          <div
+            ref={chartRef}
+            className="chart-container"
+            style={{
+              flex: 1,
+              width: "100%",
+              height: "100%",
+              opacity: selectedDates.length ? 1 : 0,
+              pointerEvents: selectedDates.length ? "auto" : "none",
+            }}
+          ></div>
+        </section>
+      </main>
+
+      {isStationModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{ width: "400px" }}>
+            <div className="modal-header">
+              <h3>获取历史辐照度 - 选择场站</h3>
+              <button onClick={() => setIsStationModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: "0 20px 20px" }}>
+              <p className="label">搜索或输入场站名称 (支持模糊匹配)</p>
+              <input
+                type="text"
+                className="styled-select"
+                placeholder="输入名称搜索..."
+                value={stationSearchTerm}
+                onChange={(e) => setStationSearchTerm(e.target.value)}
+                autoFocus
+                style={{ width: "100%", marginBottom: "6px" }}
+              />
+              <select
+                className="styled-select"
+                style={{ width: "100%", marginBottom: "10px" }}
+                value={stationSearchTerm}
+                onChange={(e) => setStationSearchTerm(e.target.value)}
+              >
+                <option value="">-- 选择或搜索场站 --</option>
+                {availableStations.map((s) => (
+                  <option key={s.name} value={s.name}>
+                    {s.name} ({s.region || "未分区"})
+                  </option>
+                ))}
+              </select>
+              <div
+                className="station-list-scroll"
+                style={{
+                  maxHeight: "250px",
+                  overflowY: "auto",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "8px",
+                  background: "rgba(0,0,0,0.05)",
+                }}
+              >
+                {availableStations
+                  .filter((s) =>
+                    s.name
+                      .toLowerCase()
+                      .includes(stationSearchTerm.toLowerCase()),
+                  )
+                  .map((s) => (
+                    <div
+                      key={s.name}
+                      className="station-item-row"
+                      style={{
+                        padding: "8px 12px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid var(--border-color)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background:
+                          stationSearchTerm === s.name
+                            ? "rgba(var(--primary-rgb), 0.1)"
+                            : "transparent",
+                      }}
+                      onClick={() => setStationSearchTerm(s.name)}
+                    >
+                      <span style={{ fontWeight: 500, fontSize: "13px" }}>
+                        {s.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          opacity: 0.6,
+                          background: "rgba(128,128,128,0.1)",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        {s.region}
+                      </span>
+                    </div>
+                  ))}
+                {availableStations.filter((s) =>
+                  s.name
+                    .toLowerCase()
+                    .includes(stationSearchTerm.toLowerCase()),
+                ).length === 0 &&
+                  stationSearchTerm && (
+                    <div
+                      style={{
+                        padding: "12px",
+                        textAlign: "center",
+                        fontSize: "12px",
+                        opacity: 0.6,
+                      }}
+                    >
+                      系统中无此预置场站
+                      <br />
+                      将尝试作为"自定义名称"搜索
+                    </div>
+                  )}
+              </div>
+            </div>
+            <div className="modal-actions" style={{ padding: "0 20px 20px" }}>
+              <button
+                onClick={() => setIsStationManagerOpen(true)}
+                style={{
+                  marginRight: "auto",
+                  background: "transparent",
+                  border: "1px dashed var(--primary-color)",
+                  color: "var(--primary-color)",
+                }}
+              >
+                配置场站库
+              </button>
+              <button onClick={() => setIsStationModalOpen(false)}>取消</button>
+              <button
+                className="premium-button"
+                onClick={() => {
+                  executeFetchIrradiance(stationSearchTerm);
+                  setIsStationModalOpen(false);
+                }}
+              >
+                确认获取
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isStationManagerOpen && (
+        <div className="modal-overlay">
+          <div
+            className="modal-content glass-panel"
+            style={{
+              width: "700px",
+              maxHeight: "95vh",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div className="modal-header">
+              <h3>场站库管理</h3>
+              <button onClick={() => setIsStationManagerOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div
+              className="station-manager-body"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.2fr 1fr",
+                gap: "20px",
+                padding: "0 20px 20px",
+                overflow: "hidden",
+                flex: 1,
+              }}
+            >
+              <div
+                className="station-list-container"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+              >
+                <p className="label">
+                  当前场站列表 ({availableStations.length})
+                </p>
+                <div
+                  className="station-list-scroll"
+                  style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "8px",
+                    background: "rgba(0,0,0,0.05)",
+                  }}
+                >
+                  {availableStations.map((s) => (
+                    <div
+                      key={s.name}
+                      className="station-row"
+                      style={{
+                        padding: "8px 12px",
+                        borderBottom: "1px solid var(--border-color)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      {editingStationName === s.name ? (
+                        <>
+                          <input
+                            type="text"
+                            value={newStationName}
+                            onChange={(e) => setNewStationName(e.target.value)}
+                            autoFocus
+                            onKeyDown={(e) =>
+                              e.key === "Enter" &&
+                              renameStation(s.name, newStationName)
+                            }
+                            style={{
+                              flex: 1,
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              border: "1px solid var(--primary-color)",
+                            }}
+                          />
+                          <div
+                            className="station-actions"
+                            style={{ display: "flex", gap: "8px" }}
+                          >
+                            <button
+                              onClick={() =>
+                                renameStation(s.name, newStationName)
+                              }
+                              title="保存"
+                            >
+                              <Check size={16} style={{ color: "#34a853" }} />
+                            </button>
+                            <button
+                              onClick={() => setEditingStationName(null)}
+                              title="取消"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "2px",
+                              flex: 1,
+                            }}
+                          >
+                            <span style={{ fontSize: "13px", fontWeight: 600 }}>
+                              {s.name}
+                            </span>
+                            <span style={{ fontSize: "11px", opacity: 0.6 }}>
+                              {s.region || "未设区域"} | {s.lon?.toFixed(4)},{" "}
+                              {s.lat?.toFixed(4)}
+                            </span>
+                          </div>
+                          <div
+                            className="station-actions"
+                            style={{ display: "flex", gap: "8px" }}
+                          >
+                            <button
+                              onClick={() => {
+                                setEditingStationName(s.name);
+                                setNewStationName(s.name);
+                              }}
+                              title="重命名场站"
+                            >
+                              <FilePen size={14} />
+                            </button>
+                            <button
+                              onClick={() => deleteStation(s.name)}
+                              title="删除场站"
+                            >
+                              <Trash2 size={14} style={{ color: "#ff4d4f" }} />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div
+                className="station-import-container"
+                style={{ display: "flex", flexDirection: "column" }}
+              >
+                <p className="label">批量导入/配置 (粘贴文本)</p>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    opacity: 0.7,
+                    marginBottom: "8px",
+                  }}
+                >
+                  格式：场站,经度,纬度,区域
+                  <br />
+                  (支持以逗号或制表符分隔)
+                </p>
+                <textarea
+                  placeholder="峙书,107.28,22.12,宁明..."
+                  value={stationBatchInput}
+                  onChange={(e) => setStationBatchInput(e.target.value)}
+                  style={{
+                    width: "100%",
+                    flex: 1,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "8px",
+                    padding: "10px",
+                    fontSize: "12px",
+                    color: "#fff",
+                    resize: "none",
+                    fontFamily: "monospace",
+                  }}
+                />
+                <button
+                  className="premium-button"
+                  onClick={importStations}
+                  style={{ width: "100%", marginTop: "10px" }}
+                >
+                  确认导入/更新
+                </button>
+                <p
+                  style={{
+                    fontSize: "10px",
+                    opacity: 0.5,
+                    marginTop: "8px",
+                    textAlign: "center",
+                  }}
+                >
+                  * 名称相同将自动覆盖原有配置
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isPasteModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel">
+            <div className="modal-header">
+              <h3>粘贴数据导入</h3>
+              <button onClick={() => setIsPasteModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <textarea
+              className="paste-area"
+              placeholder="在此处粘贴您的数据..."
+              value={pasteContent}
+              onChange={(e) => setPasteContent(e.target.value)}
+            />
+            <div className="modal-actions">
+              <button onClick={() => setIsPasteModalOpen(false)}>取消</button>
+              <button className="premium-button" onClick={handlePasteSubmit}>
+                确认导入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isLogModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content log-modal large-glass">
+            <div className="modal-header">
+              <div className="header-left">
+                <Activity size={20} className="pulse-icon" />
+                <h3>系统运行日志</h3>
+                <div className="log-type-tabs">
+                  <button
+                    className={logType === "access" ? "active" : ""}
+                    onClick={() => {
+                      setLogSearchTerm("");
+                      fetchAccessLogs("access");
+                    }}
+                  >
+                    访问
+                  </button>
+                  <button
+                    className={logType === "error" ? "active" : ""}
+                    onClick={() => {
+                      setLogSearchTerm("");
+                      fetchAccessLogs("error");
+                    }}
+                  >
+                    告警
+                  </button>
+                </div>
+              </div>
+              <div className="header-actions">
+                <div className="search-box-mini">
+                  <input
+                    type="text"
+                    placeholder="搜索日志内容..."
+                    value={logSearchTerm}
+                    onChange={(e) => setLogSearchTerm(e.target.value)}
+                  />
+                </div>
+                <button
+                  className="icon-btn-text"
+                  onClick={exportLogs}
+                  title="导出当前日志"
+                >
+                  <Download size={16} /> 导出
+                </button>
+                <button
+                  className="icon-btn"
+                  onClick={() => setIsLogModalOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="log-area coder-style">
+              {accessLogs
+                .filter((log) =>
+                  log.toLowerCase().includes(logSearchTerm.toLowerCase()),
+                )
+                .map((log, i) => (
+                  <div
+                    key={i}
+                    className={`log-line ${log.includes("ERROR") ? "error-line" : ""}`}
+                  >
+                    {log}
+                  </div>
+                ))}
+              {accessLogs.length === 0 && (
+                <div className="empty-mini">暂无当前类型的日志记录</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {isDataEditorOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content log-modal large-glass">
+            <div className="modal-header">
+              <h3>编辑序列源数据</h3>
+              <button
+                className="icon-btn"
+                onClick={() => setIsDataEditorOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div
+              className="editor-top-fields"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "20px",
+                padding: "0 20px",
+                marginBottom: "15px",
+              }}
+            >
+              <div>
+                <p className="label">系列显示名称</p>
+                <input
+                  type="text"
+                  className="styled-select"
+                  value={editingSeriesName}
+                  onChange={(e) => setEditingSeriesName(e.target.value)}
+                />
+              </div>
+              <div>
+                <p className="label">核心指标名称 (影响坐标轴分组)</p>
+                <input
+                  type="text"
+                  className="styled-select"
+                  value={editingMetricName}
+                  onChange={(e) => setEditingMetricName(e.target.value)}
+                />
+              </div>
+            </div>
+            <p
+              className="label"
+              style={{ padding: "0 20px", marginBottom: "10px" }}
+            >
+              源数据点调整 (JSON 格式)
+            </p>
+            <textarea
+              className="paste-area coder-style"
+              style={{
+                height: "400px",
+                fontSize: "12px",
+                fontFamily: "monospace",
+              }}
+              value={editingDataText}
+              onChange={(e) => setEditingDataText(e.target.value)}
+            />
+            <div className="modal-actions" style={{ padding: "20px" }}>
+              <button onClick={() => setIsDataEditorOpen(false)}>取消</button>
+              <button className="premium-button" onClick={saveEditedData}>
+                应用修改
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function getUserColor(index, metricName = '') {
-	// 定义核心指标与其对应的固定颜色
-	const fixedColorMap = {
-		'实际功率': '#5470c6',
-		'可用功率': '#91cc75',
-		'理论功率': '#73c0de',
-		'AGC远方指令': '#ee6666',
-		'辐照度': '#fac858',
-		'短波辐射': '#fac858',
-		'价格': '#9a60b4',
-		'预测功率': '#3ba272',
-		'负荷': '#fc8452'
-	};
+function getUserColor(index, metricName = "") {
+  // 定义核心指标与其对应的固定颜色
+  const fixedColorMap = {
+    实际功率: "#5470c6",
+    可用功率: "#91cc75",
+    理论功率: "#73c0de",
+    AGC远方指令: "#ee6666",
+    辐照度: "#fac858",
+    短波辐射: "#fac858",
+    价格: "#9a60b4",
+    预测功率: "#3ba272",
+    负荷: "#fc8452",
+  };
 
-	if (metricName) {
-		for (const [key, color] of Object.entries(fixedColorMap)) {
-			if (metricName.includes(key)) return color;
-		}
-	}
+  if (metricName) {
+    for (const [key, color] of Object.entries(fixedColorMap)) {
+      if (metricName.includes(key)) return color;
+    }
+  }
 
-	const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'];
-	return colors[index % colors.length];
+  const colors = [
+    "#5470c6", // 蓝
+    "#91cc75", // 绿
+    "#fac858", // 黄
+    "#ee6666", // 红
+    "#73c0de", // 浅蓝
+    "#3ba272", // 深绿
+    "#fc8452", // 橙
+    "#9a60b4", // 紫
+    "#ea7ccc", // 粉
+    "#2f4554", // 深灰蓝
+    "#61a0a8", // 青绿
+    "#d48265", // 砖红
+    "#749f83", // 橄榄绿
+    "#ca8622", // 枯草黄
+    "#bda29a", // 灰棕
+    "#6e7074", // 灰
+    "#546570", // 灰蓝
+    "#c4ccd3", // 浅灰
+    "#f56c6c", // 亮红 (Element UI Danger)
+    "#e6a23c", // 亮黄 (Element UI Warning)
+    "#409eff", // 亮蓝 (Element UI Primary)
+    "#67c23a", // 亮绿 (Element UI Success)
+  ];
+  return colors[index % colors.length];
 }
 
 export default App;
