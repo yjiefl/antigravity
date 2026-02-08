@@ -2,7 +2,7 @@
 Pydantic 模式定义 - 认证相关
 """
 import uuid
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
@@ -19,7 +19,6 @@ class TokenData(BaseModel):
     """令牌数据（从 JWT 解析）"""
     user_id: Optional[uuid.UUID] = None
     username: Optional[str] = None
-    from typing import List
     roles: Optional[List[UserRole]] = None
 
 
@@ -36,5 +35,4 @@ class LoginResponse(BaseModel):
     user_id: uuid.UUID
     username: str
     real_name: str
-    from typing import List
     roles: List[UserRole]

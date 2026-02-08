@@ -23,10 +23,10 @@
 
 ## 4. 自动化同步工具
 
-- 本项目提供 `git_sync.py` 脚本用于快速同步：
+- 本项目提供 `git_sync.sh` 脚本用于快速同步：
 
     ```bash
-    ./git_sync.py
+    ./git_sync.sh
     ```
 
 - 该脚本会自动执行：`git pull` -> `git add .` -> `git commit` (仅在有变动时) -> `git push`。

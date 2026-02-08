@@ -300,7 +300,7 @@ async def withdraw_task(
         )
     
     task.status = TaskStatus.DRAFT
-    await add_task_log(db, task.id, current_user.id, LogAction.UPDATED, "撤回审批申请")
+    await add_task_log(db, task.id, current_user.id, LogAction.WITHDRAWN, "撤回审批申请")
     
     await db.flush()
     return task

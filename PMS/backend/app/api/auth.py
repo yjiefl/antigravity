@@ -63,7 +63,7 @@ async def get_current_user(
     result = await db.execute(
         select(User).where(User.username == username)
     )
-    user = result.scalar_one_or_none()
+    user = result.unique().scalar_one_or_none()
     
     if user is None:
         raise credentials_exception
@@ -123,7 +123,7 @@ async def login(
     result = await db.execute(
         select(User).where(User.username == form_data.username)
     )
-    user = result.scalar_one_or_none()
+    user = result.unique().scalar_one_or_none()
     
     if user is None or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(

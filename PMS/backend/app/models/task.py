@@ -143,6 +143,12 @@ class Task(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         comment="编制人"
     )
+    department_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("departments.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="归属部门"
+    )
     owner_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -223,6 +229,7 @@ class Task(Base):
 
     # 用户关联（用于 eager loading）
     creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id])
+    department: Mapped[Optional["Department"]] = relationship("Department")
     owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
     executor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[executor_id])
 

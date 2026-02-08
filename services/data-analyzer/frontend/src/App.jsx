@@ -216,20 +216,13 @@ function App() {
       );
     })
     .map((s) => {
-      // Always append dimension info if present to distinguish series
-      if (s.dimensions) {
-        const dimVals = Object.entries(s.dimensions)
-          .filter(([k, v]) => v)
-          .map(([k, v]) => v)
-          .join("/");
-        if (dimVals) {
-          return {
-            ...s,
-            displayName: `${s.metricName || s.name.split(" (")[0]} (${dimVals})`,
-          };
-        }
-      }
-      return { ...s, displayName: s.metricName || s.name.split(" (")[0] };
+      // User request: Only show data name, not dimensions/stations
+      // User request: Only show data name, not dimensions/stations or import suffixes
+      const cleanName = (s.metricName || s.name).split(" (")[0].split("(")[0].trim();
+      // Restore unit if it was stripped by the second split
+      const unit = s.unit || (s.name.includes("(") ? s.name.match(/\(([^)]+)\)/)?.[1] : "");
+      const baseName = unit ? `${cleanName}(${unit})` : cleanName;
+      return { ...s, displayName: baseName };
     });
 
   const uniqueMetrics = [
@@ -616,22 +609,13 @@ function App() {
 
       return {
         type: "value",
-        name: metric,
-        nameTextStyle: {
-          color: isActive
-            ? customMetricColors[metric] || getUserColor(index, metric)
-            : "transparent",
-          padding: [0, 0, 0, 0],
-          fontFamily: "Fira Sans, sans-serif",
-          fontWeight: 600,
-          fontSize: 10,
-        },
-        nameGap: 6,
-        position: "left",
+        name: "", // Remove name to prevent grid shifting
         show: isActive,
         scale: true,
         min: finalMin,
         max: finalMax,
+        offset: 0,
+        position: "left",
         axisLine: {
           show: isActive,
           lineStyle: {
@@ -641,11 +625,9 @@ function App() {
         },
         axisTick: { show: isActive, length: 3 },
         axisLabel: {
-          show: true,
+          show: isActive, // Only show labels for active axis
           color: isLight ? "#1d1d1f" : "#a1a1aa",
           margin: 4,
-          width: 50,
-          overflow: "truncate",
           align: "right",
           fontFamily: "Fira Code, monospace",
           fontSize: 9,
@@ -804,11 +786,11 @@ function App() {
         icon: "circle",
       },
       grid: {
-        top: "40", // Optimized space
-        left: "10",
-        right: "20",
-        bottom: "25",
-        containLabel: true, // Ensure labels don't get cut off despite tight margins
+        top: 40,
+        left: 5,
+        right: 20,
+        bottom: 25,
+        containLabel: true,
       },
       xAxis: {
         type: "time",
@@ -1191,7 +1173,7 @@ function App() {
       (unit && unit.toUpperCase() === "MW");
     if (isPower) {
       unitStr = "MWh";
-    } else if (mKey.includes("辐照度")) {
+    } else if (mKey.includes("辐照度") || mKey.includes("辐射")) {
       unitStr = "MJ/m²";
       finalValue = total * 0.0036; // Wh/m2 -> MJ/m2 (3600/1e6)
     }
@@ -1611,7 +1593,7 @@ function App() {
 
         const newSeriesItem = {
           id: `weather_${inputName}_${date}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-          name: `历史辐照度 (${inputName})`,
+          name: "历史辐照度",
           metricName: "历史辐照度",
           date: date,
           data: result.data.map((d) => ({
@@ -1885,7 +1867,7 @@ function App() {
       <main className="main-content">
         <aside
           className={`sidebar glass-panel ${isSidebarCollapsed ? "collapsed" : ""} ${isSidebarWide ? "wide" : ""}`}
-          style={{ width: isSidebarCollapsed ? 0 : isSidebarWide ? 320 : 210 }}
+          style={{ width: isSidebarCollapsed ? 0 : isSidebarWide ? 320 : 240 }}
         >
           <div className="sidebar-tabs">
             <button
@@ -1947,8 +1929,8 @@ function App() {
 
           {activeTab === "controls" ? (
             <div className="sidebar-scroll-area">
-              <div className="date-selector section-item">
-                <p className="label">日期筛选 (可多选对比)</p>
+              <div className="date-selector section-item" style={{ marginBottom: '8px' }}>
+                <p className="label" style={{ marginBottom: '4px' }}>日期筛选</p>
                 <div className="dimension-tags">
                   {availableDates.map((date) => (
                     <button
@@ -1963,7 +1945,7 @@ function App() {
               </div>
 
               {selectedDates.length > 0 && (
-                <div className="section-item">
+                <div className="section-item" style={{ marginBottom: '8px' }}>
                   {(() => {
                     const currentSeries = series.filter((s) =>
                       selectedDates.includes(s.date),
@@ -1988,61 +1970,6 @@ function App() {
                       <>
                         <div className="section-header">
                           <span className="label">维度筛选</span>
-                          <div className="dimension-actions-text">
-                            <button
-                              className="text-action-btn"
-                              onClick={() => {
-                                const newFilters = { ...dimensionFilters };
-                                allDimKeys.forEach((dim) => {
-                                  const allVals = [
-                                    ...new Set(
-                                      currentSeries
-                                        .map((s) => s.dimensions?.[dim])
-                                        .filter(Boolean),
-                                    ),
-                                  ];
-                                  newFilters[dim] = allVals;
-                                });
-                                setDimensionFilters(newFilters);
-                              }}
-                            >
-                              全选
-                            </button>
-                            <button
-                              className="text-action-btn"
-                              onClick={() => {
-                                const newFilters = { ...dimensionFilters };
-                                allDimKeys.forEach((dim) => {
-                                  newFilters[dim] = [];
-                                });
-                                setDimensionFilters(newFilters);
-                              }}
-                            >
-                              清空
-                            </button>
-                            <button
-                              className="text-action-btn"
-                              onClick={() => {
-                                const newFilters = { ...dimensionFilters };
-                                allDimKeys.forEach((dim) => {
-                                  const allVals = [
-                                    ...new Set(
-                                      currentSeries
-                                        .map((s) => s.dimensions?.[dim])
-                                        .filter(Boolean),
-                                    ),
-                                  ];
-                                  const current = dimensionFilters[dim] || [];
-                                  newFilters[dim] = allVals.filter(
-                                    (v) => !current.includes(v),
-                                  );
-                                });
-                                setDimensionFilters(newFilters);
-                              }}
-                            >
-                              反选
-                            </button>
-                          </div>
                         </div>
 
                         {allDimKeys.map((dimKey) => {
@@ -2057,11 +1984,11 @@ function App() {
                           const isAllSelected = selected.length === allValues.length;
 
                           return (
-                            <div key={dimKey} className="dimension-group" style={{ marginBottom: "12px" }}>
+                            <div key={dimKey} className="dimension-group" style={{ marginBottom: "6px" }}>
                               <div className="dim-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                 <span className="dim-name" style={{ fontWeight: 600, fontSize: '11px' }}>{dimKey}</span>
                                 <div className="dim-header-actions" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                  <span style={{ fontSize: "10px", opacity: 0.6 }}>
+                                  <span style={{ fontSize: "10px", color: '#94a3b8' }}>
                                     {isAllSelected ? "全部" : `${selected.length}/${allValues.length}`}
                                   </span>
                                   <div className="dimension-actions-text">
@@ -2074,7 +2001,7 @@ function App() {
                                         }))
                                       }
                                     >
-                                      全
+                                      全选
                                     </button>
                                     <button
                                       className="text-action-btn-mini"
@@ -2085,7 +2012,7 @@ function App() {
                                         }))
                                       }
                                     >
-                                      仅
+                                      清空
                                     </button>
                                     <button
                                       className="text-action-btn-mini"
@@ -2096,7 +2023,7 @@ function App() {
                                         }))
                                       }
                                     >
-                                      反
+                                      反选
                                     </button>
                                   </div>
                                 </div>
@@ -2224,7 +2151,7 @@ function App() {
 
                 <div
                   className="checkbox-group-vertical"
-                  style={{ marginTop: "10px" }}
+                  style={{ marginTop: "6px" }}
                 >
                   <label className="checkbox-label">
                     <input
@@ -2244,17 +2171,6 @@ function App() {
                       <span>多日 24h 重叠对比</span>
                     </label>
                   )}
-                  <label
-                    className="checkbox-label"
-                    title="勾选后，所有功率类指标（含AGC、超短期、负荷等）将共用相同的坐标轴上下限"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={useDefaultLimits}
-                      onChange={(e) => setUseDefaultLimits(e.target.checked)}
-                    />
-                    <span>统一上下限</span>
-                  </label>
                 </div>
 
                 <div
@@ -2269,7 +2185,7 @@ function App() {
                     className="checkbox-label"
                     style={{ justifyContent: "space-between", marginBottom: '4px' }}
                   >
-                    <span>限电分析</span>
+                    <span className="label">限电分析</span>
                     <input
                       type="checkbox"
                       checked={showCurtailmentAnalysis}
@@ -2281,44 +2197,55 @@ function App() {
 
                   {showCurtailmentAnalysis && (
                     <div style={{display:'flex', flexDirection:'column', gap: '4px'}}>
-                      <div style={{display:'flex', gap:'8px'}}>
-                        <div className="param-item-inline" style={{flex:1, display:'flex', alignItems:'center', gap:'4px', background:'rgba(0,0,0,0.1)', padding:'2px 4px', borderRadius:'4px'}}>
-                           <span style={{fontSize:'10px', opacity:0.6}}>辐照 &gt;</span>
+                      <div className="control-row-dense" style={{gap: '4px'}}>
+                        <div className="param-item-inline" style={{flex: 1, display:'flex', alignItems:'center', gap:'2px'}}>
+                           <span className="label-mini">辐照 &gt;</span>
                            <input
                              type="number"
                              value={curtailmentIrrThreshold}
                              onChange={(e) => setCurtailmentIrrThreshold(parseFloat(e.target.value))}
-                             style={{width:'100%', background:'transparent', border:'none', color:'inherit', fontSize:'11px', textAlign:'right', outline:'none'}}
+                             className="axis-input"
+                             style={{width:'100%', color: '#fff'}}
                            />
                         </div>
-                        <div className="param-item-inline" style={{flex:1, display:'flex', alignItems:'center', gap:'4px', background:'rgba(0,0,0,0.1)', padding:'2px 4px', borderRadius:'4px'}}>
-                           <span style={{fontSize:'10px', opacity:0.6}}>偏差 &lt;</span>
+                        <div className="param-item-inline" style={{flex: 1, display:'flex', alignItems:'center', gap:'2px'}}>
+                           <span className="label-mini">偏差 &lt;</span>
                            <input
                              type="number"
                              value={curtailmentDiffThreshold}
                              onChange={(e) => setCurtailmentDiffThreshold(parseFloat(e.target.value))}
-                             style={{width:'100%', background:'transparent', border:'none', color:'inherit', fontSize:'11px', textAlign:'right', outline:'none'}}
+                             className="axis-input"
+                             style={{width:'100%', color: '#fff'}}
                            />
                         </div>
                       </div>
-                      <div className="param-item-inline curtailment-style-row">
-                         <span style={{fontSize:'10px', opacity:0.6}}>样式</span>
-                         <div style={{display: "flex", gap: "8px", alignItems: "center", flex: 1}}>
-                           <input
-                             type="color"
-                             value={curtailmentColor}
-                             onChange={(e) => setCurtailmentColor(e.target.value)}
-                             className="curtailment-color-picker"
-                             title="限电背景颜色"
-                           />
+                      <div className="control-row-dense" style={{marginTop: '2px', gap: '4px'}}>
+                         <span className="label-mini" style={{ flexShrink: 0, width: '28px' }}>样式</span>
+                         <div style={{display: "flex", gap: "4px", alignItems: "center", flex: 1, minWidth: 0}}>
+                           <div style={{position: 'relative', width: '16px', height: '14px', borderRadius: '2px', backgroundColor: curtailmentColor, overflow: 'hidden', border: '1px solid var(--border-color)', flexShrink: 0}}>
+                             <input
+                               type="color"
+                               value={curtailmentColor}
+                               onChange={(e) => setCurtailmentColor(e.target.value)}
+                               style={{opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer', width: '100%', height: '100%'}}
+                             />
+                           </div>
                            <input
                              type="range"
-                             min="0" max="1" step="0.1"
+                             min="0" max="1" step="0.02"
                              value={curtailmentOpacity}
                              onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))}
-                             className="curtailment-opacity-slider"
-                             title={`透明度: ${curtailmentOpacity}`}
+                             style={{ flex: 1, height: "4px", padding: 0, maxWidth: '95px' }}
                            />
+                           <span className="value-badge" style={{ flexShrink: 0, minWidth: '36px' }}>{Math.round(curtailmentOpacity * 100)}%</span>
+                           <button
+                             className="icon-btn-text"
+                             onClick={() => setCurtailmentOpacity(0.2)}
+                             title="重置透明度"
+                             style={{ flexShrink: 0, padding: 0 }}
+                           >
+                             <RotateCcw size={10} />
+                           </button>
                          </div>
                       </div>
                     </div>
@@ -2329,9 +2256,6 @@ function App() {
               <div
                 className="section-item"
                 style={{
-                  flex: 1,
-                  minHeight: 0,
-                  overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
                 }}
@@ -2346,13 +2270,12 @@ function App() {
                     )
                   </span>
                   <div className="legend-bulk-actions-modern">
-                    <button onClick={() => setAllLegends(true)} title="全部可见"><CheckSquare size={12} /></button>
-                    <button onClick={() => setAllLegends(false)} title="全部隐藏"><Square size={12} /></button>
+                    <button className="text-action-btn-mini" onClick={() => setAllLegends(true)}>全显</button>
+                    <button className="text-action-btn-mini" onClick={() => setAllLegends(false)}>全隐</button>
                   </div>
                 </div>
                 <div
                   className="series-list-scroll-container"
-                  style={{ overflowY: "auto", flex: 1 }}
                 >
                   <ul className="series-list-compact">
                     {activeSeries.map((s) => {
@@ -2365,24 +2288,14 @@ function App() {
                           key={s.id}
                           className={`series-item-compact ${isHidden ? "hidden" : ""}`}
                           onClick={() => toggleMetricLegend(displayName)}
+                          style={{
+                            borderLeft: `4px solid ${isHidden ? 'rgba(255,255,255,0.1)' : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey))}`,
+                          }}
                         >
                           <div className="series-row-main">
-                             <div 
-                               className="series-color-indicator"
-                               style={{
-                                 width: '12px',
-                                 height: '4px',
-                                 borderRadius: '1px',
-                                 background: isHidden 
-                                   ? 'rgba(255,255,255,0.1)' 
-                                   : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey)),
-                                 marginRight: '6px',
-                                 flexShrink: 0
-                               }}
-                             />
                             <div className="series-info">
-                              <div className="s-name" title={s.name}>
-                                {s.name}
+                              <div className="s-name" title={s.displayName}>
+                                {s.displayName}
                               </div>
                               <div className="s-meta">
                                 {/* Dimensions inline */}
@@ -2425,6 +2338,282 @@ function App() {
                   </ul>
                 </div>
               </div>
+
+              {selectedDates.length > 0 && (
+                <div className="axis-section" style={{ borderTop: '1px solid var(--border-color)', marginTop: '8px' }}>
+                  <p className="label fixed-header">坐标轴与单位设置</p>
+                    {(() => {
+                      const currentActiveSeries = series.filter((s) =>
+                        selectedDates.includes(s.date),
+                      );
+                      const uniqueMetricsInView = [
+                        ...new Set(
+                          currentActiveSeries.map((s) => {
+                            const clean = (s.metricName || s.name).split(" (")[0].split("(")[0].trim();
+                            const unit = s.unit || (s.name.includes("(") ? s.name.match(/\(([^)]+)\)/)?.[1] : "");
+                            return unit ? `${clean}(${unit})` : clean;
+                          }),
+                        ),
+                      ];
+                      const powerMetrics = uniqueMetricsInView.filter((m) => {
+                        const low = m.toLowerCase();
+                        return (
+                          low.includes("功率") ||
+                          low.includes("power") ||
+                          low.includes("预测") ||
+                          low.includes("出清") ||
+                          low.includes("负荷") ||
+                          low.includes("agc") ||
+                          low.includes("超短期")
+                        );
+                      });
+
+
+                      return (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                          }}
+                        >
+                          <div className="axis-control-card glass-panel" style={{ marginBottom: '4px' }}>
+                            <div className="control-row-dense">
+                              <span className="label-mini">全局缩放</span>
+                              <div
+                                style={{
+                                  flex: 1,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                }}
+                              >
+                                <input
+                                  type="range"
+                                  min="0.2"
+                                  max="1.8"
+                                  step="0.02"
+                                  value={axisAdjustmentFactor}
+                                  onChange={(e) =>
+                                    setAxisAdjustmentFactor(
+                                      parseFloat(e.target.value),
+                                    )
+                                  }
+                                  style={{ flex: 1, height: "4px" }}
+                                />
+                                <span className="value-badge" style={{ flexShrink: 0, minWidth: '40px' }}>
+                                  {Math.round(axisAdjustmentFactor * 100)}%
+                                </span>
+                                <button
+                                  className="icon-btn-text"
+                                  onClick={() => setAxisAdjustmentFactor(1.0)}
+                                  title="重置"
+                                >
+                                  <RotateCcw size={10} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="axis-list-scrollable">
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "8px",
+                              }}
+                            >
+
+                            {powerMetrics.length > 1 && (
+                              <div className="axis-control-card glass-panel power-box">
+                                <div className="control-row-dense">
+                                  <span className="label-mini" style={{ flex: 1 }}>
+                                    统一上下限
+                                  </span>
+                                  <div className="inputs-row">
+                                    <input
+                                      className="axis-input"
+                                      type="number"
+                                      placeholder="Min"
+                                      value={axisRanges[powerMetrics[0]]?.min ?? ""}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setAxisRanges((prev) => {
+                                          const next = { ...prev };
+                                          powerMetrics.forEach(
+                                            (pm) =>
+                                              (next[pm] = { ...next[pm], min: val }),
+                                          );
+                                          return next;
+                                        });
+                                      }}
+                                    />
+                                    <span className="sep">-</span>
+                                    <input
+                                      className="axis-input"
+                                      type="number"
+                                      placeholder="Max"
+                                      value={axisRanges[powerMetrics[0]]?.max ?? ""}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setAxisRanges((prev) => {
+                                          const next = { ...prev };
+                                          powerMetrics.forEach(
+                                            (pm) =>
+                                              (next[pm] = { ...next[pm], max: val }),
+                                          );
+                                          return next;
+                                        });
+                                      }}
+                                    />
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={useDefaultLimits}
+                                    onChange={(e) =>
+                                      setUseDefaultLimits(e.target.checked)
+                                    }
+                                    title="统一所有功率类指标的上下限"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                          {uniqueMetricsInView.map((metric, index) => {
+                            const originalColor = getUserColor(index, metric);
+                            const metricColor =
+                              customMetricColors[metric] || originalColor;
+                            
+                            // Check if all series for this metric are hidden
+                            const isHidden = !currentActiveSeries.some((s) => {
+                              const clean = (s.metricName || s.name).split(" (")[0].split("(")[0].trim();
+                              const unit = s.unit || (s.name.includes("(") ? s.name.match(/\(([^)]+)\)/)?.[1] : "");
+                              const seriesMetricName = unit ? `${clean}(${unit})` : clean;
+                              return seriesMetricName === metric && legendSelected[s.displayName] !== false;
+                            });
+
+                              return (
+                                <div
+                                  key={metric}
+                                  className={`axis-control-card glass-panel ${isHidden ? "is-hidden-metric" : ""}`}
+                                  style={{
+                                    borderLeft: `3px solid ${metricColor}`,
+                                  }}
+                                >
+                                  <div className="control-row-dense">
+                                    <span
+                                      className="metric-name"
+                                      title={metric}
+                                      style={{
+                                        fontSize: "10px",
+                                        fontWeight: 500,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                        flex: 1,
+                                      }}
+                                    >
+                                      {metric}
+                                    </span>
+
+                                    <div className="inputs-row">
+                                      <input
+                                        className="axis-input"
+                                        type="number"
+                                        placeholder={(metric.includes("辐照") || metric.includes("辐射")) ? "0" : "Min"}
+                                        value={axisRanges[metric]?.min ?? ""}
+                                        onChange={(e) =>
+                                          setAxisRanges((prev) => ({
+                                            ...prev,
+                                            [metric]: {
+                                              ...prev[metric],
+                                              min: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                      />
+                                      <span className="sep">-</span>
+                                      <input
+                                        className="axis-input"
+                                        type="number"
+                                        placeholder={(metric.includes("辐照") || metric.includes("辐射")) ? "1000" : "Max"}
+                                        value={axisRanges[metric]?.max ?? ""}
+                                        onChange={(e) =>
+                                          setAxisRanges((prev) => ({
+                                            ...prev,
+                                            [metric]: {
+                                              ...prev[metric],
+                                              max: e.target.value,
+                                            },
+                                          }))
+                                        }
+                                      />
+                                    </div>
+
+                                    <div
+                                      className="header-tools"
+                                      style={{
+                                        display: "flex",
+                                        gap: "2px",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          width: "10px",
+                                          height: "10px",
+                                          borderRadius: "2px",
+                                          backgroundColor: metricColor,
+                                          overflow: "hidden",
+                                          position: "relative",
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        <input
+                                          type="color"
+                                          value={metricColor}
+                                          onChange={(e) =>
+                                            setCustomMetricColors((prev) => ({
+                                              ...prev,
+                                              [metric]: e.target.value,
+                                            }))
+                                          }
+                                          style={{
+                                            opacity: 0,
+                                            width: "100%",
+                                            height: "100%",
+                                            position: "absolute",
+                                            top: 0,
+                                            left: 0,
+                                            cursor: "pointer",
+                                          }}
+                                        />
+                                      </div>
+                                      <button
+                                        className="icon-btn-text"
+                                        onClick={() =>
+                                          setAxisRanges((prev) => {
+                                            const n = { ...prev };
+                                            delete n[metric];
+                                            return n;
+                                          })
+                                        }
+                                        title="重置范围"
+                                      >
+                                        <RotateCcw size={10} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                          })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+                </div>
+              )}
             </div>
           ) : (
             <div className="sidebar-scroll-area">
@@ -2482,292 +2671,6 @@ function App() {
             </div>
           )}
 
-          {selectedDates.length > 0 && (
-            <div className="axis-section">
-              <p className="label fixed-header">坐标轴与单位设置</p>
-                {(() => {
-                  const currentActiveSeries = series.filter((s) =>
-                    selectedDates.includes(s.date),
-                  );
-                  const uniqueMetricsInView = [
-                    ...new Set(
-                      currentActiveSeries.map(
-                        (s) => s.metricName || s.name.split(" (")[0],
-                      ),
-                    ),
-                  ];
-                  const powerMetrics = uniqueMetricsInView.filter((m) => {
-                    const low = m.toLowerCase();
-                    return (
-                      low.includes("功率") ||
-                      low.includes("power") ||
-                      low.includes("预测") ||
-                      low.includes("出清") ||
-                      low.includes("负荷") ||
-                      low.includes("agc") ||
-                      low.includes("超短期")
-                    );
-                  });
-
-
-                  return (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                        flex: 1,
-                        minHeight: 0
-                      }}
-                    >
-                      <div className="axis-control-card glass-panel" style={{ marginBottom: '4px' }}>
-                        <div className="control-row-dense">
-                          <span className="label-mini">全局缩放</span>
-                          <div
-                            style={{
-                              flex: 1,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                            }}
-                          >
-                            <input
-                              type="range"
-                              min="0.2"
-                              max="1.8"
-                              step="0.05"
-                              value={axisAdjustmentFactor}
-                              onChange={(e) =>
-                                setAxisAdjustmentFactor(
-                                  parseFloat(e.target.value),
-                                )
-                              }
-                              style={{ flex: 1, height: "4px" }}
-                            />
-                            <span className="value-badge">
-                              {axisAdjustmentFactor.toFixed(2)}x
-                            </span>
-                            <button
-                              className="icon-btn-text"
-                              onClick={() => setAxisAdjustmentFactor(1.0)}
-                              title="重置"
-                            >
-                              <RotateCcw size={10} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="axis-list-scrollable">
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "8px",
-                          }}
-                        >
-
-                      {powerMetrics.length > 1 && (
-                        <div className="axis-control-card glass-panel power-box">
-                          <div className="control-row-dense">
-                            <span className="icon-indicator">⚡</span>
-                            <span className="label-mini" style={{ flex: 1 }}>
-                              功率统一 (Min-Max)
-                            </span>
-                            <input
-                              type="checkbox"
-                              checked={useDefaultLimits}
-                              onChange={(e) =>
-                                setUseDefaultLimits(e.target.checked)
-                              }
-                              title="统一所有功率类指标的上下限"
-                            />
-                          </div>
-                          <div className="inputs-row">
-                            <input
-                              className="axis-input"
-                              type="number"
-                              placeholder="Min"
-                              value={axisRanges[powerMetrics[0]]?.min ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setAxisRanges((prev) => {
-                                  const next = { ...prev };
-                                  powerMetrics.forEach(
-                                    (pm) =>
-                                      (next[pm] = { ...next[pm], min: val }),
-                                  );
-                                  return next;
-                                });
-                              }}
-                            />
-                            <span className="sep">-</span>
-                            <input
-                              className="axis-input"
-                              type="number"
-                              placeholder="Max"
-                              value={axisRanges[powerMetrics[0]]?.max ?? ""}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setAxisRanges((prev) => {
-                                  const next = { ...prev };
-                                  powerMetrics.forEach(
-                                    (pm) =>
-                                      (next[pm] = { ...next[pm], max: val }),
-                                  );
-                                  return next;
-                                });
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {uniqueMetricsInView.map((metric, index) => {
-                        const originalColor = getUserColor(index, metric);
-                        const metricColor =
-                          customMetricColors[metric] || originalColor;
-                        
-                        // Check if all series for this metric are hidden
-                        const isHidden = !currentActiveSeries.some(
-                          (s) =>
-                            (s.metricName || s.name.split(" (")[0]) === metric &&
-                            legendSelected[s.displayName] !== false,
-                        );
-
-                        return (
-                          <div
-                            key={metric}
-                            className={`axis-control-card glass-panel ${isHidden ? "is-hidden-metric" : ""}`}
-                            style={{
-                              borderLeft: `3px solid ${metricColor}`,
-                              padding: "4px 8px",
-                              marginBottom: "4px",
-                            }}
-                          >
-                            <div
-                              className="control-row-dense header"
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: "6px",
-                                marginBottom: "2px",
-                              }}
-                            >
-                              <span
-                                className="metric-name"
-                                title={metric}
-                                style={{
-                                  fontSize: "10px",
-                                  fontWeight: 600,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  flex: 1,
-                                  fontFamily: "Fira Sans",
-                                }}
-                              >
-                                {metric}
-                              </span>
-                              <div
-                                className="header-tools"
-                                style={{
-                                  display: "flex",
-                                  gap: "4px",
-                                  alignItems: "center",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    width: "12px",
-                                    height: "12px",
-                                    borderRadius: "2px",
-                                    backgroundColor: metricColor,
-                                    overflow: "hidden",
-                                    position: "relative",
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  <input
-                                    type="color"
-                                    value={metricColor}
-                                    onChange={(e) =>
-                                      setCustomMetricColors((prev) => ({
-                                        ...prev,
-                                        [metric]: e.target.value,
-                                      }))
-                                    }
-                                    style={{
-                                      opacity: 0,
-                                      width: "100%",
-                                      height: "100%",
-                                      position: "absolute",
-                                      top: 0,
-                                      left: 0,
-                                      cursor: "pointer",
-                                    }}
-                                  />
-                                </div>
-                                <button
-                                  className="icon-btn-text"
-                                  onClick={() =>
-                                    setAxisRanges((prev) => {
-                                      const n = { ...prev };
-                                      delete n[metric];
-                                      return n;
-                                    })
-                                  }
-                                  title="重置范围"
-                                >
-                                  <RotateCcw size={10} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="inputs-row">
-                              <input
-                                className="axis-input"
-                                type="number"
-                                placeholder="Min"
-                                value={axisRanges[metric]?.min ?? ""}
-                                onChange={(e) =>
-                                  setAxisRanges((prev) => ({
-                                    ...prev,
-                                    [metric]: {
-                                      ...prev[metric],
-                                      min: e.target.value,
-                                    },
-                                  }))
-                                }
-                              />
-                              <span className="sep">-</span>
-                              <input
-                                className="axis-input"
-                                type="number"
-                                placeholder="Max"
-                                value={axisRanges[metric]?.max ?? ""}
-                                onChange={(e) =>
-                                  setAxisRanges((prev) => ({
-                                    ...prev,
-                                    [metric]: {
-                                      ...prev[metric],
-                                      max: e.target.value,
-                                    },
-                                  }))
-                                }
-                              />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
         </aside>
 
         <section className="chart-area glass-panel">

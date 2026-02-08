@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from app.main import app
 from app.core.database import Base, get_db
 from app.core.security import get_password_hash
-from app.models import User, UserRole
+from app.models import User, UserRole, UserRoleBinding
 
 from sqlalchemy.pool import StaticPool
 
@@ -36,7 +36,7 @@ TestingSessionLocal = async_sessionmaker(
 
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 async def db_engine():
     """初始化数据库并创建表"""
     async with engine_test.begin() as conn:
@@ -82,7 +82,7 @@ async def admin_token(client, db_session):
             username="admin",
             password_hash=get_password_hash("admin123"),
             real_name="Admin",
-            role=UserRole.ADMIN,
+            roles_binding=[UserRoleBinding(role=UserRole.ADMIN)],
         )
         db_session.add(user)
         await db_session.commit()
@@ -90,5 +90,49 @@ async def admin_token(client, db_session):
     response = await client.post(
         "/api/auth/login",
         data={"username": "admin", "password": "admin123"}
+    )
+    return response.json()["access_token"]
+
+
+@pytest.fixture(scope="function")
+async def staff_token(client, db_session):
+    """创建普通员工并获取 Token"""
+    from sqlalchemy import select
+    result = await db_session.execute(select(User).where(User.username == "staff"))
+    if not result.scalar_one_or_none():
+        user = User(
+            username="staff",
+            password_hash=get_password_hash("staff123"),
+            real_name="Staff",
+            roles_binding=[UserRoleBinding(role=UserRole.STAFF)],
+        )
+        db_session.add(user)
+        await db_session.commit()
+    
+    response = await client.post(
+        "/api/auth/login",
+        data={"username": "staff", "password": "staff123"}
+    )
+    return response.json()["access_token"]
+
+
+@pytest.fixture(scope="function")
+async def manager_token(client, db_session):
+    """创建主管并获取 Token"""
+    from sqlalchemy import select
+    result = await db_session.execute(select(User).where(User.username == "manager"))
+    if not result.scalar_one_or_none():
+        user = User(
+            username="manager",
+            password_hash=get_password_hash("manager123"),
+            real_name="Manager",
+            roles_binding=[UserRoleBinding(role=UserRole.MANAGER)],
+        )
+        db_session.add(user)
+        await db_session.commit()
+    
+    response = await client.post(
+        "/api/auth/login",
+        data={"username": "manager", "password": "manager123"}
     )
     return response.json()["access_token"]

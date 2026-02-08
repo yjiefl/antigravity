@@ -169,7 +169,7 @@ export const processDataLogic = (rawData, fileName) => {
 					: '';
 
 				resultSeries.push({
-					name: `${metric}${dimSuffix} (${simpleFileName})`,
+					name: metric,
 					data: seriesData,
 					date: group.date,
 					dimensions: group.dimensions,

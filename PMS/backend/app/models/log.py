@@ -32,6 +32,7 @@ class LogAction(str, Enum):
     CANCELLED = "cancelled"  # 取消任务
     SUSPENDED = "suspended"  # 挂起任务
     RESUMED = "resumed"  # 恢复任务
+    WITHDRAWN = "withdrawn"  # 撤回任务
     SYSTEM_NOTICE = "system_notice"  # 系统通知
 
 

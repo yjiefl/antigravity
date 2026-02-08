@@ -48,7 +48,7 @@ async def list_users(
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     
-    return result.scalars().all()
+    return result.unique().scalars().all()
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -64,7 +64,7 @@ async def create_user(
     result = await db.execute(
         select(User).where(User.username == user_in.username)
     )
-    if result.scalar_one_or_none():
+    if result.unique().scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名已存在"
@@ -107,7 +107,7 @@ async def get_user(
     result = await db.execute(
         select(User).where(User.id == user_id)
     )
-    user = result.scalar_one_or_none()
+    user = result.unique().scalar_one_or_none()
     
     if not user:
         raise HTTPException(
@@ -131,7 +131,7 @@ async def update_user(
     result = await db.execute(
         select(User).where(User.id == user_id)
     )
-    user = result.scalar_one_or_none()
+    user = result.unique().scalar_one_or_none()
     
     if not user:
         raise HTTPException(
@@ -170,7 +170,7 @@ async def delete_user(
     result = await db.execute(
         select(User).where(User.id == user_id)
     )
-    user = result.scalar_one_or_none()
+    user = result.unique().scalar_one_or_none()
     
     if not user:
         raise HTTPException(

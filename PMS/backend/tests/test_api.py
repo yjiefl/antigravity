@@ -11,11 +11,13 @@ async def test_login(client: AsyncClient, db_session):
     # 但 admin_token fixture 会创建 admin。我们创建一个普通用户测登录。
     from app.models import User
     from app.core.security import get_password_hash
+    from app.models import User, UserRole, UserRoleBinding
     
     user = User(
         username="testuser",
         password_hash=get_password_hash("password123"),
         real_name="Test User",
+        roles_binding=[UserRoleBinding(role=UserRole.STAFF)],
     )
     db_session.add(user)
     await db_session.commit()
@@ -40,7 +42,7 @@ async def test_get_me(client: AsyncClient, admin_token):
     assert response.status_code == 200
     data = response.json()
     assert data["username"] == "admin"
-    assert data["role"] == "admin"
+    assert "admin" in data["roles"]
 
 
 @pytest.mark.asyncio
