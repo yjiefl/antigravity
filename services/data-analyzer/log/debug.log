@@ -98,3 +98,8 @@ Files modified: backend/server.js, frontend/src/App.jsx
 - Implemented Sticky layout for Axis & Unit settings at sidebar bottom.
 - Updated to 20-color high-contrast industrial palette for better curve distinction.
 - Verified layout stability across resolutions.
+[2026-02-08 21:25:00] Selection Logic Fix & UI Unification:
+- Fixed bug in global 'Select All' that caused it to fail on initial data load.
+- Unified dimension filter headers with a consistent 3-button pattern (Select All, None, Invert).
+- Added visual feedback (opacity 0.3) for redundant selection actions.
+- Verified functional correctness across all dimension controls.

@@ -1964,71 +1964,6 @@ function App() {
 
               {selectedDates.length > 0 && (
                 <div className="section-item">
-                  <div className="section-header">
-                    <span className="label">维度筛选</span>
-                    <div className="dimension-actions-modern">
-                      <button
-                        className="icon-btn-text-tiny"
-                        onClick={() => {
-                          const newFilters = { ...dimensionFilters };
-                          const currentSeries = series.filter((s) =>
-                            selectedDates.includes(s.date),
-                          );
-                          Object.keys(newFilters).forEach((dim) => {
-                            const allVals = [
-                              ...new Set(
-                                currentSeries
-                                  .map((s) => s.dimensions?.[dim])
-                                  .filter(Boolean),
-                              ),
-                            ];
-                            newFilters[dim] = allVals;
-                          });
-                          setDimensionFilters(newFilters);
-                        }}
-                        title="全局全选"
-                      >
-                        <CheckSquare size={13} />
-                      </button>
-                      <button
-                        className="icon-btn-text-tiny"
-                        onClick={() => {
-                          const newFilters = { ...dimensionFilters };
-                          Object.keys(newFilters).forEach(
-                            (key) => (newFilters[key] = []),
-                          );
-                          setDimensionFilters(newFilters);
-                        }}
-                        title="全局清空"
-                      >
-                        <Square size={13} />
-                      </button>
-                      <button
-                        className="icon-btn-text-tiny"
-                        onClick={() => {
-                          const newFilters = { ...dimensionFilters };
-                          const currentSeries = series.filter((s) =>
-                            selectedDates.includes(s.date),
-                          );
-                          Object.keys(newFilters).forEach((dimKey) => {
-                            const allValues = [
-                              ...new Set(
-                                currentSeries
-                                  .map((s) => s.dimensions?.[dimKey])
-                                  .filter(Boolean),
-                              ),
-                            ].sort();
-                            const current = newFilters[dimKey] || [];
-                            newFilters[dimKey] = allValues.filter(v => !current.includes(v));
-                          });
-                          setDimensionFilters(newFilters);
-                        }}
-                        title="全局反选"
-                      >
-                        <RefreshCw size={13} />
-                      </button>
-                    </div>
-                  </div>
                   {(() => {
                     const currentSeries = series.filter((s) =>
                       selectedDates.includes(s.date),
@@ -2041,90 +1976,169 @@ function App() {
                       ),
                     ].sort();
 
-                    if (allDimKeys.length === 0)
+                    if (allDimKeys.length === 0) {
                       return (
                         <div style={{ fontSize: "12px", opacity: 0.6 }}>
                           无可用维度
                         </div>
                       );
+                    }
 
-                    return allDimKeys.map((dimKey) => {
-                      const allValues = [
-                        ...new Set(
-                          currentSeries
-                            .map((s) => s.dimensions?.[dimKey])
-                            .filter(Boolean),
-                        ),
-                      ].sort();
-                      const selected = dimensionFilters[dimKey] || [];
-                      const isAllSelected =
-                        selected.length === allValues.length;
-
-                      return (
-                        <div key={dimKey} style={{ marginBottom: "8px" }}>
-                          <div className="dim-header-row">
-                            <span className="dim-name">{dimKey}</span>
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: "8px",
-                                alignItems: "center",
+                    return (
+                      <>
+                        <div className="section-header">
+                          <span className="label">维度筛选</span>
+                          <div className="dimension-actions-modern">
+                            <button
+                              className="icon-btn-text-tiny"
+                              onClick={() => {
+                                const newFilters = { ...dimensionFilters };
+                                allDimKeys.forEach((dim) => {
+                                  const allVals = [
+                                    ...new Set(
+                                      currentSeries
+                                        .map((s) => s.dimensions?.[dim])
+                                        .filter(Boolean),
+                                    ),
+                                  ];
+                                  newFilters[dim] = allVals;
+                                });
+                                setDimensionFilters(newFilters);
                               }}
+                              title="全局全选"
                             >
-                              <span className="dim-count">
-                                {selected.length}/{allValues.length}
-                              </span>
-                                <button
-                                  className="icon-btn-text-tiny"
-                                  onClick={() =>
-                                    setDimensionFilters((prev) => ({
-                                      ...prev,
-                                      [dimKey]: isAllSelected ? [] : allValues,
-                                    }))
-                                  }
-                                  title={
-                                    isAllSelected ? "清空此维度" : "全选此维度"
-                                  }
-                                >
-                                  {isAllSelected ? <Square size={12} /> : <CheckSquare size={12} />}
-                                </button>
-                                <button
-                                  className="icon-btn-text-tiny"
-                                  onClick={() =>
-                                    setDimensionFilters((prev) => {
-                                      const current = prev[dimKey] || [];
-                                      const next = allValues.filter(v => !current.includes(v));
-                                      return { ...prev, [dimKey]: next };
-                                    })
-                                  }
-                                  title="反选此维度"
-                                >
-                                  <RefreshCw size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          <div className="dimension-tags">
-                            {allValues.map((val) => (
-                              <button
-                                key={val}
-                                className={`dim-tag ${selected.includes(val) ? "active" : ""}`}
-                                onClick={() => {
-                                  setDimensionFilters((prev) => {
-                                    const current = prev[dimKey] || [];
-                                    const next = current.includes(val)
-                                      ? current.filter((v) => v !== val)
-                                      : [...current, val];
-                                    return { ...prev, [dimKey]: next };
-                                  });
-                                }}
-                              >
-                                {val}
-                              </button>
-                            ))}
+                              <CheckSquare size={13} />
+                            </button>
+                            <button
+                              className="icon-btn-text-tiny"
+                              onClick={() => {
+                                const newFilters = { ...dimensionFilters };
+                                allDimKeys.forEach(
+                                  (key) => (newFilters[key] = []),
+                                );
+                                setDimensionFilters(newFilters);
+                              }}
+                              title="全局清空"
+                            >
+                              <Square size={13} />
+                            </button>
+                            <button
+                              className="icon-btn-text-tiny"
+                              onClick={() => {
+                                const newFilters = { ...dimensionFilters };
+                                allDimKeys.forEach((dimKey) => {
+                                  const allValues = [
+                                    ...new Set(
+                                      currentSeries
+                                        .map((s) => s.dimensions?.[dimKey])
+                                        .filter(Boolean),
+                                    ),
+                                  ].sort();
+                                  const current = dimensionFilters[dimKey] || [];
+                                  newFilters[dimKey] = allValues.filter(v => !current.includes(v));
+                                });
+                                setDimensionFilters(newFilters);
+                              }}
+                              title="全局反选"
+                            >
+                              <RefreshCw size={13} />
+                            </button>
                           </div>
                         </div>
-                      );
-                    });
+
+                        {allDimKeys.map((dimKey) => {
+                          const allValues = [
+                            ...new Set(
+                              currentSeries
+                                .map((s) => s.dimensions?.[dimKey])
+                                .filter(Boolean),
+                            ),
+                          ].sort();
+                          const selected = dimensionFilters[dimKey] || [];
+                          const isAllSelected =
+                            selected.length === allValues.length;
+
+                          return (
+                            <div key={dimKey} style={{ marginBottom: "8px" }}>
+                              <div className="dim-header-row">
+                                <span className="dim-name">{dimKey}</span>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "6px",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <span className="dim-count">
+                                    {selected.length}/{allValues.length}
+                                  </span>
+                                  <button
+                                    className="icon-btn-text-tiny"
+                                    onClick={() =>
+                                      setDimensionFilters((prev) => ({
+                                        ...prev,
+                                        [dimKey]: allValues,
+                                      }))
+                                    }
+                                    title="全选此维度"
+                                    disabled={isAllSelected}
+                                    style={{ opacity: isAllSelected ? 0.3 : 1 }}
+                                  >
+                                    <CheckSquare size={12} />
+                                  </button>
+                                  <button
+                                    className="icon-btn-text-tiny"
+                                    onClick={() =>
+                                      setDimensionFilters((prev) => ({
+                                        ...prev,
+                                        [dimKey]: [],
+                                      }))
+                                    }
+                                    title="清空此维度"
+                                    disabled={selected.length === 0}
+                                    style={{ opacity: selected.length === 0 ? 0.3 : 1 }}
+                                  >
+                                    <Square size={12} />
+                                  </button>
+                                  <button
+                                    className="icon-btn-text-tiny"
+                                    onClick={() =>
+                                      setDimensionFilters((prev) => {
+                                        const current = prev[dimKey] || [];
+                                        const next = allValues.filter(v => !current.includes(v));
+                                        return { ...prev, [dimKey]: next };
+                                      })
+                                    }
+                                    title="反选此维度"
+                                  >
+                                    <RefreshCw size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="dimension-tags">
+                                {allValues.map((val) => (
+                                  <button
+                                    key={val}
+                                    className={`dim-tag ${selected.includes(val) ? "active" : ""}`}
+                                    onClick={() => {
+                                      setDimensionFilters((prev) => {
+                                        const current = prev[dimKey] || [];
+                                        const next = current.includes(val)
+                                          ? current.filter((v) => v !== val)
+                                          : [...current, val];
+                                        return { ...prev, [dimKey]: next };
+                                      });
+                                    }}
+                                  >
+                                    {val}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
                   })()}
                 </div>
               )}
