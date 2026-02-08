@@ -1,19 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@500;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@500;700&display=swap");
 
 :root {
   /* Dark Theme (Midnight Blue) */
-  --bg-dark: #0f172a;
-  --panel-bg: rgba(30, 41, 59, 0.7);
-  --accent-color: #3b82f6; /* Bright Blue */
-  --accent-glow: rgba(59, 130, 246, 0.4);
-  --text-main: #f1f5f9;
-  --text-mute: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.08);
-  --hover-bg: rgba(255, 255, 255, 0.05);
+  --bg-dark: #0b111e;
+  --panel-bg: rgba(15, 23, 42, 0.6);
+  --accent-color: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.3);
+  --text-main: #f8fafc;
+  --text-mute: #64748b;
+  --border-color: rgba(255, 255, 255, 0.05);
+  --hover-bg: rgba(255, 255, 255, 0.03);
 
-  --font-family-main: 'Open Sans', system-ui, sans-serif;
-  --font-family-title: 'Poppins', system-ui, sans-serif;
-  --font-family-mono: 'Fira Code', 'Menlo', monospace;
+  --font-family-main: "Open Sans", system-ui, -apple-system, sans-serif;
+  --font-family-title: "Poppins", system-ui, -apple-system, sans-serif;
+  --font-family-mono: "JetBrains Mono", "Fira Code", "Menlo", monospace;
 }
 
 .light-theme {
@@ -41,11 +41,16 @@ body {
   background-color: var(--bg-dark);
   color: var(--text-main);
   overflow: hidden;
-  font-size: 12px; /* Base size for high density */
+  font-size: 11px; /* Base size reduced for high density */
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-family-title);
   font-weight: 500;
   margin: 0;
@@ -57,7 +62,9 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   background-color: var(--bg-dark);
   color: var(--text-main);
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 .glass-panel {
@@ -66,7 +73,9 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-backdrop-filter: blur(20px);
   border: 0.5px solid var(--border-color);
   border-radius: 8px; /* Slightly sharper corners */
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .light-theme .glass-panel {
@@ -90,7 +99,6 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-mute);
 }
-
 
 .version-tag {
   font-size: 0.65rem;
@@ -232,7 +240,9 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: transform 0.1s, box-shadow 0.1s;
+  transition:
+    transform 0.1s,
+    box-shadow 0.1s;
   height: 26px;
 }
 
@@ -248,8 +258,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spin {
@@ -325,15 +339,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar {
-  width: 260px;
+  width: 220px; /* Reduced width */
   display: flex;
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
-  padding: 8px;
+  padding: 6px;
   border-right: 0.5px solid var(--border-color);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--panel-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 .sidebar.collapsed {
@@ -364,9 +380,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar-title-row h3 {
-  font-size: 0.85rem;
+  font-size: 0.75rem; /* ~11px */
   font-weight: 600;
   color: var(--text-main);
+  font-family: var(--font-family-title);
 }
 
 .header-actions {
@@ -499,12 +516,12 @@ h1, h2, h3, h4, h5, h6 {
 .styled-select,
 .styled-select-dim {
   width: 100%;
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: rgba(0, 0, 0, 0.2);
   border: 0.5px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 4px;
   color: var(--text-main);
-  font-size: 0.75rem;
+  font-size: 10px; /* Reduced */
   outline: none;
 }
 
@@ -597,13 +614,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .s-name {
-  font-size: 0.75rem;
+  font-size: 11px; /* Uniform 11px */
   font-weight: 600;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+  font-family: var(--font-family-title);
 }
 
 .light-theme .s-name {
@@ -618,21 +636,20 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .series-auc {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--accent-color);
   font-weight: 600;
   background: rgba(59, 130, 246, 0.1);
-  padding: 1px 3px;
+  padding: 1px 4px;
   border-radius: 3px;
   white-space: nowrap;
-  font-family: var(--font-family-mono);
+  font-family: var(--font-family-mono); /* Force monospace for numbers */
 }
 
 .light-theme .series-auc {
   background: rgba(0, 113, 227, 0.1);
   color: #0071e3;
 }
-
 
 .delete-btn {
   background: transparent;
@@ -1376,9 +1393,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* 隐藏状态样式 */
-.axis-row-compact.is-hidden-metric {
-  filter: grayscale(0.8);
-  transition: all 0.3s;
+/* 隐藏状态样式 - 联动置灰 + 透明度 */
+.axis-row-compact.is-hidden-metric,
+.axis-control-card.is-hidden-metric,
+.series-item.hidden {
+  filter: saturate(0) contrast(0.8) opacity(0.5) !important;
+  transition: all 0.3s ease;
 }
 
 /* Log Modal Enhanced */
@@ -1533,14 +1553,15 @@ h1, h2, h3, h4, h5, h6 {
 
 /* High Density Axis Controls */
 .axis-control-card {
-  margin-bottom: 6px;
-  padding: 6px 8px;
+  margin-bottom: 4px; /* Even tighter */
+  padding: 4px 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   transition: all 0.2s ease;
-  border-radius: 6px;
-  /* background: inherited from glass-panel */
+  border-radius: 4px;
+  background: var(--panel-bg);
+  border: 0.5px solid var(--border-color);
 }
 
 .control-row-dense {
@@ -1557,68 +1578,69 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .value-badge {
-    font-size: 0.65rem;
-    background: rgba(0,0,0,0.1);
-    padding: 1px 4px;
-    border-radius: 4px;
-    min-width: 24px;
-    text-align: center;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1px 5px;
+  border-radius: 4px;
+  min-width: 28px;
+  text-align: center;
+  font-family: var(--font-family-mono);
 }
 
 .light-theme .value-badge {
-    background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .power-box {
-    background: rgba(168,85,247,0.05);
-    border: 1px solid rgba(168,85,247,0.15);
+  background: rgba(168, 85, 247, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.15);
 }
 
 .light-theme .power-box {
-    background: rgba(0,113,227,0.03);
-    border: 1px solid rgba(0,113,227,0.15);
+  background: rgba(0, 113, 227, 0.03);
+  border: 1px solid rgba(0, 113, 227, 0.15);
 }
 
 .icon-indicator {
-    font-size: 0.8rem;
-    margin-right: 4px;
-    opacity: 0.8;
+  font-size: 0.8rem;
+  margin-right: 4px;
+  opacity: 0.8;
 }
 
 .inputs-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .axis-input {
-    flex: 1;
-    background: rgba(0,0,0,0.1);
-    border: none;
-    border-bottom: 1px solid transparent;
-    border-radius: 2px;
-    padding: 2px 4px;
-    font-size: 0.7rem;
-    color: var(--text-main);
-    text-align: center;
-    min-width: 0;
+  flex: 1;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-bottom: 1px solid transparent;
+  border-radius: 2px;
+  padding: 2px 4px;
+  font-size: 0.7rem;
+  color: var(--text-main);
+  text-align: center;
+  min-width: 0;
 }
 
 .axis-input:focus {
-    background: var(--panel-bg);
-    border-bottom-color: var(--accent-color);
-    outline: none;
+  background: var(--panel-bg);
+  border-bottom-color: var(--accent-color);
+  outline: none;
 }
 
 .sep {
-    color: var(--text-mute);
-    font-size: 0.7rem;
+  color: var(--text-mute);
+  font-size: 0.7rem;
 }
 
 .header-tools {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Series Item Hidden State */
@@ -1629,5 +1651,15 @@ h1, h2, h3, h4, h5, h6 {
 
 .series-item-compact.hidden {
   opacity: 0.5;
-  filter: grayscale(1);
+  filter: grayscale(1) saturate(0);
+}
+
+.axis-control-card.is-hidden-metric {
+  opacity: 0.4;
+  filter: saturate(0);
+  pointer-events: auto; /* Allow re-enabling */
+}
+
+.axis-control-card.is-hidden-metric:hover {
+  opacity: 0.7;
 }

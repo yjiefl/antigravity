@@ -78,3 +78,11 @@ Files modified: backend/server.js, frontend/src/App.jsx
    - 增加行间距：Padding 从 8px 增至 10px，提升垂直空间。
    - 字体与换行优化：指标名称字号下调至 0.7rem，强制单行不换行并显示省略号。
    - 输入框精细化：输入框宽度回调至 58px，字号下调至 0.75rem，保持外观精简。
+
+2026-02-08 17:15:00 - UI/UX 深度重构 (Premium Minimalist):
+   - 全局视觉系统: 引入 Poppins (标题/数字) + Open Sans (正文) 方案；数字强制使用等宽字体。
+   - 极简侧边栏: 宽度压缩至 220px，应用 backdrop-filter: blur(20px) 全磨砂质感；控件全面行内化 (Inline) 处理。
+   - 高信息密度: 全局侧边栏字号压缩至 10-11px (0.7rem)；坐标轴卡片高度大幅缩减，移除冗余装饰。
+   - 图表区占比: 优化容器布局，确保 ECharts 区域占据屏幕 85% 以上重心。
+   - 交互联动增强: 实现图例隐藏时的侧边栏联动置灰 (Opacity 0.4 + saturate(0))；重写 ECharts Tooltip 为全透明磨砂简约风格。
+   - 配色方案: 切换至 20 色高对比度专业级色板，优化多指标叠加辨识度。
