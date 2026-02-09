@@ -1,0 +1,16 @@
+2026-02-03 13:15
+问题描述：
+文件 /Users/yangjie/code/antigravity/电气操作管理/电气操作/GB 26860-2011_电力安全工作规程_发电厂和变电站电气部分.md 存在 Markdown Lint 错误 MD060/table-column-style (Table pipe does not align with header for style "aligned")。
+错误位于 line 327，原因是表格的垂直分隔符（|）没有与表头及其它行对齐。
+
+解决方案：
+1. 手动调整了该文件中的“表 1”和“表 2”的所有行分隔符位置，使其在垂直方向上完全对齐。
+2. 采用中文字符计为 2 个字符宽度的标准指导对齐。
+3. 更新了 spec.md，明确了 Markdown 表格对齐的规范。
+4. 修正了 spec.md 中的格式错误（MD058, MD022, MD032, MD031）。
+
+改善验证：
+调整后的表格在支持 Markdown 表格对齐的编辑器中呈现完美的对齐效果，满足 MD060 的对齐要求。
+
+结果：
+问题已修复。
