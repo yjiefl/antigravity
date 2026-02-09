@@ -62,10 +62,14 @@ run_sync() {
     NEEDS_PUSH=$(git cherry -v origin/"$BRANCH" 2>/dev/null | wc -l | tr -d ' ')
     if [ "$NEEDS_PUSH" -gt 0 ] || [ "$force" = true ]; then
         echo "   ${YELLOW}正在推送到远程...${NC}"
-        local push_cmd="git push origin $BRANCH"
-        [ "$force" = true ] && push_cmd="git push --force origin $BRANCH"
+        local success=false
+        if [ "$force" = true ]; then
+            git push --force origin "$BRANCH" && success=true
+        else
+            git push origin "$BRANCH" && success=true
+        fi
         
-        if $push_cmd; then
+        if [ "$success" = true ]; then
             echo "   ${GREEN}推送成功！${NC}"
             log_to_file "Pushed changes."
         else
@@ -75,6 +79,7 @@ run_sync() {
     else
         echo "   ${GREEN}远程已是最新，无需推送。${NC}"
     fi
+
 }
 
 # 检查状态
