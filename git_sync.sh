@@ -285,6 +285,35 @@ run_create_release() {
     # 主仓库
     tag_repo "$REPO_PATH" "Main Repository"
     
+    # 创建 GitHub Release (正式发布)
+    # GitHub CLI (gh) 可以将 Tag 提升为正式的 Release，使其显示在仓库首页右侧
+    if command -v gh >/dev/null 2>&1; then
+        echo "${CYAN}>>> 正在 GitHub 上创建正式 Release...${NC}"
+        
+        # 自动尝试获取 Token 用于认证
+        local current_token=$GH_TOKEN
+        if [ -z "$current_token" ]; then
+            # 尝试从 Git Remote URL 提取 token (如果是 https://user:token@github.com 格式)
+            local remote_url=$(git remote get-url origin 2>/dev/null)
+            if [[ $remote_url =~ "ghp_" ]]; then
+                current_token=$(echo "$remote_url" | sed -n 's/.*:\(ghp_[^@]*\)@.*/\1/p')
+            fi
+        fi
+
+        # 执行创建操作
+        if [ -n "$current_token" ]; then
+            if GH_TOKEN="$current_token" gh release create "$version_tag" --title "$version_tag" --notes "$version_msg" 2>/dev/null; then
+                echo "   ${GREEN}GitHub Release 创建成功！现在您可以在 GitHub 首页的 'Releases' 栏看到了。${NC}"
+            else
+                echo "   ${YELLOW}提示: GitHub Release 创建失败。可能是该版本已存在，或者权限配置有误。${NC}"
+                echo "   ${YELLOW}但 Git Tag 已推送，您也可以在网页端手动创建 Release。${NC}"
+            fi
+        else
+            echo "   ${YELLOW}提示: 未检测到 GitHub Token，无法自动创建正式 Release。${NC}"
+            echo "   ${YELLOW}已推送 Git Tag，请在网页端手动将 Tag 转换为 Release，或运行 'gh auth login'。${NC}"
+        fi
+    fi
+    
     # 嵌套仓库
     if [[ "$apply_all" == "y" || "$apply_all" == "Y" ]]; then
         get_nested_repos | while read repo; do

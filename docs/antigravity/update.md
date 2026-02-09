@@ -1,5 +1,15 @@
 # 更新日志 (Update)
 
+## 2026-02-09 14:55:00
+
+- **任务**: 修复 `git_sync.sh` 的 Release 功能，使其支持创建正式的 GitHub Release。
+- **状态**: 完成。
+- **内容**:
+  - 解释了 Git Tag 与 GitHub Release 的区别（Tag 仅在代码层，Release 才会显示在 GitHub 首页右侧）。
+  - 增强 `run_create_release` 函数，集成 `gh` CLI 工具自动创建正式 Release。
+  - 实现了从 Git Remote URL 自动提取 Token 的逻辑，确保在非登录环境下也能通过 API 创建 Release。
+  - 提供了失败时的友好提示。
+
 ## 2026-02-09 13:30:00
 
 - **任务**: 增加 `git_sync.sh` 脚本的 Release 功能。
