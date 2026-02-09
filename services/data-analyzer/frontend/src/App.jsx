@@ -214,6 +214,12 @@ function App() {
   const [editingSeriesName, setEditingSeriesName] = useState("");
   const [editingMetricName, setEditingMetricName] = useState("");
   const [editingDataText, setEditingDataText] = useState("");
+  const [isSolarMode, setIsSolarMode] = useState(() =>
+    getInitialState("isSolarMode", false),
+  );
+  const [solarRange, setSolarRange] = useState(() =>
+    getInitialState("solarRange", { start: 7, end: 19 }),
+  );
 
   const activeSeries = series
     .filter((s) => {
@@ -1003,12 +1009,14 @@ function App() {
               groupDim && s.dimensions ? s.dimensions[groupDim] : "default";
             const groupKey = `${s.date}_${dimVal}`;
             const ranges = curtailmentRanges[groupKey] || [];
+
             // 只有在是“实际功率”相关的指标上才显示 markArea，避免每个系列都画背景导致颜色过深
             const isMainPower =
               (s.displayName.includes("实际功率") ||
                 s.displayName.includes("功率") ||
                 s.displayName.includes("Power")) &&
               !s.displayName.includes("可用");
+
             return showCurtailmentAnalysis && isMainPower && ranges.length > 0
               ? { silent: true, data: ranges }
               : undefined;
@@ -1051,6 +1059,8 @@ function App() {
       showIntegral,
       historyRecords,
       isCompareOverlap,
+      isSolarMode,
+      solarRange,
       granularity,
       legendSelected,
       rangeConfig,
@@ -1074,6 +1084,8 @@ function App() {
     dimensionFilters,
     theme,
     chartTypes,
+    isSolarMode,
+    solarRange,
     legendSelected,
     showIntegral,
     historyRecords,
@@ -1280,35 +1292,30 @@ function App() {
   };
 
   const exportData = () => {
-    const activeSeries = series.filter((s) => {
-      if (!s) return false;
-      const dateMatch = (selectedDates || []).includes(s.date);
-      if (!dateMatch) return false;
+    // 直接使用当前图表活跃的系列数据（这些数据已经经过了过滤和 displayName/metricKey 的处理）
+    // 这确保留了 CSV 导出内容与图表展示内容 100% 一致，包括处理了 metricKey 缺失导致的覆盖 bug
+    if (!activeSeries || activeSeries.length === 0) {
+      alert("当前没有可导出的数据");
+      return;
+    }
 
-      return Object.entries(dimensionFilters).every(
-        ([dimKey, selectedVals]) => {
-          if (!selectedVals || selectedVals.length === 0) return true;
-          const sVal = s.dimensions ? s.dimensions[dimKey] : "N/A";
-          return selectedVals.includes(sVal);
-        },
-      );
-    });
-
-    if (activeSeries.length === 0) return;
-
-    // 1. 自动收集所有维度和指标
+    // 1. 收集所有唯一的维度和指标名称
     const dimensionKeys = new Set();
-    const metricNames = new Set();
+    const metricKeys = new Set();
     activeSeries.forEach((s) => {
-      Object.keys(s.dimensions).forEach((k) => dimensionKeys.add(k));
-      const mName = s.metricKey;
-      metricNames.add(mName);
+      if (s.dimensions) {
+        Object.keys(s.dimensions).forEach((k) => dimensionKeys.add(k));
+      }
+      metricKeys.add(s.metricKey);
     });
 
     const dimKeyList = Array.from(dimensionKeys).sort();
-    const metricNameList = Array.from(metricNames).sort();
+    const metricNameList = Array.from(metricKeys).sort();
 
-    // 2. 按时间、日期和维度组合数据
+    // 2. 构造数据行
+    // 这里采用“日期+时间”作为主键。维度值则作为列的一部分。
+    // 为了支持不同维度的系列（如有些系列带“机组”，有些不带）对齐在同一行，
+    // 我们需要更灵活的处理。如果同一时间同一场站有多个记录，它们会被合并。
     const dataRows = {}; // key: date|time|dimValues
 
     activeSeries.forEach((s) => {
@@ -1316,6 +1323,10 @@ function App() {
       s.data.forEach((d) => {
         const dateStr = s.date;
         const timeStr = format(d.time, "HH:mm:ss");
+
+        // 生成能够唯一标识这一行实体的维度标识
+        // 注意：如果 Irradiance 只有“场站”维度，而功率有“场站+机组”维度，
+        // 它们当前会被导出在不同行。这是为了保证数据的严谨性。
         const dimValuesJoined = dimKeyList
           .map((k) => s.dimensions[k] || "")
           .join("|");
@@ -1329,21 +1340,22 @@ function App() {
             metrics: {},
           };
         }
+        // 写入指标值。由于修复了 mName (metricKey)，不同指标将不再互相覆盖
         dataRows[rowKey].metrics[mName] = d.value;
       });
     });
 
     // 3. 构建 CSV 内容
     const headers = ["日期", "时间", ...dimKeyList, ...metricNameList];
-    const rows = [headers];
+    const csvRows = [headers];
 
-    // 按日期和时间排序 (解决多日期排序乱码)
+    // 排序逻辑：先按日期，再按时间，最后按维度标识
     const sortedRowKeys = Object.keys(dataRows).sort((a, b) => {
-      const [d1, t1, dim1] = a.split("|");
-      const [d2, t2, dim2] = b.split("|");
-      if (d1 !== d2) return d1.localeCompare(d2);
-      if (t1 !== t2) return t1.localeCompare(t2);
-      return dim1.localeCompare(dim2);
+      const partsA = a.split("|");
+      const partsB = b.split("|");
+      if (partsA[0] !== partsB[0]) return partsA[0].localeCompare(partsB[0]); // Date
+      if (partsA[1] !== partsB[1]) return partsA[1].localeCompare(partsB[1]); // Time
+      return a.localeCompare(b);
     });
 
     sortedRowKeys.forEach((key) => {
@@ -1356,22 +1368,29 @@ function App() {
           rowData.metrics[m] !== undefined ? rowData.metrics[m] : "",
         ),
       ];
-      rows.push(row);
+      csvRows.push(row);
     });
 
-    // 4. 下载文件实现
-    const csvContent = rows
+    // 4. 下载文件
+    const csvContent = csvRows
       .map((r) =>
         r
-          .map((v) => (typeof v === "string" && v.includes(",") ? `"${v}"` : v))
+          .map((v) => {
+            if (v === null || v === undefined) return "";
+            const s = String(v);
+            return s.includes(",") || s.includes('"') || s.includes("\n")
+              ? `"${s.replace(/"/g, '""')}"`
+              : s;
+          })
           .join(","),
       )
       .join("\n");
+
     const blob = new Blob(["\ufeff" + csvContent], {
       type: "text/csv;charset=utf-8;",
     });
-    const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
@@ -1526,19 +1545,19 @@ function App() {
       // 2. 场站,方位角,倾角,经度,纬度,区域
       if (parts.length >= 5) {
         newStations.push({
-          name: parts[0],
+          name: parts[0].trim(),
           azimuth: parseFloat(parts[1]),
           tilt: parseFloat(parts[2]),
           lon: parseFloat(parts[3]),
           lat: parseFloat(parts[4]),
-          region: parts[5] || "",
+          region: (parts[5] || "").trim(),
         });
       } else if (parts.length >= 3) {
         newStations.push({
-          name: parts[0],
+          name: parts[0].trim(),
           lon: parseFloat(parts[1]),
           lat: parseFloat(parts[2]),
-          region: parts[3] || "",
+          region: (parts[3] || "").trim(),
           azimuth: 0,
           tilt: 0,
         });
@@ -1566,6 +1585,32 @@ function App() {
     } catch (e) {
       console.error("导入场站失败", e);
     }
+  };
+
+  const exportStationsCSV = () => {
+    if (!availableStations.length) {
+      alert("场站库为空，无可导出数据");
+      return;
+    }
+
+    const header = "场站,方位角,倾角,经度,纬度,区域";
+    const rows = availableStations.map(
+      (s) =>
+        `${s.name},${s.azimuth || 0},${s.tilt || 0},${s.lon || 0},${s.lat || 0},${s.region || ""}`,
+    );
+
+    const csvContent = [header, ...rows].join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `场站库导出_${format(new Date(), "yyyyMMdd_HHmm")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const deleteStation = async (name) => {
@@ -2158,6 +2203,95 @@ function App() {
                 </div>
 
                 <div
+                  className="checkbox-group-vertical"
+                  style={{ marginBottom: "12px" }}
+                >
+                  <label
+                    className="checkbox-label"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSolarMode}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsSolarMode(checked);
+                        if (checked) {
+                          setGranularity("hour");
+                          setRangeConfig((prev) => ({
+                            ...prev,
+                            hour: solarRange || { start: 7, end: 19 },
+                          }));
+                        } else {
+                          setRangeConfig((prev) => ({
+                            ...prev,
+                            hour: { start: 0, end: 23 },
+                          }));
+                        }
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: isSolarMode ? 600 : 400,
+                        color: isSolarMode ? "var(--primary-color)" : "inherit",
+                      }}
+                    >
+                      光伏模式 (
+                      {String(rangeConfig?.hour?.start ?? 7).padStart(2, "0")}
+                      :00-
+                      {String(rangeConfig?.hour?.end ?? 19).padStart(2, "0")}
+                      :00)
+                    </span>
+                  </label>
+
+                  <label
+                    className="checkbox-label"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={showIntegral}
+                      onChange={(e) => setShowIntegral(e.target.checked)}
+                    />
+                    <span style={{ fontSize: "12px" }}>
+                      显示总计 (积分/均值)
+                    </span>
+                  </label>
+
+                  {selectedDates && selectedDates.length > 1 && (
+                    <label
+                      className="checkbox-label"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isCompareOverlap}
+                        onChange={(e) => setIsCompareOverlap(e.target.checked)}
+                      />
+                      <span style={{ fontSize: "12px" }}>
+                        多日 24h 重叠对比
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                <div
                   className="toggle-group-modern"
                   style={{ marginBottom: "10px" }}
                 >
@@ -2186,15 +2320,21 @@ function App() {
                   </div>
                   <div className="tune-inputs">
                     <select
-                      value={rangeConfig[granularity]?.start || 0}
+                      value={rangeConfig?.[granularity]?.start ?? 0}
                       onChange={(e) =>
-                        setRangeConfig((prev) => ({
-                          ...prev,
-                          [granularity]: {
-                            ...prev[granularity],
-                            start: parseInt(e.target.value),
-                          },
-                        }))
+                        setRangeConfig((prev) => {
+                          const val = parseInt(e.target.value);
+                          if (isSolarMode && granularity === "hour") {
+                            setSolarRange((s) => ({ ...s, start: val }));
+                          }
+                          return {
+                            ...prev,
+                            [granularity]: {
+                              ...prev[granularity],
+                              start: val,
+                            },
+                          };
+                        })
                       }
                     >
                       {Array.from({
@@ -2215,15 +2355,21 @@ function App() {
                     </select>
                     <span className="separator">-</span>
                     <select
-                      value={rangeConfig[granularity]?.end || 0}
+                      value={rangeConfig?.[granularity]?.end ?? 0}
                       onChange={(e) =>
-                        setRangeConfig((prev) => ({
-                          ...prev,
-                          [granularity]: {
-                            ...prev[granularity],
-                            end: parseInt(e.target.value),
-                          },
-                        }))
+                        setRangeConfig((prev) => {
+                          const val = parseInt(e.target.value);
+                          if (isSolarMode && granularity === "hour") {
+                            setSolarRange((s) => ({ ...s, end: val }));
+                          }
+                          return {
+                            ...prev,
+                            [granularity]: {
+                              ...prev[granularity],
+                              end: val,
+                            },
+                          };
+                        })
                       }
                     >
                       {Array.from({
@@ -2244,194 +2390,108 @@ function App() {
                     </select>
                   </div>
                 </div>
+              </div>
 
-                <div
-                  className="checkbox-group-vertical"
-                  style={{ marginTop: "6px" }}
-                >
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={showIntegral}
-                      onChange={(e) => setShowIntegral(e.target.checked)}
-                    />
-                    <span>显示总计 (积分/均值)</span>
-                  </label>
-                  {selectedDates.length > 1 && (
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={isCompareOverlap}
-                        onChange={(e) => setIsCompareOverlap(e.target.checked)}
-                      />
-                      <span>多日 24h 重叠对比</span>
-                    </label>
-                  )}
-                </div>
-
-                <div
-                  className="curtailment-section-compact"
-                  style={{
-                    marginTop: "8px",
-                    borderTop: "1px solid var(--border-color)",
-                    paddingTop: "6px",
-                  }}
-                >
-                  <label
-                    className="checkbox-label"
+              <div
+                className="curtailment-section-compact"
+                style={{
+                  marginTop: "8px",
+                  borderTop: "1px solid var(--border-color)",
+                  paddingTop: "6px",
+                }}
+              >
+                {/* 限电分析 */}
+                <div className="section-item">
+                  <div
+                    className="section-header"
                     style={{
+                      display: "flex",
                       justifyContent: "space-between",
-                      marginBottom: "4px",
+                      alignItems: "center",
                     }}
                   >
-                    <span className="label">限电分析</span>
-                    <input
-                      type="checkbox"
-                      checked={showCurtailmentAnalysis}
-                      onChange={(e) =>
-                        setShowCurtailmentAnalysis(e.target.checked)
-                      }
-                    />
-                  </label>
+                    <span className="label">限电分析 (AGC 联动)</span>
+                    <div className="switch-wrapper">
+                      <input
+                        type="checkbox"
+                        id="curtail-toggle"
+                        className="ios-switch"
+                        checked={showCurtailmentAnalysis}
+                        onChange={(e) =>
+                          setShowCurtailmentAnalysis(e.target.checked)
+                        }
+                      />
+                      <label
+                        htmlFor="curtail-toggle"
+                        className="switch-label"
+                      ></label>
+                    </div>
+                  </div>
 
                   {showCurtailmentAnalysis && (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                      }}
-                    >
-                      <div className="control-row-dense" style={{ gap: "4px" }}>
-                        <div
-                          className="param-item-inline"
-                          style={{
-                            flex: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "2px",
-                          }}
-                        >
-                          <span className="label-mini">辐照 &gt;</span>
-                          <input
-                            type="number"
-                            value={curtailmentIrrThreshold}
-                            onChange={(e) =>
-                              setCurtailmentIrrThreshold(
-                                parseFloat(e.target.value),
-                              )
-                            }
-                            className="axis-input"
-                            style={{ width: "100%", color: "#fff" }}
-                          />
-                        </div>
-                        <div
-                          className="param-item-inline"
-                          style={{
-                            flex: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "2px",
-                          }}
-                        >
-                          <span className="label-mini">偏差 &lt;</span>
-                          <input
-                            type="number"
-                            value={curtailmentDiffThreshold}
-                            onChange={(e) =>
-                              setCurtailmentDiffThreshold(
-                                parseFloat(e.target.value),
-                              )
-                            }
-                            className="axis-input"
-                            style={{ width: "100%", color: "#fff" }}
-                          />
-                        </div>
+                    <div className="compact-grid" style={{ marginTop: "8px" }}>
+                      <div className="grid-item">
+                        <label>辐照阈值</label>
+                        <input
+                          type="number"
+                          value={curtailmentIrrThreshold}
+                          onChange={(e) =>
+                            setCurtailmentIrrThreshold(Number(e.target.value))
+                          }
+                        />
                       </div>
-                      <div
-                        className="control-row-dense"
-                        style={{ marginTop: "2px", gap: "4px" }}
-                      >
-                        <span
-                          className="label-mini"
-                          style={{ flexShrink: 0, width: "28px" }}
-                        >
-                          样式
-                        </span>
+                      <div className="grid-item">
+                        <label>偏差阈值</label>
+                        <input
+                          type="number"
+                          value={curtailmentDiffThreshold}
+                          onChange={(e) =>
+                            setCurtailmentDiffThreshold(Number(e.target.value))
+                          }
+                        />
+                      </div>
+                      <div className="grid-item full-width">
                         <div
                           style={{
                             display: "flex",
-                            gap: "4px",
                             alignItems: "center",
-                            flex: 1,
-                            minWidth: 0,
+                            gap: "8px",
                           }}
                         >
-                          <div
+                          <label style={{ flexShrink: 0 }}>外观</label>
+                          <input
+                            type="color"
+                            value={curtailmentColor}
+                            onChange={(e) =>
+                              setCurtailmentColor(e.target.value)
+                            }
                             style={{
-                              position: "relative",
-                              width: "16px",
-                              height: "14px",
-                              borderRadius: "2px",
-                              backgroundColor: curtailmentColor,
-                              overflow: "hidden",
-                              border: "1px solid var(--border-color)",
-                              flexShrink: 0,
+                              width: "40px",
+                              height: "20px",
+                              padding: 0,
+                              border: "none",
                             }}
-                          >
-                            <input
-                              type="color"
-                              value={curtailmentColor}
-                              onChange={(e) =>
-                                setCurtailmentColor(e.target.value)
-                              }
-                              style={{
-                                opacity: 0,
-                                position: "absolute",
-                                inset: 0,
-                                cursor: "pointer",
-                                width: "100%",
-                                height: "100%",
-                              }}
-                            />
-                          </div>
+                          />
                           <input
                             type="range"
                             min="0"
                             max="1"
-                            step="0.02"
+                            step="0.05"
                             value={curtailmentOpacity}
                             onChange={(e) =>
-                              setCurtailmentOpacity(parseFloat(e.target.value))
+                              setCurtailmentOpacity(Number(e.target.value))
                             }
-                            style={{
-                              flex: 1,
-                              height: "4px",
-                              padding: 0,
-                              maxWidth: "95px",
-                            }}
+                            style={{ flex: 1 }}
                           />
-                          <span
-                            className="value-badge"
-                            style={{ flexShrink: 0, minWidth: "36px" }}
-                          >
+                          <span style={{ fontSize: "10px", width: "24px" }}>
                             {Math.round(curtailmentOpacity * 100)}%
                           </span>
-                          <button
-                            className="icon-btn-text"
-                            onClick={() => setCurtailmentOpacity(0.2)}
-                            title="重置透明度"
-                            style={{ flexShrink: 0, padding: 0 }}
-                          >
-                            <RotateCcw size={10} />
-                          </button>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-
               <div
                 className="section-item"
                 style={{
@@ -3255,6 +3315,20 @@ function App() {
                   style={{ width: "100%", marginTop: "10px" }}
                 >
                   确认导入/更新
+                </button>
+                <button
+                  className="text-action-btn-mini"
+                  onClick={exportStationsCSV}
+                  style={{
+                    width: "100%",
+                    marginTop: "8px",
+                    justifyContent: "center",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    padding: "8px",
+                  }}
+                >
+                  <Download size={14} style={{ marginRight: "6px" }} />
+                  导出场站库为 CSV
                 </button>
                 <p
                   style={{

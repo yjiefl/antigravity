@@ -26,7 +26,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <!-- 样式文件 -->
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/style.css?v=202602091710" />
   </head>
 
   <body>
@@ -335,15 +335,7 @@
                   </div>
                 </div>
 
-                <div class="form-group">
-                  <label for="forecastStartTime">预测起始时间</label>
-                  <input
-                    type="datetime-local"
-                    id="forecastStartTime"
-                    class="form-control"
-                    step="900"
-                  />
-                </div>
+
 
                 <div class="form-group">
                   <label for="forecastDays">预测天数</label>
@@ -416,6 +408,9 @@
                   </svg>
                   导出CSV
                 </button>
+              </div>
+              <div style="margin-top: 16px; color: #ff3b30; font-weight: 600; font-size: 0.95rem;">
+                注：预测数据仅为当前预测结果
               </div>
             </div>
           </section>
@@ -496,7 +491,11 @@
             <div id="forecastDataHeader" class="flex-between align-center mb-4">
               <div class="flex-column">
                 <h2 class="section-title mb-0">预测结果</h2>
-                <div id="forecastQueryTime" class="text-xs text-gray-400" style="margin-top: 4px"></div>
+                <div
+                  id="forecastQueryTime"
+                  class="text-xs text-gray-400"
+                  style="margin-top: 4px"
+                ></div>
               </div>
               <div id="globalForecastInfo" class="text-sm text-gray-500">
                 预测天数: <span id="globalForecastDays">--</span>天
@@ -520,8 +519,13 @@
             <div class="charts-section">
               <div class="chart-card full-width">
                 <div class="flex-between align-center mb-4">
-                  <h3 class="chart-title mb-0">未来 24 小时预测趋势 (15分钟精度)</h3>
-                  <div id="forecastChartToggles" class="chart-toggles-container"></div>
+                  <h3 class="chart-title mb-0">
+                    未来 24 小时预测趋势 (15分钟精度)
+                  </h3>
+                  <div
+                    id="forecastChartToggles"
+                    class="chart-toggles-container"
+                  ></div>
                 </div>
                 <div style="height: 400px">
                   <canvas id="forecastNext24hChart"></canvas>
@@ -1152,18 +1156,18 @@
       <div class="container">
         <p>
           © 2026 天气查询系统 | 数据来源: Open-Meteo API | 版本:
-          v2026.02.03.1732 | 作者: yjiefl
+          v2026.02.09.1710 | 作者: yjiefl
         </p>
         <p class="footer-note">数据仅供参考，不作为官方气象数据使用</p>
       </div>
     </footer>
 
     <!-- JavaScript -->
-    <script src="js/api.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/city_selector.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/data-management.js"></script>
+    <script src="js/api.js?v=202602091710"></script>
+    <script src="js/common.js?v=202602091710"></script>
+    <script src="js/charts.js?v=202602091710"></script>
+    <script src="js/city_selector.js?v=202602091710"></script>
+    <script src="js/app.js?v=202602091710"></script>
+    <script src="js/data-management.js?v=202602091710"></script>
   </body>
 </html>

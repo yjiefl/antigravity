@@ -51,6 +51,11 @@ if [ $? -eq 0 ]; then
     else
         echo "❌ 远程 Docker 构建失败，请检查 VPS 是否已安装 docker 和 docker compose。"
     fi
+
+    # 修复权限：确保 SQLite 数据库和日志目录可写
+    echo "🔧 正在修复远程文件权限..."
+    ssh $SSH_ALIAS "chmod -R 777 $VPS_PATH/backend $VPS_PATH/log $VPS_PATH/logs 2>/dev/null"
+    
 else
     echo "❌ 代码同步失败，请检查 rsync/ssh 状态。"
 fi

@@ -115,23 +115,38 @@ def create_app():
     # 初始化城市管理器
     city_manager = CityManager(db_manager)
     
-    # 【新增】自动初始化城市数据 (Item 51)
+    # 【新增】自动初始化城市数据 (Item 51 - 改进版)
     try:
+        from backend.config import GUANGXI_CITIES
+        
+        # 获取现有城市映射 (Name -> ID)
         existing_cities = city_manager.get_all_cities()
-        if not existing_cities:
-            from backend.config import GUANGXI_CITIES
-            city_manager.init_cities(GUANGXI_CITIES)
-            logger.info("初始城市数据导入完成")
-        elif len(existing_cities) < 5:
-            # 如果现有启用城市较少，尝试补全默认城市
-            from backend.config import GUANGXI_CITIES
-            to_add = []
-            for c in GUANGXI_CITIES:
-                if not city_manager.get_city_by_name(c['city_name']):
-                    to_add.append(c)
-            if to_add:
-                city_manager.init_cities(to_add)
-                logger.info(f"补全了 {len(to_add)} 个默认城市")
+        existing_city_map = {c['city_name']: c for c in existing_cities}
+        
+        added_count = 0
+        for city_conf in GUANGXI_CITIES:
+            name = city_conf['city_name']
+            if name not in existing_city_map:
+                try:
+                    city_manager.add_city(
+                        name,
+                        city_conf['longitude'],
+                        city_conf['latitude'],
+                        city_conf.get('region', '广西')
+                    )
+                    added_count += 1
+                    logger.info(f"自动添加缺失城市: {name}")
+                except Exception as add_err:
+                    logger.error(f"添加城市 {name} 失败: {add_err}")
+            else:
+                 # 可选：如果需要更新坐标，可以在这里实现
+                 pass
+                 
+        if added_count > 0:
+            logger.info(f"城市数据同步完成，共添加 {added_count} 个新城市")
+        else:
+            logger.info("城市数据已是最新，无需添加")
+            
     except Exception as e:
         logger.error(f"自动初始化城市数据失败: {e}")
     

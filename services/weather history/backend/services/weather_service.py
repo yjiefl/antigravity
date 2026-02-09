@@ -142,7 +142,8 @@ class WeatherService:
         end_date: str,
         fields: List[str],
         timezone: str = 'Asia/Shanghai',
-        city_id: Optional[int] = None
+        city_id: Optional[int] = None,
+        force_refresh: bool = False
     ) -> Dict[str, Any]:
         """
         获取历史天气数据
@@ -160,7 +161,7 @@ class WeatherService:
         """
         # 如果提供了city_id，为了保证数据库的完整性，我们总是获取所有可用字段 (Item 2)
         request_fields = fields
-        if city_id:
+        if city_id and not force_refresh:
             # 策略：本地数据库优先
             try:
                 # 1. 尝试从本地持久化表 weather_data 获取数据
@@ -178,6 +179,7 @@ class WeatherService:
                 
                 # 本地数据量检查 (容许少量缺失, e.g. 95%)
                 if len(db_data) >= expected_records * 0.95:
+                    logger.info(f"本地数据量充足: {len(db_data)}/{expected_records}")
                     # 3. 检查请求的字段在本地数据中是否均有数值 (Item 3 & 44 改进)
                     # 只要有一个用户请求的字段在所有记录中都为 None，就认为该字段可能未曾下载，需要触发 API 请求
                     is_complete = True
@@ -202,8 +204,9 @@ class WeatherService:
                             'timezone': timezone,
                             'hourly_data': db_data
                         }
-                    else:
                         logger.info("本地数据库字段不全，将触发 API 请求以补全（增肥）缺失字段")
+                else:
+                    logger.info(f"本地数据量不足，将触发API更新: found={len(db_data)}, expected={expected_records}")
             except Exception as e:
                 logger.warning(f"本地数据库预查失败: {e}")
 

@@ -120,13 +120,24 @@ app.get('/api/stations', (req, res) => {
 app.post('/api/stations', (req, res) => {
 	const stations = Array.isArray(req.body) ? req.body : [req.body];
 	logAction(req, 'Save Stations', `Count: ${stations.length}`);
-	
-	const stmt = db.prepare("INSERT OR REPLACE INTO stations (name, lon, lat, region, azimuth, tilt) VALUES (?, ?, ?, ?, ?, ?)");
-	stations.forEach(s => {
-		stmt.run([s.name, s.lon, s.lat, s.region || '', s.azimuth || 0, s.tilt || 0]);
+
+	db.serialize(() => {
+		db.run("BEGIN TRANSACTION");
+		const stmt = db.prepare("INSERT OR REPLACE INTO stations (name, lon, lat, region, azimuth, tilt) VALUES (?, ?, ?, ?, ?, ?)");
+		stations.forEach(s => {
+			stmt.run([s.name.trim(), s.lon, s.lat, (s.region || '').trim(), s.azimuth || 0, s.tilt || 0]);
+		});
+		stmt.finalize();
+		db.run("COMMIT", (err) => {
+			if (err) {
+				console.error("Transaction commit failed:", err);
+				// 尝试回滚
+				db.run("ROLLBACK");
+				return res.status(500).json({ error: "Database transaction failed: " + err.message });
+			}
+			res.json({ success: true, count: stations.length });
+		});
 	});
-	stmt.finalize();
-	res.json({ success: true });
 });
 
 app.delete('/api/stations/:name', (req, res) => {

@@ -6,6 +6,7 @@ import logging
 from flask import Blueprint, request, jsonify, send_file
 from typing import Dict, Any
 from io import BytesIO
+from datetime import datetime
 from backend.services.weather_service import WeatherService
 from backend.services.data_exporter import DataExporter
 from backend.services.data_analyzer import DataAnalyzer
@@ -395,6 +396,7 @@ def query_weather():
         start_date = data.get('start_date')
         end_date = data.get('end_date')
         fields = data.get('fields', DEFAULT_FIELDS)
+        force_refresh = data.get('force_refresh', False)
         
         # 参数验证
         if not all([city_id, start_date, end_date]):
@@ -420,7 +422,8 @@ def query_weather():
             start_date=start_date,
             end_date=end_date,
             fields=fields,
-            city_id=city_id
+            city_id=city_id,
+            force_refresh=force_refresh
         )
         
         # 计算统计摘要

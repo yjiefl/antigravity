@@ -634,10 +634,10 @@ body {
   background: linear-gradient(90deg, rgba(0, 122, 255, 0.2), transparent);
 }
 
-/* 图表区域 (Apple Style Grid) */
+/* 图表区域 (Apple Style Grid) - 每行显示一个图表 */
 .charts-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  grid-template-columns: 1fr;
   gap: 20px;
 }
 
@@ -1685,7 +1685,7 @@ body {
 }
 
 .forecast-list-horizontal::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 10px;
 }
 

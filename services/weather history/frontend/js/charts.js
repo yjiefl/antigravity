@@ -66,11 +66,13 @@ class ChartManager {
             scales: {
                 x: {
                     ticks: {
-                        color: '#64748b', // 更深的灰色
+                        color: '#64748b',
                         font: {
                             family: 'Inter',
                             size: 11
-                        }
+                        },
+                        maxTicksLimit: 24, // 增加刻度数量
+                        autoSkip: true
                     },
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)' // 浅色背景对应的深色网格
@@ -119,13 +121,15 @@ class ChartManager {
             this.charts[canvasId].destroy();
         }
 
-        // 提取数据
-        const labels = data.map(d => new Date(d.datetime).toLocaleString('zh-CN', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }));
+        // 提取数据 (手动格式化以确保显示 15 分钟精度)
+        const labels = data.map(d => {
+            const date = new Date(d.datetime);
+            const m = date.getMonth() + 1;
+            const day = date.getDate();
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${m}月${day}日 ${h}:${min}`;
+        });
         const temperatures = data.map(d => d.temperature_2m);
 
         // 创建图表
@@ -174,12 +178,14 @@ class ChartManager {
             this.charts[canvasId].destroy();
         }
 
-        const labels = data.map(d => new Date(d.datetime).toLocaleString('zh-CN', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }));
+        const labels = data.map(d => {
+            const date = new Date(d.datetime);
+            const m = date.getMonth() + 1;
+            const day = date.getDate();
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${m}月${day}日 ${h}:${min}`;
+        });
 
         const datasets = [];
 
@@ -254,12 +260,14 @@ class ChartManager {
             this.charts[canvasId].destroy();
         }
 
-        const labels = data.map(d => new Date(d.datetime).toLocaleString('zh-CN', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }));
+        const labels = data.map(d => {
+            const date = new Date(d.datetime);
+            const m = date.getMonth() + 1;
+            const day = date.getDate();
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${m}月${day}日 ${h}:${min}`;
+        });
 
         const datasets = [];
 
@@ -322,12 +330,14 @@ class ChartManager {
             this.charts[canvasId].destroy();
         }
 
-        const labels = data.map(d => new Date(d.datetime).toLocaleString('zh-CN', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }));
+        const labels = data.map(d => {
+            const date = new Date(d.datetime);
+            const m = date.getMonth() + 1;
+            const day = date.getDate();
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${m}月${day}日 ${h}:${min}`;
+        });
 
         const precipitation = data.map(d => d.precipitation || 0);
 
@@ -376,12 +386,14 @@ class ChartManager {
         if (citiesData.length === 0) return;
 
         // 使用第一个城市的数据生成 X 轴标签
-        const labels = citiesData[0].data.map(d => new Date(d.datetime).toLocaleString('zh-CN', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }));
+        const labels = citiesData[0].data.map(d => {
+            const date = new Date(d.datetime);
+            const m = date.getMonth() + 1;
+            const day = date.getDate();
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${m}月${day}日 ${h}:${min}`;
+        });
 
         // 定义一组对比颜色
         const colors = [

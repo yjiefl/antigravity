@@ -753,8 +753,8 @@ function getIconSVG(type) {
  * 显示图表
  */
 function displayCharts(records, cityName = "") {
-  // 限制数据点数量以提升性能
-  const maxPoints = 500;
+  // 限制数据点数量以提升性能 (Item: 提升 15 分钟级精度的展示效果)
+  const maxPoints = 2000; // 调大限制，确保即使查一个月也能保持较高精度
   const step = Math.ceil(records.length / maxPoints);
   const sampledData = records.filter((_, index) => index % step === 0);
 
@@ -1576,8 +1576,12 @@ function renderForecast(data) {
 
   currentTodayHourly = todayData;
 
-  // 明日趋势维持 1小时 精度
-  currentTomorrowHourly = hourly.filter((h) => h.time.startsWith(tomorrowStr));
+  // 明日趋势也优先尝试 15 分钟高精度数据
+  let tomorrowData = minutely.filter((h) => h.time.startsWith(tomorrowStr));
+  if (tomorrowData.length === 0) {
+    tomorrowData = hourly.filter((h) => h.time.startsWith(tomorrowStr));
+  }
+  currentTomorrowHourly = tomorrowData;
 
   // 3. 初始渲染图表 (应用 toggle 状态)
   updateChartsFromToggles();
@@ -1744,7 +1748,7 @@ function renderGenericHourlyChart(
         tooltip: { mode: "index", intersect: false },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
         y: {
           type: "linear",
           display: options.showTemp,
@@ -2094,18 +2098,7 @@ let forecastQueryState = {
  * 初始化预测查询页面
  */
 function initForecastQueryPage() {
-  // 设置默认预测时间为当前时间
-  const startTimeInput = document.getElementById("forecastStartTime");
-  if (startTimeInput) {
-    const now = new Date();
-    // 格式化为 datetime-local 格式
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, "0");
-    startTimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-  }
+
 
   // 渲染字段选择器
   renderForecastFieldSelector();
@@ -2114,25 +2107,6 @@ function initForecastQueryPage() {
   const queryBtn = document.getElementById("forecastQueryBtn");
   if (queryBtn) {
     queryBtn.addEventListener("click", handleForecastQuery);
-  }
-
-  // 强制分钟为 0, 15, 30, 45
-  if (startTimeInput) {
-    startTimeInput.addEventListener("change", (e) => {
-      if (!e.target.value) return;
-      const date = new Date(e.target.value);
-      const minutes = date.getMinutes();
-      const roundedMinutes = Math.floor(minutes / 15) * 15;
-      if (minutes !== roundedMinutes) {
-        date.setMinutes(roundedMinutes);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        const hours = String(date.getHours()).padStart(2, "0");
-        const mins = String(roundedMinutes).padStart(2, "0");
-        e.target.value = `${year}-${month}-${day}T${hours}:${mins}`;
-      }
-    });
   }
 
   // 绑定导出按钮事件
