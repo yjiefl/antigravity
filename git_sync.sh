@@ -17,7 +17,8 @@ NC='\033[0m' # No Color
 
 # 1. 动态获取项目路径
 REPO_PATH=$(cd "$(dirname "$0")"; pwd)
-LOG_FILE="$REPO_PATH/log/debug.log"
+REPORT_DIR="$REPO_PATH/report"
+LOG_FILE="$REPORT_DIR/debug.log"
 
 # 进入项目目录
 cd "$REPO_PATH" || { echo "${RED}错误: 无法进入目录 $REPO_PATH${NC}"; exit 1; }
@@ -29,7 +30,7 @@ cd "$REPO_PATH" || { echo "${RED}错误: 无法进入目录 $REPO_PATH${NC}"; ex
 log_to_file() {
     local msg="$1"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    mkdir -p "$(dirname "$LOG_FILE")"
+    mkdir -p "$REPORT_DIR"
     echo "$timestamp - [Git Sync] $msg" >> "$LOG_FILE"
 }
 
@@ -105,7 +106,9 @@ run_check_status() {
 # 2. 生成报告
 run_generate_report() {
     REPORT_TIME=$(date '+%Y-%m-%d_%H%M%S')
-    REPORT_FILE="$REPO_PATH/log/repo_status_${REPORT_TIME}.txt"
+    REPORT_FILE="$REPORT_DIR/repo_status_${REPORT_TIME}.txt"
+    mkdir -p "$REPORT_DIR"
+    
     echo "${BLUE}>>> 正在生成详细报告...${NC}"
     {
         echo "=== Repository Status Report ==="
@@ -207,6 +210,91 @@ run_full_sync() {
     echo "${GREEN}=== 所有同步完成 ===${NC}"
     log_to_file "Recursive sync completed."
 }
+# 5. 创建 Release
+run_create_release() {
+    echo "${CYAN}>>> 创建 Release (打标签)${NC}"
+    
+    # 1. 输入标签名
+    echo -n "请输入版本号 (例如 v1.0.0): "
+    read version_tag
+    if [ -z "$version_tag" ]; then
+        echo "${RED}错误: 版本号不能为空。${NC}"
+        return
+    fi
+    
+    # 2. 输入描述
+    echo -n "请输入版本描述 (可选): "
+    read version_msg
+    if [ -z "$version_msg" ]; then
+        version_msg="Release $version_tag"
+    fi
+    
+    # 3. 询问是否同步到所有子仓库
+    echo -n "是否对所有嵌套仓库也打上该标签? (y/n) [默认 n]: "
+    read apply_all
+    
+    # 确认
+    echo "即将执行的操作："
+    echo "  - 标签名: $version_tag"
+    echo "  - 描述: $version_msg"
+    if [[ "$apply_all" == "y" || "$apply_all" == "Y" ]]; then
+        echo "  - 范围: 主仓库 + 所有嵌套仓库"
+    else
+        echo "  - 范围: 仅主仓库"
+    fi
+    
+    echo -n "确认继续? (y/n): "
+    read confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "操作已取消。"
+        return
+    fi
+    
+    log_to_file "Starting release creation: $version_tag"
+
+    # 函数：给单个仓库打标签
+    tag_repo() {
+        local repo_path=$1
+        local name=$2
+        
+        if cd "$repo_path"; then
+            echo "${CYAN}>>> 正在处理: $name${NC}"
+            
+            # 检查标签是否存在
+            if git rev-parse "$version_tag" >/dev/null 2>&1; then
+                echo "   ${YELLOW}警告: 标签 $version_tag 已存在，跳过。${NC}"
+            else
+                if git tag -a "$version_tag" -m "$version_msg"; then
+                    echo "   ${GREEN}本地标签创建成功。${NC}"
+                    if git push origin "$version_tag"; then
+                        echo "   ${GREEN}标签推送到远程成功。${NC}"
+                        log_to_file "[$name] Tagged $version_tag"
+                    else
+                        echo "   ${RED}标签推送到远程失败。${NC}"
+                    fi
+                else
+                    echo "   ${RED}本地标签创建失败。${NC}"
+                fi
+            fi
+        else
+            echo "${RED}无法进入目录: $repo_path${NC}"
+        fi
+    }
+
+    # 执行
+    # 主仓库
+    tag_repo "$REPO_PATH" "Main Repository"
+    
+    # 嵌套仓库
+    if [[ "$apply_all" == "y" || "$apply_all" == "Y" ]]; then
+        get_nested_repos | while read repo; do
+            REL_PATH=${repo#$REPO_PATH/}
+            tag_repo "$repo" "$REL_PATH"
+        done
+    fi
+    
+    echo "${GREEN}=== Release 流程结束 ===${NC}"
+}
 
 # -----------------------------------------------------------------------------
 # 交互式菜单
@@ -220,9 +308,10 @@ show_menu() {
     echo "2. ${BLUE}检查状态${NC} (查看所有嵌套仓库状态)"
     echo "3. ${YELLOW}生成报告${NC} (导出状态到文件)"
     echo "4. ${RED}强制推送${NC} (慎用, 覆盖远程)"
+    echo "5. ${MAGENTA}创建Release${NC} (打标签并推送)"
     echo "0. ${NC}退出${NC}"
     echo "-----------------------------------------"
-    echo -n "请选择功能 [1-4]: "
+    echo -n "请选择功能 [1-5]: "
     read choice
     echo ""
     
@@ -240,6 +329,7 @@ show_menu() {
                echo "操作已取消。"
            fi
            ;;
+        5) run_create_release ;;
         0) echo "再见！"; exit 0 ;;
         *) echo "${RED}无效选项，请重新运行。${NC}" ;;
     esac
@@ -257,10 +347,12 @@ if [ $# -gt 0 ]; then
                 echo "用法: ./git_sync.sh [无参数进入菜单]" 
                 echo "  -s  检查状态"
                 echo "  -r  生成报告"
+                echo "  -t  创建Release"
                 exit 0 ;;
             -s|--status) run_check_status; exit 0 ;;
             -r|--report) run_generate_report; exit 0 ;;
             -f|--force)  run_full_sync true; exit 0 ;;
+            -t|--tag|--release) run_create_release; exit 0 ;;
             *) echo "无效选项: $1"; exit 1 ;;
         esac
         shift

@@ -163,11 +163,6 @@ export const processDataLogic = (rawData, fileName) => {
 
 				const unit = guessUnit(metric);
 
-				// 构建更详细的名称，包含维度信息
-				const dimSuffix = Object.values(group.dimensions).length > 0
-					? ` (${Object.values(group.dimensions).join(', ')})`
-					: '';
-
 				resultSeries.push({
 					name: metric,
 					data: seriesData,

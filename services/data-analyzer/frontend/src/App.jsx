@@ -34,6 +34,22 @@ import "./App.css";
  * @returns {JSX.Element}
  */
 function App() {
+  /**
+   * 统一获取指标的清洗后名称（带单位，不带场站等冗余信息）
+   * @param {Object} s 系列对象
+   * @returns {string} 指标名称
+   */
+  const getCleanMetricName = (s) => {
+    if (!s) return "";
+    const clean = (s.metricName || s.name || "")
+      .split(" (")[0]
+      .split("(")[0]
+      .trim();
+    const unit =
+      s.unit || (s.name.includes("(") ? s.name.match(/\(([^)]+)\)/)?.[1] : "");
+    return unit ? `${clean}(${unit})` : clean;
+  };
+
   // 从 LocalStorage 加载初始数据
   const getInitialState = (key, defaultVal) => {
     try {
@@ -216,25 +232,13 @@ function App() {
       );
     })
     .map((s) => {
-      // User request: Only show data name, not dimensions/stations
-      // User request: Only show data name, not dimensions/stations or import suffixes
-      const cleanName = (s.metricName || s.name).split(" (")[0].split("(")[0].trim();
-      // Restore unit if it was stripped by the second split
-      const unit = s.unit || (s.name.includes("(") ? s.name.match(/\(([^)]+)\)/)?.[1] : "");
-      const baseName = unit ? `${cleanName}(${unit})` : cleanName;
-      return { ...s, displayName: baseName };
+      // 统一指标标识符逻辑，确保在图表、侧边栏、颜色设置中全量匹配
+      const metricKey = getCleanMetricName(s);
+      return { ...s, displayName: metricKey, metricKey: metricKey };
     });
 
   const uniqueMetrics = [
-    ...new Set(
-      activeSeries
-        .map((s) => {
-          if (!s) return null;
-          const name = s.metricName || s.name || "";
-          return name.split(" (")[0];
-        })
-        .filter(Boolean),
-    ),
+    ...new Set(activeSeries.map((s) => s.metricKey).filter(Boolean)),
   ];
 
   // 1. 生命周期管理：初始化与销毁
@@ -252,7 +256,7 @@ function App() {
         // 鼠标移动监听：用于切换左侧纵坐标
         chartInstance.current.on("mouseover", (params) => {
           if (params.seriesName) {
-            const metric = params.seriesName.split(" (")[0];
+            const metric = params.seriesName;
             setHoveredMetric(metric);
           }
         });
@@ -264,7 +268,7 @@ function App() {
         // 点击圆点切换纵坐标
         chartInstance.current.on("click", (params) => {
           if (params.seriesName) {
-            const metric = params.seriesName.split(" (")[0];
+            const metric = params.seriesName;
             setHoveredMetric(metric);
           }
         });
@@ -456,7 +460,7 @@ function App() {
         let startRange = null;
         let lastIrrad = 0; // 缓存上一个有效的辐照度值，应对时间戳不对齐
 
-        const pushRange = (start, end) => {
+        const pushRange = (start, end, exclusiveEnd = false) => {
           let s = start,
             e = end;
           if (isCompareOverlap) {
@@ -482,6 +486,7 @@ function App() {
             {
               xAxis: new Date(e),
               endTime: end,
+              exclusiveEnd: exclusiveEnd,
               itemStyle: {
                 color: hexToRgba(curtailmentColor, curtailmentOpacity),
               },
@@ -515,17 +520,20 @@ function App() {
               if (startRange === null) startRange = t;
             } else {
               if (startRange !== null) {
-                pushRange(startRange, t);
+                // Range ends because current point is NOT curtailed -> Exclusive End
+                pushRange(startRange, t, true);
                 startRange = null;
               }
             }
           } else if (startRange !== null) {
-            // 数据中断，闭合当前区间
-            pushRange(startRange, t);
+            // Data interruption -> Exclusive End at interruption point
+            pushRange(startRange, t, true);
             startRange = null;
           }
         });
-        if (startRange !== null) pushRange(startRange, times[times.length - 1]);
+        // Range went until the end of data -> Inclusive End
+        if (startRange !== null)
+          pushRange(startRange, times[times.length - 1], false);
       }
     });
     return { ranges, groupDim: groupDimKey };
@@ -546,7 +554,7 @@ function App() {
       const customRange = axisRanges[metric] || {};
       const isMetricVisible = (m) => {
         const sameMetricDisplayNames = activeSeries
-          .filter((s) => (s.metricName || s.name.split(" (")[0]) === m)
+          .filter((s) => s.metricKey === m)
           .map((s) => s.displayName);
         return sameMetricDisplayNames.some(
           (dn) => legendSelected[dn] !== false,
@@ -578,9 +586,7 @@ function App() {
       if (finalMax === null && isIrradiance) finalMax = 1000;
 
       if (finalMin === null || finalMax === null) {
-        const metricSeries = activeSeries.filter(
-          (s) => (s.metricName || s.name.split(" (")[0]) === metric,
-        );
+        const metricSeries = activeSeries.filter((s) => s.metricKey === metric);
         const vals = metricSeries.flatMap((s) => s.data.map((d) => d.value));
         if (
           useDefaultLimits &&
@@ -647,25 +653,6 @@ function App() {
       selectedDates,
     );
 
-    function hexToRgba(hex, opacity) {
-      let r = 255,
-        g = 70,
-        b = 70;
-      if (hex && typeof hex === "string" && hex.startsWith("#")) {
-        const h = hex.replace("#", "");
-        if (h.length === 3) {
-          r = parseInt(h[0] + h[0], 16);
-          g = parseInt(h[1] + h[1], 16);
-          b = parseInt(h[2] + h[2], 16);
-        } else if (h.length === 6) {
-          r = parseInt(h.substring(0, 2), 16);
-          g = parseInt(h.substring(2, 4), 16);
-          b = parseInt(h.substring(4, 6), 16);
-        }
-      }
-      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    }
-
     // High Contrast / Professional 20-Color Palette
     const defaultPalette = [
       "#3b82f6", // Vibrant Blue
@@ -703,69 +690,134 @@ function App() {
         axisPointer: { type: "cross", label: { backgroundColor: "#3b82f6" } },
         className: "glass-tooltip", // Add class for backdrop-filter if supported
         formatter: (params) => {
-          if (!params.length) return "";
-          const isDark = theme !== "light";
-          const bg = isDark
-            ? "rgba(11, 17, 30, 0.85)"
-            : "rgba(255, 255, 255, 0.85)";
-          const text = isDark ? "#f8fafc" : "#1d1d1f";
-          const border = isDark
-            ? "rgba(255, 255, 255, 0.05)"
-            : "rgba(0, 0, 0, 0.05)";
-          const mute = isDark ? "#cbd5e1" : "#64748b";
+          try {
+            if (!params || !Array.isArray(params) || params.length === 0)
+              return "";
 
+            const isLight = document.body.classList.contains("light-mode");
+            const bg = isLight
+              ? "rgba(255, 255, 255, 0.9)"
+              : "rgba(23, 23, 23, 0.9)";
+            const border = isLight
+              ? "rgba(0,0,0,0.1)"
+              : "rgba(255, 255, 255, 0.1)";
+            const text = isLight ? "#1d1d1f" : "#fff";
+            const mute = isLight ? "#86868b" : "#888";
 
+            let html = `<div style="
+              background: ${bg};
+              padding: 10px 14px;
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+              border-radius: 4px;
+              border: 0.5px solid ${border};
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+              font-family: 'Fira Sans', sans-serif;
+            ">`;
 
-          let html = `<div style="
-            padding: 4px 6px; 
-            min-width: 140px; 
-            background: ${bg}; 
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-radius: 4px;
-            border: 0.5px solid ${border};
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            font-family: 'Fira Sans', sans-serif;
-          ">`;
+            const title = params[0].axisValueLabel || "";
+            html += `<div style="
+              margin-bottom: 6px; 
+              padding-bottom: 6px; 
+              border-bottom: 0.5px solid ${border}; 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: center;
+            ">
+              <span style="font-weight: 700; color: ${text}; font-size: 11px; font-family: 'Poppins', sans-serif;">
+                ${title}
+              </span>`;
 
-          html += `<div style="
-            margin-bottom: 6px; 
-            padding-bottom: 6px; 
-            border-bottom: 0.5px solid ${border}; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-          ">
-            <span style="font-weight: 700; color: ${text}; font-size: 11px; font-family: 'Poppins', sans-serif;">
-              ${params[0].axisValueLabel}
-            </span>`;
+            html += `</div><div style="display: flex; flex-direction: column; gap: 2px;">`;
 
-          html += `</div><div style="display: flex; flex-direction: column; gap: 2px;">`;
+            // Flatten curtailmentRanges object to array of {start, end} using xAxis time for coordinate consistency
+            const safeRanges = [];
+            if (curtailmentRanges && typeof curtailmentRanges === "object") {
+              Object.values(curtailmentRanges).forEach((group) => {
+                if (Array.isArray(group)) {
+                  group.forEach((range) => {
+                    if (
+                      Array.isArray(range) &&
+                      range.length === 2 &&
+                      range[0].xAxis &&
+                      range[1].xAxis
+                    ) {
+                      safeRanges.push({
+                        start: range[0].xAxis.getTime(),
+                        end: range[1].xAxis.getTime(),
+                        exclusive: range[1].exclusiveEnd,
+                      });
+                    }
+                  });
+                }
+              });
+            }
 
-          params.forEach((item) => {
-            const color = item.color;
-            const sIdx = item.seriesIndex;
-            const fullSeriesName = activeSeries[sIdx]?.name || item.seriesName;
-            const rawVal = item.value[1];
-            const displayVal =
-              typeof rawVal === "number"
-                ? parseFloat(rawVal.toFixed(3)).toString()
-                : rawVal;
+            params.forEach((item) => {
+              if (!item || !item.value) return;
 
-            html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-              <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
-                <span style="width: 4px; height: 4px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></span>
-                <span style="font-size: 9px; color: ${mute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">
-                  ${fullSeriesName}
+              const color = item.color;
+              const sIdx = item.seriesIndex;
+              const fullSeriesName =
+                activeSeries[sIdx]?.name || item.seriesName || "";
+              const rawVal = item.value[1];
+              const displayVal =
+                typeof rawVal === "number"
+                  ? parseFloat(rawVal.toFixed(3)).toString()
+                  : rawVal;
+
+              // Safe timestamp access
+              const ts = item.value[0];
+              const isCurtailed = safeRanges.some(
+                (r) => ts >= r.start && ts <= r.end,
+              );
+
+              html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
+                  <span style="width: 4px; height: 4px; border-radius: 50%; background-color: ${color}; flex-shrink: 0;"></span>
+                  <span style="font-size: 9px; color: ${mute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">
+                    ${fullSeriesName}
+                  </span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-weight: 500; font-family: 'Fira Code', monospace; color: ${text}; font-size: 10px;">
+                    ${displayVal}
+                  </span>
+                </div>
+              </div>`;
+            });
+
+            // Summary row for curtailment status
+            if (params[0] && params[0].value) {
+              const ts = params[0].value[0];
+              const isCurtailedGlobal = safeRanges.some((r) => {
+                if (r.exclusive) {
+                  return ts >= r.start && ts < r.end;
+                }
+                return ts >= r.start && ts <= r.end;
+              });
+
+              html += `<div style="
+                margin-top: 6px; 
+                padding-top: 4px; 
+                border-top: 0.5px solid ${border}; 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center;
+              ">
+                <span style="font-size: 9px; color: ${mute};">状态</span>
+                <span style="font-size: 10px; font-weight: 600; color: ${isCurtailedGlobal ? "#ef4444" : "#10b981"};">
+                  ${isCurtailedGlobal ? "限电" : "不限电"}
                 </span>
-              </div>
-              <span style="font-weight: 500; font-family: 'Fira Code', monospace; color: ${text}; font-size: 10px;">
-                ${displayVal}
-              </span>
-            </div>`;
-          });
-          html += "</div></div>";
-          return html;
+              </div>`;
+            }
+
+            html += "</div></div>";
+            return html;
+          } catch (err) {
+            console.error("Tooltip error:", err);
+            return "";
+          }
         },
       },
       legend: {
@@ -904,13 +956,13 @@ function App() {
       },
       yAxis: yAxisConfig,
       series: activeSeries.map((s) => {
-        const metricKey = s.metricName || s.name.split(" (")[0];
+        const metricKey = s.metricKey;
         const axisIndex = uniqueMetrics.indexOf(metricKey);
         const color =
           customMetricColors[metricKey] || getUserColor(axisIndex, metricKey);
         const type = chartTypes[metricKey] || "line";
         const sameMetricSeries = activeSeries.filter(
-          (as) => (as.metricName || as.name.split(" (")[0]) === metricKey,
+          (as) => as.metricKey === metricKey,
         );
         const metricIdx = sameMetricSeries.findIndex((as) => as.id === s.id);
         const isDashed = metricIdx > 0;
@@ -1220,7 +1272,7 @@ function App() {
         ),
       );
       setIsDataEditorOpen(false);
-    } catch (_err) {
+    } catch {
       alert(
         "JSON 解析失败，请检查格式。支持编辑 time (yyyy-MM-dd HH:mm:ss) 和 value。",
       );
@@ -1249,7 +1301,7 @@ function App() {
     const metricNames = new Set();
     activeSeries.forEach((s) => {
       Object.keys(s.dimensions).forEach((k) => dimensionKeys.add(k));
-      const mName = s.metricName || s.name.split(" (")[0];
+      const mName = s.metricKey;
       metricNames.add(mName);
     });
 
@@ -1260,7 +1312,7 @@ function App() {
     const dataRows = {}; // key: date|time|dimValues
 
     activeSeries.forEach((s) => {
-      const mName = s.metricName || s.name.split(" (")[0];
+      const mName = s.metricKey;
       s.data.forEach((d) => {
         const dateStr = s.date;
         const timeStr = format(d.time, "HH:mm:ss");
@@ -1766,24 +1818,29 @@ function App() {
       )}
 
       <nav className="navbar glass-panel">
-        <div className="logo" style={{ paddingLeft: '8px' }}>
+        <div className="logo" style={{ paddingLeft: "8px" }}>
           <button
             className="sidebar-toggle-btn"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             title={isSidebarCollapsed ? "展开" : "折叠"}
-            style={{ marginRight: '8px' }}
+            style={{ marginRight: "8px" }}
           >
             <Layout size={18} />
           </button>
           <img src="/logo.png" alt="Logo" className="logo-img" />
-          <span style={{ marginLeft: '4px' }}>
+          <span style={{ marginLeft: "4px" }}>
             <strong>新能源分析系统</strong>
           </span>
-          <div className={`backend-status-badge ${backendStatus}`} style={{ marginLeft: '8px' }}>
+          <div
+            className={`backend-status-badge ${backendStatus}`}
+            style={{ marginLeft: "8px" }}
+          >
             <span className="status-dot"></span>
             {backendStatus === "online" ? "在线" : "离线"}
           </div>
-          <div className="version-tag" style={{ marginLeft: '4px' }}>{systemVersion}</div>
+          <div className="version-tag" style={{ marginLeft: "4px" }}>
+            {systemVersion}
+          </div>
         </div>
         <div className="nav-actions">
           <label
@@ -1929,8 +1986,13 @@ function App() {
 
           {activeTab === "controls" ? (
             <div className="sidebar-scroll-area">
-              <div className="date-selector section-item" style={{ marginBottom: '8px' }}>
-                <p className="label" style={{ marginBottom: '4px' }}>日期筛选</p>
+              <div
+                className="date-selector section-item"
+                style={{ marginBottom: "8px" }}
+              >
+                <p className="label" style={{ marginBottom: "4px" }}>
+                  日期筛选
+                </p>
                 <div className="dimension-tags">
                   {availableDates.map((date) => (
                     <button
@@ -1945,7 +2007,7 @@ function App() {
               </div>
 
               {selectedDates.length > 0 && (
-                <div className="section-item" style={{ marginBottom: '8px' }}>
+                <div className="section-item" style={{ marginBottom: "8px" }}>
                   {(() => {
                     const currentSeries = series.filter((s) =>
                       selectedDates.includes(s.date),
@@ -1981,15 +2043,47 @@ function App() {
                             ),
                           ].sort();
                           const selected = dimensionFilters[dimKey] || [];
-                          const isAllSelected = selected.length === allValues.length;
+                          const isAllSelected =
+                            selected.length === allValues.length;
 
                           return (
-                            <div key={dimKey} className="dimension-group" style={{ marginBottom: "6px" }}>
-                              <div className="dim-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                <span className="dim-name" style={{ fontWeight: 600, fontSize: '11px' }}>{dimKey}</span>
-                                <div className="dim-header-actions" style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                                  <span style={{ fontSize: "10px", color: '#94a3b8' }}>
-                                    {isAllSelected ? "全部" : `${selected.length}/${allValues.length}`}
+                            <div
+                              key={dimKey}
+                              className="dimension-group"
+                              style={{ marginBottom: "6px" }}
+                            >
+                              <div
+                                className="dim-header-row"
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  marginBottom: "4px",
+                                }}
+                              >
+                                <span
+                                  className="dim-name"
+                                  style={{ fontWeight: 600, fontSize: "11px" }}
+                                >
+                                  {dimKey}
+                                </span>
+                                <div
+                                  className="dim-header-actions"
+                                  style={{
+                                    display: "flex",
+                                    gap: "6px",
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: "10px",
+                                      color: "#94a3b8",
+                                    }}
+                                  >
+                                    {isAllSelected
+                                      ? "全部"
+                                      : `${selected.length}/${allValues.length}`}
                                   </span>
                                   <div className="dimension-actions-text">
                                     <button
@@ -2019,7 +2113,9 @@ function App() {
                                       onClick={() =>
                                         setDimensionFilters((prev) => ({
                                           ...prev,
-                                          [dimKey]: allValues.filter((v) => !selected.includes(v)),
+                                          [dimKey]: allValues.filter(
+                                            (v) => !selected.includes(v),
+                                          ),
                                         }))
                                       }
                                     >
@@ -2183,7 +2279,10 @@ function App() {
                 >
                   <label
                     className="checkbox-label"
-                    style={{ justifyContent: "space-between", marginBottom: '4px' }}
+                    style={{
+                      justifyContent: "space-between",
+                      marginBottom: "4px",
+                    }}
                   >
                     <span className="label">限电分析</span>
                     <input
@@ -2196,57 +2295,137 @@ function App() {
                   </label>
 
                   {showCurtailmentAnalysis && (
-                    <div style={{display:'flex', flexDirection:'column', gap: '4px'}}>
-                      <div className="control-row-dense" style={{gap: '4px'}}>
-                        <div className="param-item-inline" style={{flex: 1, display:'flex', alignItems:'center', gap:'2px'}}>
-                           <span className="label-mini">辐照 &gt;</span>
-                           <input
-                             type="number"
-                             value={curtailmentIrrThreshold}
-                             onChange={(e) => setCurtailmentIrrThreshold(parseFloat(e.target.value))}
-                             className="axis-input"
-                             style={{width:'100%', color: '#fff'}}
-                           />
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px",
+                      }}
+                    >
+                      <div className="control-row-dense" style={{ gap: "4px" }}>
+                        <div
+                          className="param-item-inline"
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "2px",
+                          }}
+                        >
+                          <span className="label-mini">辐照 &gt;</span>
+                          <input
+                            type="number"
+                            value={curtailmentIrrThreshold}
+                            onChange={(e) =>
+                              setCurtailmentIrrThreshold(
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            className="axis-input"
+                            style={{ width: "100%", color: "#fff" }}
+                          />
                         </div>
-                        <div className="param-item-inline" style={{flex: 1, display:'flex', alignItems:'center', gap:'2px'}}>
-                           <span className="label-mini">偏差 &lt;</span>
-                           <input
-                             type="number"
-                             value={curtailmentDiffThreshold}
-                             onChange={(e) => setCurtailmentDiffThreshold(parseFloat(e.target.value))}
-                             className="axis-input"
-                             style={{width:'100%', color: '#fff'}}
-                           />
+                        <div
+                          className="param-item-inline"
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "2px",
+                          }}
+                        >
+                          <span className="label-mini">偏差 &lt;</span>
+                          <input
+                            type="number"
+                            value={curtailmentDiffThreshold}
+                            onChange={(e) =>
+                              setCurtailmentDiffThreshold(
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            className="axis-input"
+                            style={{ width: "100%", color: "#fff" }}
+                          />
                         </div>
                       </div>
-                      <div className="control-row-dense" style={{marginTop: '2px', gap: '4px'}}>
-                         <span className="label-mini" style={{ flexShrink: 0, width: '28px' }}>样式</span>
-                         <div style={{display: "flex", gap: "4px", alignItems: "center", flex: 1, minWidth: 0}}>
-                           <div style={{position: 'relative', width: '16px', height: '14px', borderRadius: '2px', backgroundColor: curtailmentColor, overflow: 'hidden', border: '1px solid var(--border-color)', flexShrink: 0}}>
-                             <input
-                               type="color"
-                               value={curtailmentColor}
-                               onChange={(e) => setCurtailmentColor(e.target.value)}
-                               style={{opacity: 0, position: 'absolute', inset: 0, cursor: 'pointer', width: '100%', height: '100%'}}
-                             />
-                           </div>
-                           <input
-                             type="range"
-                             min="0" max="1" step="0.02"
-                             value={curtailmentOpacity}
-                             onChange={(e) => setCurtailmentOpacity(parseFloat(e.target.value))}
-                             style={{ flex: 1, height: "4px", padding: 0, maxWidth: '95px' }}
-                           />
-                           <span className="value-badge" style={{ flexShrink: 0, minWidth: '36px' }}>{Math.round(curtailmentOpacity * 100)}%</span>
-                           <button
-                             className="icon-btn-text"
-                             onClick={() => setCurtailmentOpacity(0.2)}
-                             title="重置透明度"
-                             style={{ flexShrink: 0, padding: 0 }}
-                           >
-                             <RotateCcw size={10} />
-                           </button>
-                         </div>
+                      <div
+                        className="control-row-dense"
+                        style={{ marginTop: "2px", gap: "4px" }}
+                      >
+                        <span
+                          className="label-mini"
+                          style={{ flexShrink: 0, width: "28px" }}
+                        >
+                          样式
+                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "4px",
+                            alignItems: "center",
+                            flex: 1,
+                            minWidth: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              position: "relative",
+                              width: "16px",
+                              height: "14px",
+                              borderRadius: "2px",
+                              backgroundColor: curtailmentColor,
+                              overflow: "hidden",
+                              border: "1px solid var(--border-color)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <input
+                              type="color"
+                              value={curtailmentColor}
+                              onChange={(e) =>
+                                setCurtailmentColor(e.target.value)
+                              }
+                              style={{
+                                opacity: 0,
+                                position: "absolute",
+                                inset: 0,
+                                cursor: "pointer",
+                                width: "100%",
+                                height: "100%",
+                              }}
+                            />
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.02"
+                            value={curtailmentOpacity}
+                            onChange={(e) =>
+                              setCurtailmentOpacity(parseFloat(e.target.value))
+                            }
+                            style={{
+                              flex: 1,
+                              height: "4px",
+                              padding: 0,
+                              maxWidth: "95px",
+                            }}
+                          />
+                          <span
+                            className="value-badge"
+                            style={{ flexShrink: 0, minWidth: "36px" }}
+                          >
+                            {Math.round(curtailmentOpacity * 100)}%
+                          </span>
+                          <button
+                            className="icon-btn-text"
+                            onClick={() => setCurtailmentOpacity(0.2)}
+                            title="重置透明度"
+                            style={{ flexShrink: 0, padding: 0 }}
+                          >
+                            <RotateCcw size={10} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -2270,17 +2449,25 @@ function App() {
                     )
                   </span>
                   <div className="legend-bulk-actions-modern">
-                    <button className="text-action-btn-mini" onClick={() => setAllLegends(true)}>全显</button>
-                    <button className="text-action-btn-mini" onClick={() => setAllLegends(false)}>全隐</button>
+                    <button
+                      className="text-action-btn-mini"
+                      onClick={() => setAllLegends(true)}
+                    >
+                      全显
+                    </button>
+                    <button
+                      className="text-action-btn-mini"
+                      onClick={() => setAllLegends(false)}
+                    >
+                      全隐
+                    </button>
                   </div>
                 </div>
-                <div
-                  className="series-list-scroll-container"
-                >
+                <div className="series-list-scroll-container">
                   <ul className="series-list-compact">
                     {activeSeries.map((s) => {
                       const displayName = s.displayName;
-                      const metricKey = s.metricName || s.name.split(" (")[0];
+                      const metricKey = s.metricKey;
                       const isHidden = legendSelected[displayName] === false;
 
                       return (
@@ -2289,7 +2476,7 @@ function App() {
                           className={`series-item-compact ${isHidden ? "hidden" : ""}`}
                           onClick={() => toggleMetricLegend(displayName)}
                           style={{
-                            borderLeft: `4px solid ${isHidden ? 'rgba(255,255,255,0.1)' : (customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey))}`,
+                            borderLeft: `4px solid ${isHidden ? "rgba(255,255,255,0.1)" : customMetricColors[metricKey] || getUserColor(uniqueMetrics.indexOf(metricKey), metricKey)}`,
                           }}
                         >
                           <div className="series-row-main">
@@ -2340,94 +2527,107 @@ function App() {
               </div>
 
               {selectedDates.length > 0 && (
-                <div className="axis-section" style={{ borderTop: '1px solid var(--border-color)', marginTop: '8px' }}>
+                <div
+                  className="axis-section"
+                  style={{
+                    borderTop: "1px solid var(--border-color)",
+                    marginTop: "8px",
+                  }}
+                >
                   <p className="label fixed-header">坐标轴与单位设置</p>
-                    {(() => {
-                      const currentActiveSeries = series.filter((s) =>
-                        selectedDates.includes(s.date),
-                      );
-                      const uniqueMetricsInView = [
-                        ...new Set(
-                          currentActiveSeries.map((s) => {
-                            const clean = (s.metricName || s.name).split(" (")[0].split("(")[0].trim();
-                            const unit = s.unit || (s.name.includes("(") ? s.name.match(/\(([^)]+)\)/)?.[1] : "");
-                            return unit ? `${clean}(${unit})` : clean;
-                          }),
-                        ),
-                      ];
-                      const powerMetrics = uniqueMetricsInView.filter((m) => {
-                        const low = m.toLowerCase();
-                        return (
-                          low.includes("功率") ||
-                          low.includes("power") ||
-                          low.includes("预测") ||
-                          low.includes("出清") ||
-                          low.includes("负荷") ||
-                          low.includes("agc") ||
-                          low.includes("超短期")
-                        );
-                      });
-
-
+                  {(() => {
+                    const currentActiveSeries = series.filter((s) =>
+                      selectedDates.includes(s.date),
+                    );
+                    const uniqueMetricsInView = [
+                      ...new Set(
+                        currentActiveSeries.map((s) => getCleanMetricName(s)),
+                      ),
+                    ];
+                    const powerMetrics = uniqueMetricsInView.filter((m) => {
+                      const low = m.toLowerCase();
                       return (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "8px",
-                          }}
-                        >
-                          <div className="axis-control-card glass-panel" style={{ marginBottom: '4px' }}>
-                            <div className="control-row-dense">
-                              <span className="label-mini">全局缩放</span>
-                              <div
-                                style={{
-                                  flex: 1,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "8px",
-                                }}
-                              >
-                                <input
-                                  type="range"
-                                  min="0.2"
-                                  max="1.8"
-                                  step="0.02"
-                                  value={axisAdjustmentFactor}
-                                  onChange={(e) =>
-                                    setAxisAdjustmentFactor(
-                                      parseFloat(e.target.value),
-                                    )
-                                  }
-                                  style={{ flex: 1, height: "4px" }}
-                                />
-                                <span className="value-badge" style={{ flexShrink: 0, minWidth: '40px' }}>
-                                  {Math.round(axisAdjustmentFactor * 100)}%
-                                </span>
-                                <button
-                                  className="icon-btn-text"
-                                  onClick={() => setAxisAdjustmentFactor(1.0)}
-                                  title="重置"
-                                >
-                                  <RotateCcw size={10} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
+                        low.includes("功率") ||
+                        low.includes("power") ||
+                        low.includes("预测") ||
+                        low.includes("出清") ||
+                        low.includes("负荷") ||
+                        low.includes("agc") ||
+                        low.includes("超短期")
+                      );
+                    });
 
-                          <div className="axis-list-scrollable">
+                    return (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                        }}
+                      >
+                        <div
+                          className="axis-control-card glass-panel"
+                          style={{ marginBottom: "4px" }}
+                        >
+                          <div className="control-row-dense">
+                            <span className="label-mini">全局缩放</span>
                             <div
                               style={{
+                                flex: 1,
                                 display: "flex",
-                                flexDirection: "column",
+                                alignItems: "center",
                                 gap: "8px",
                               }}
                             >
+                              <input
+                                type="range"
+                                min="0.2"
+                                max="1.8"
+                                step="0.02"
+                                value={axisAdjustmentFactor}
+                                onChange={(e) =>
+                                  setAxisAdjustmentFactor(
+                                    parseFloat(e.target.value),
+                                  )
+                                }
+                                style={{
+                                  flex: 1,
+                                  maxWidth: "80px",
+                                  height: "4px",
+                                }}
+                              />
+                              <span
+                                className="value-badge"
+                                style={{ flexShrink: 0, minWidth: "40px" }}
+                              >
+                                {Math.round(axisAdjustmentFactor * 100)}%
+                              </span>
+                              <button
+                                className="icon-btn-text"
+                                onClick={() => setAxisAdjustmentFactor(1.0)}
+                                title="重置"
+                              >
+                                <RotateCcw size={10} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
 
+                        <div className="axis-list-scrollable">
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px",
+                            }}
+                          >
                             {powerMetrics.length > 1 && (
                               <div className="axis-control-card glass-panel power-box">
                                 <div className="control-row-dense">
-                                  <span className="label-mini" style={{ flex: 1 }}>
+                                  <span
+                                    className="label-mini"
+                                    style={{ flex: 1 }}
+                                  >
                                     统一上下限
                                   </span>
                                   <div className="inputs-row">
@@ -2435,14 +2635,19 @@ function App() {
                                       className="axis-input"
                                       type="number"
                                       placeholder="Min"
-                                      value={axisRanges[powerMetrics[0]]?.min ?? ""}
+                                      value={
+                                        axisRanges[powerMetrics[0]]?.min ?? ""
+                                      }
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         setAxisRanges((prev) => {
                                           const next = { ...prev };
                                           powerMetrics.forEach(
                                             (pm) =>
-                                              (next[pm] = { ...next[pm], min: val }),
+                                              (next[pm] = {
+                                                ...next[pm],
+                                                min: val,
+                                              }),
                                           );
                                           return next;
                                         });
@@ -2453,14 +2658,19 @@ function App() {
                                       className="axis-input"
                                       type="number"
                                       placeholder="Max"
-                                      value={axisRanges[powerMetrics[0]]?.max ?? ""}
+                                      value={
+                                        axisRanges[powerMetrics[0]]?.max ?? ""
+                                      }
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         setAxisRanges((prev) => {
                                           const next = { ...prev };
                                           powerMetrics.forEach(
                                             (pm) =>
-                                              (next[pm] = { ...next[pm], max: val }),
+                                              (next[pm] = {
+                                                ...next[pm],
+                                                max: val,
+                                              }),
                                           );
                                           return next;
                                         });
@@ -2479,18 +2689,22 @@ function App() {
                               </div>
                             )}
 
-                          {uniqueMetricsInView.map((metric, index) => {
-                            const originalColor = getUserColor(index, metric);
-                            const metricColor =
-                              customMetricColors[metric] || originalColor;
-                            
-                            // Check if all series for this metric are hidden
-                            const isHidden = !currentActiveSeries.some((s) => {
-                              const clean = (s.metricName || s.name).split(" (")[0].split("(")[0].trim();
-                              const unit = s.unit || (s.name.includes("(") ? s.name.match(/\(([^)]+)\)/)?.[1] : "");
-                              const seriesMetricName = unit ? `${clean}(${unit})` : clean;
-                              return seriesMetricName === metric && legendSelected[s.displayName] !== false;
-                            });
+                            {uniqueMetricsInView.map((metric, index) => {
+                              const originalColor = getUserColor(index, metric);
+                              const metricColor =
+                                customMetricColors[metric] || originalColor;
+
+                              // Check if all series for this metric are hidden
+                              const isHidden = !currentActiveSeries.some(
+                                (s) => {
+                                  const seriesMetricName =
+                                    getCleanMetricName(s);
+                                  return (
+                                    seriesMetricName === metric &&
+                                    legendSelected[s.displayName] !== false
+                                  );
+                                },
+                              );
 
                               return (
                                 <div
@@ -2520,7 +2734,12 @@ function App() {
                                       <input
                                         className="axis-input"
                                         type="number"
-                                        placeholder={(metric.includes("辐照") || metric.includes("辐射")) ? "0" : "Min"}
+                                        placeholder={
+                                          metric.includes("辐照") ||
+                                          metric.includes("辐射")
+                                            ? "0"
+                                            : "Min"
+                                        }
                                         value={axisRanges[metric]?.min ?? ""}
                                         onChange={(e) =>
                                           setAxisRanges((prev) => ({
@@ -2536,7 +2755,12 @@ function App() {
                                       <input
                                         className="axis-input"
                                         type="number"
-                                        placeholder={(metric.includes("辐照") || metric.includes("辐射")) ? "1000" : "Max"}
+                                        placeholder={
+                                          metric.includes("辐照") ||
+                                          metric.includes("辐射")
+                                            ? "1000"
+                                            : "Max"
+                                        }
                                         value={axisRanges[metric]?.max ?? ""}
                                         onChange={(e) =>
                                           setAxisRanges((prev) => ({
@@ -2606,12 +2830,12 @@ function App() {
                                   </div>
                                 </div>
                               );
-                          })}
+                            })}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })()}
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -2670,7 +2894,6 @@ function App() {
               </div>
             </div>
           )}
-
         </aside>
 
         <section className="chart-area glass-panel">
@@ -3217,31 +3440,55 @@ function App() {
 
 function getUserColor(index, metricName = "") {
   // 定义核心指标与其对应的固定颜色 (电力工业标准方案)
-  const fixedColorMap = {
-    实际功率: "#2c7be5", // 蓝色
-    可用功率: "#27b768", // 绿色
-    理论功率: "#17a2b8", // 青色
-    AGC远方指令: "#ef4444", // 红色
-    辐照度: "#ffc107", // 金黄
-    短波辐射: "#f59e0b", // 橙黄
-    价格: "#6610f2", // 紫色
-    预测功率: "#20c997", // 碧绿
-    负荷: "#fd7e14", // 橙色
-  };
+  // 注意：使用数组以确保匹配顺序，优先匹配更具体的关键词
+  const fixedColorMap = [
+    { key: "历史辐照度", color: "#a855f7" }, // 紫色 - 区别于实时辐照度
+    { key: "A3主站", color: "#06b6d4" }, // 青色 - 区别于普通可用
+    { key: "主站可用", color: "#06b6d4" },
+    { key: "短波辐射", color: "#f97316" }, // 深橙色
+    { key: "AGC", color: "#ef4444" }, // 红色
+    { key: "指令", color: "#ef4444" },
+    { key: "出清", color: "#db2777" }, // 玫红
+    { key: "预测", color: "#20c997" }, // 碧绿
+    { key: "超短期", color: "#20c997" },
+
+    // 通用后缀匹配
+    { key: "实际功率", color: "#3b82f6" }, // 亮蓝
+    { key: "可用", color: "#22c55e" }, // 纯绿
+    { key: "理论", color: "#0ea5e9" }, // 天蓝
+    { key: "辐照", color: "#ffc107" }, // 金黄 (最后匹配，作为辐照度兜底)
+    { key: "价格", color: "#8b5cf6" }, // 蓝紫
+    { key: "负荷", color: "#f59e0b" }, // 琥珀色
+  ];
 
   if (metricName) {
-    for (const [key, color] of Object.entries(fixedColorMap)) {
+    for (const { key, color } of fixedColorMap) {
       if (metricName.includes(key)) return color;
     }
   }
 
   // 专业高对比度色板 (适配多场站、多指标叠加)
   const colors = [
-    "#2c7be5", "#f5803e", "#27b768", "#d63384", 
-    "#6610f2", "#0dcaf0", "#ffc107", "#fd7e14", 
-    "#20c997", "#e83e8c", "#6f42c1", "#198754", 
-    "#dc3545", "#52616b", "#7d5a50", "#00ffab",
-    "#ff4d4d", "#007bff", "#6c757d", "#17a2b8"
+    "#2c7be5",
+    "#f5803e",
+    "#27b768",
+    "#d63384",
+    "#6610f2",
+    "#0dcaf0",
+    "#ffc107",
+    "#fd7e14",
+    "#20c997",
+    "#e83e8c",
+    "#6f42c1",
+    "#198754",
+    "#dc3545",
+    "#52616b",
+    "#7d5a50",
+    "#00ffab",
+    "#ff4d4d",
+    "#007bff",
+    "#6c757d",
+    "#17a2b8",
   ];
   return colors[index % colors.length];
 }
