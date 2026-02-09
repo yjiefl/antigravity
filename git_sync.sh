@@ -64,16 +64,38 @@ fi
 # 步骤 2: 拉取远程更新 (Pull --rebase)
 # -----------------------------------------------------------------------------
 echo "${YELLOW}[2/3] 拉取远程更新 (Rebase)...${NC}"
-# 使用 rebase 保持提交历史线性，避免杂乱的 Merge Commit
-if git pull --rebase origin main; then
+# 使用 rebase --autostash 暂存日志文件的变动，避免因 "unstaged changes" 导致拉取失败
+if git pull --rebase --autostash origin main; then
     echo "${GREEN}远程更新拉取成功（或已是最新）。${NC}"
 else
-    echo "${RED}错误: 拉取失败！可能存在合并冲突。${NC}"
-    echo "${RED}解决建议:${NC}"
-    echo "1. 手动打开冲突文件解决冲突"
-    echo "2. 运行 'git add <file>'"
-    echo "3. 运行 'git rebase --continue'"
-    log_to_file "Error: Pull/Rebase failed due to conflicts."
+    echo "${RED}错误: 拉取失败！检测到合并冲突或环境问题。${NC}"
+    
+    # 生成冲突报告
+    REPORT_TIME=$(date '+%Y-%m-%d_%H%M%S')
+    REPORT_FILE="$REPO_PATH/log/conflict_report_${REPORT_TIME}.log"
+    
+    {
+        echo "=== Git Sync Conflict Report ==="
+        echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Error: Pull/Rebase Failed"
+        echo ""
+        echo ">>> Conflicted Files (需要人工解决的文件):"
+        git diff --name-only --diff-filter=U
+        echo ""
+        echo ">>> Git Status:"
+        git status
+        echo ""
+        echo ">>> Manual Resolution Steps:"
+        echo "1. Open the conflicted files listed above."
+        echo "2. Fix the conflicts (look for <<<<<<< HEAD)."
+        echo "3. Run 'git add <file>' for each fixed file."
+        echo "4. Run 'git rebase --continue'."
+    } > "$REPORT_FILE"
+    
+    echo "${RED}>>> 已生成冲突详情报告: $REPORT_FILE${NC}"
+    echo "${YELLOW}请查看报告并手动解决冲突。${NC}"
+    
+    log_to_file "Error: Pull failed. Conflict report generated at $REPORT_FILE"
     exit 1
 fi
 
