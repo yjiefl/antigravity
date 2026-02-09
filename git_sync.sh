@@ -1,9 +1,8 @@
 #!/bin/zsh
 
 # =============================================================================
-# Antigravity Git Sync Script (Ultimate)
-# 功能：递归同步主仓库及所有嵌套 Git 仓库 (不管是否注册为 submodule)
-# 逻辑：Nested Repos (Commit->Push) -> Main Repo (Commit->Pull->Push)
+# Antigravity Git Sync Script (Focused Version)
+# 功能：极速同步 antigravity 主仓库 (Commit -> Pull -> Push)
 # =============================================================================
 
 # 设置颜色输出
@@ -12,381 +11,135 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
-# 1. 动态获取项目路径
+# 1. 路径设置
 REPO_PATH=$(cd "$(dirname "$0")"; pwd)
 REPORT_DIR="$REPO_PATH/report"
-LOG_FILE="$REPORT_DIR/debug.log"
+LOG_FILE="$REPORT_DIR/sync.log"
+mkdir -p "$REPORT_DIR"
 
-# 进入项目目录
-cd "$REPO_PATH" || { echo "${RED}错误: 无法进入目录 $REPO_PATH${NC}"; exit 1; }
-
-# -----------------------------------------------------------------------------
-# 辅助函数
-# -----------------------------------------------------------------------------
+cd "$REPO_PATH" || exit 1
 
 log_to_file() {
-    local msg="$1"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    mkdir -p "$REPORT_DIR"
-    echo "$timestamp - [Git Sync] $msg" >> "$LOG_FILE"
-}
-
-# 获取所有嵌套仓库列表 (排除根目录)
-get_nested_repos() {
-    find "$REPO_PATH" -name ".git" -not -path "$REPO_PATH/.git" | while read git_dir; do
-        dirname "$git_dir"
-    done
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
 
 # -----------------------------------------------------------------------------
-# 关键功能模块
+# 核心功能模块
 # -----------------------------------------------------------------------------
 
-# 1. 检查状态
-check_repo_status() {
-    local repo_path=$1
-    local name=$2
+# 同步主仓库
+run_sync() {
+    local force=$1
+    echo "${CYAN}=== 开始同步 Antigravity 仓库 ===${NC}"
     
-    # 尝试进入目录，失败则跳过
-    if ! cd "$repo_path" >/dev/null 2>&1; then
-        return
-    fi
-    
-    # 检查本地修改
-    LOCAL_CHANGES=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
-    
-    # 检查远程同步
-    git fetch origin HEAD > /dev/null 2>&1
-    CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
-    
-    if [ -z "$CURRENT_BRANCH" ]; then
-        REMOTE_STATUS="${MAGENTA}Detached/No Branch${NC}"
-    else
-        BEHIND=$(git rev-list --count HEAD..origin/"$CURRENT_BRANCH" 2>/dev/null || echo 0)
-        AHEAD=$(git rev-list --count origin/"$CURRENT_BRANCH"..HEAD 2>/dev/null || echo 0)
-        
-        if [ "$BEHIND" -gt 0 ]; then REMOTE_STATUS="${YELLOW}↓ 落后 $BEHIND${NC}"; 
-        elif [ "$AHEAD" -gt 0 ]; then REMOTE_STATUS="${YELLOW}↑ 领先 $AHEAD${NC}";
-        else REMOTE_STATUS="${GREEN}✓ 同步${NC}"; fi
-    fi
-
-    if [ "$LOCAL_CHANGES" -gt 0 ]; then
-        FILE_STATUS="${YELLOW}● 修改: $LOCAL_CHANGES${NC}"
-    else
-        FILE_STATUS="${GREEN}✓ 干净${NC}"
-    fi
-    
-    # 计算相对路径用于显示
-    REL_PATH=${repo_path#$REPO_PATH/}
-    if [ "$repo_path" = "$REPO_PATH" ]; then REL_PATH="Main (Root)"; fi
-    
-    printf "%-40s %-20s %s\n" "$REL_PATH" "$FILE_STATUS" "$REMOTE_STATUS"
-}
-
-run_check_status() {
-    echo "${BLUE}>>> 仓库状态概览 (自动扫描所有嵌套仓库)...${NC}"
-    printf "${CYAN}%-40s %-20s %s${NC}\n" "仓库/模块" "工作区" "远程状态"
-    echo "--------------------------------------------------------------------------------"
-    
-    # 1. 检查主仓库
-    check_repo_status "$REPO_PATH" "Main (Root)"
-    
-    # 2. 检查所有嵌套仓库
-    get_nested_repos | while read repo; do
-        check_repo_status "$repo"
-    done
-    
-    echo "--------------------------------------------------------------------------------"
-    log_to_file "Checked repo status."
-}
-
-# 2. 生成报告
-run_generate_report() {
-    REPORT_TIME=$(date '+%Y-%m-%d_%H%M%S')
-    REPORT_FILE="$REPORT_DIR/repo_status_${REPORT_TIME}.txt"
-    mkdir -p "$REPORT_DIR"
-    
-    echo "${BLUE}>>> 正在生成详细报告...${NC}"
-    {
-        echo "=== Repository Status Report ==="
-        echo "Generated: $(date)"
-        echo ""
-        echo ">>> Main Repository"
-        cd "$REPO_PATH" && git status
-        echo ""
-        echo ">>> Nested Repositories"
-        get_nested_repos | while read repo; do
-            echo "--- ${repo#$REPO_PATH/} ---"
-            cd "$repo" && git status -s
-            echo ""
-        done
-    } > "$REPORT_FILE"
-    echo "${GREEN}报告已生成: $REPORT_FILE${NC}"
-    log_to_file "Generated report: $REPORT_FILE"
-}
-
-# 3. 核心同步逻辑 (单个仓库)
-sync_one_repo() {
-    local repo_path=$1
-    local name=$2
-    local force=$3
-    
-    if ! cd "$repo_path" >/dev/null 2>&1; then
-        echo "${RED}错误: 无法进入 $repo_path${NC}"
-        return
-    fi
-    
-    echo "${CYAN}>>> 同步: $name${NC}"
-    
-    # Commit
-    STATUS=$(git status --porcelain 2>/dev/null)
-    if [ -n "$STATUS" ]; then
-        echo "   ${YELLOW}检测到修改，正在提交...${NC}"
+    # 1. 检查修改
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "   ${YELLOW}检测到本地修改，正在提交...${NC}"
         git add .
-        COMMIT_MSG="chore: auto sync updates at $(date '+%Y-%m-%d %H:%M:%S')"
+        COMMIT_MSG="feat: auto sync at $(date '+%Y-%m-%d %H:%M:%S')"
         if git commit -m "$COMMIT_MSG"; then
-            echo "   ${GREEN}已提交。${NC}"
-            log_to_file "[$name] Committed changes."
+            echo "   ${GREEN}本地提交成功。${NC}"
+            log_to_file "Committed changes."
         fi
     else
-        echo "   ${GREEN}工作区干净。${NC}"
-    fi
-    
-    # Pull
-    BRANCH=$(git branch --show-current 2>/dev/null)
-    if [ -z "$BRANCH" ]; then
-        echo "   ${MAGENTA}警告: Detached HEAD 或非 Git 目录，跳过 Pull/Push。${NC}"
-        return
+        echo "   ${GREEN}工作区干净，无需提交。${NC}"
     fi
 
-    echo "   ${YELLOW}正在拉取 (Rebase)...${NC}"
-    if git pull --rebase --autostash origin "$BRANCH" 2>/dev/null; then
+    # 2. 拉取更新
+    BRANCH=$(git branch --show-current)
+    echo "   ${YELLOW}正在从远程拉取 (Rebase)...${NC}"
+    if git pull --rebase --autostash origin "$BRANCH"; then
         echo "   ${GREEN}拉取成功。${NC}"
     else
-        echo "   ${RED}错误: 拉取失败 (冲突)。停止同步该仓库。${NC}"
-        log_to_file "[$name] Pull failed."
-        return # 子模块失败不应终止整个脚本，继续下一个
+        echo "${RED}错误: 拉取失败！请查看上方 Git 报错信息。${NC}"
+        log_to_file "Pull failed."
+        return 1
     fi
-    
-    # Push
+
+    # 3. 推送
     NEEDS_PUSH=$(git cherry -v origin/"$BRANCH" 2>/dev/null | wc -l | tr -d ' ')
     if [ "$NEEDS_PUSH" -gt 0 ] || [ "$force" = true ]; then
-        echo "   ${YELLOW}正在推送...${NC}"
-        if [ "$force" = true ]; then
-            git push --force origin "$BRANCH"
-        else
-            git push origin "$BRANCH"
-        fi
+        echo "   ${YELLOW}正在推送到远程...${NC}"
+        local push_cmd="git push origin $BRANCH"
+        [ "$force" = true ] && push_cmd="git push --force origin $BRANCH"
         
-        if [ $? -eq 0 ]; then
-            echo "   ${GREEN}推送成功。${NC}"
-            log_to_file "[$name] Pushed changes."
+        if $push_cmd; then
+            echo "   ${GREEN}推送成功！${NC}"
+            log_to_file "Pushed changes."
         else
-            echo "   ${RED}推送失败。${NC}"
+            echo "${RED}错误: 推送失败！${NC}"
+            log_to_file "Push failed."
         fi
     else
-        echo "   ${GREEN}无需推送。${NC}"
+        echo "   ${GREEN}远程已是最新，无需推送。${NC}"
     fi
 }
 
-# 4. 执行全量同步
-run_full_sync() {
-    local force=$1
-    echo "${GREEN}=== 开始递归同步 (自动扫描所有嵌套仓库) ===${NC}"
-    log_to_file "Started recursive sync (Force: ${force:-false})."
+# 检查状态
+run_status() {
+    echo "${BLUE}>>> 仓库状态概览...${NC}"
+    git status -s
+    echo "--------------------------------"
+    git fetch origin "$BRANCH" 2>/dev/null
+    BRANCH=$(git branch --show-current)
+    BEHIND=$(git rev-list --count HEAD..origin/"$BRANCH" 2>/dev/null || echo 0)
+    AHEAD=$(git rev-list --count origin/"$BRANCH"..HEAD 2>/dev/null || echo 0)
     
-    # 同步所有嵌套仓库
-    get_nested_repos | while read repo; do
-        REL_PATH=${repo#$REPO_PATH/}
-        sync_one_repo "$repo" "$REL_PATH" "$force"
-    done
-    
-    # 同步主仓库
-    sync_one_repo "$REPO_PATH" "Main Repository" "$force"
-    
-    echo "${GREEN}=== 所有同步完成 ===${NC}"
-    log_to_file "Recursive sync completed."
+    echo "当前分支: $BRANCH"
+    echo "领先: $AHEAD | 落后: $BEHIND"
 }
-# 5. 创建 Release
-run_create_release() {
-    echo "${CYAN}>>> 创建 Release (打标签)${NC}"
-    
-    # 1. 输入标签名
-    echo -n "请输入版本号 (例如 v1.0.0): "
+
+# 创建 Release
+run_release() {
+    echo "${CYAN}>>> 创建新版本 (Release)${NC}"
+    echo -n "输入版本号 (如 v1.2.0): "
     read version_tag
-    if [ -z "$version_tag" ]; then
-        echo "${RED}错误: 版本号不能为空。${NC}"
-        return
-    fi
+    [ -z "$version_tag" ] && { echo "${RED}版本号不能为空${NC}"; return; }
     
-    # 2. 输入描述
-    echo -n "请输入版本描述 (可选): "
-    read version_msg
-    if [ -z "$version_msg" ]; then
-        version_msg="Release $version_tag"
-    fi
-    
-    # 3. 询问是否同步到所有子仓库
-    echo -n "是否对所有嵌套仓库也打上该标签? (y/n) [默认 n]: "
-    read apply_all
-    
-    # 确认
-    echo "即将执行的操作："
-    echo "  - 标签名: $version_tag"
-    echo "  - 描述: $version_msg"
-    if [[ "$apply_all" == "y" || "$apply_all" == "Y" ]]; then
-        echo "  - 范围: 主仓库 + 所有嵌套仓库"
-    else
-        echo "  - 范围: 仅主仓库"
-    fi
-    
-    echo -n "确认继续? (y/n): "
-    read confirm
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        echo "操作已取消。"
-        return
-    fi
-    
-    log_to_file "Starting release creation: $version_tag"
-
-    # 函数：给单个仓库打标签
-    tag_repo() {
-        local repo_path=$1
-        local name=$2
-        
-        if cd "$repo_path"; then
-            echo "${CYAN}>>> 正在处理: $name${NC}"
-            
-            # 检查标签是否存在
-            if git rev-parse "$version_tag" >/dev/null 2>&1; then
-                echo "   ${YELLOW}警告: 标签 $version_tag 已存在，跳过。${NC}"
-            else
-                if git tag -a "$version_tag" -m "$version_msg"; then
-                    echo "   ${GREEN}本地标签创建成功。${NC}"
-                    if git push origin "$version_tag"; then
-                        echo "   ${GREEN}标签推送到远程成功。${NC}"
-                        log_to_file "[$name] Tagged $version_tag"
-                    else
-                        echo "   ${RED}标签推送到远程失败。${NC}"
-                    fi
-                else
-                    echo "   ${RED}本地标签创建失败。${NC}"
-                fi
-            fi
-        else
-            echo "${RED}无法进入目录: $repo_path${NC}"
-        fi
-    }
-
-    # 执行
-    # 主仓库
-    tag_repo "$REPO_PATH" "Main Repository"
-    
-    # 创建 GitHub Release (正式发布)
-    # GitHub CLI (gh) 可以将 Tag 提升为正式的 Release，使其显示在仓库首页右侧
-    if command -v gh >/dev/null 2>&1; then
-        echo "${CYAN}>>> 正在 GitHub 上创建正式 Release...${NC}"
-        
-        # 自动尝试获取 Token 用于认证
-        local current_token=$GH_TOKEN
-        if [ -z "$current_token" ]; then
-            # 尝试从 Git Remote URL 提取 token (如果是 https://user:token@github.com 格式)
-            local remote_url=$(git remote get-url origin 2>/dev/null)
-            if [[ $remote_url =~ "ghp_" ]]; then
-                current_token=$(echo "$remote_url" | sed -n 's/.*:\(ghp_[^@]*\)@.*/\1/p')
-            fi
-        fi
-
-        # 执行创建操作
-        if [ -n "$current_token" ]; then
-            if GH_TOKEN="$current_token" gh release create "$version_tag" --title "$version_tag" --notes "$version_msg" 2>/dev/null; then
-                echo "   ${GREEN}GitHub Release 创建成功！现在您可以在 GitHub 首页的 'Releases' 栏看到了。${NC}"
-            else
-                echo "   ${YELLOW}提示: GitHub Release 创建失败。可能是该版本已存在，或者权限配置有误。${NC}"
-                echo "   ${YELLOW}但 Git Tag 已推送，您也可以在网页端手动创建 Release。${NC}"
-            fi
-        else
-            echo "   ${YELLOW}提示: 未检测到 GitHub Token，无法自动创建正式 Release。${NC}"
-            echo "   ${YELLOW}已推送 Git Tag，请在网页端手动将 Tag 转换为 Release，或运行 'gh auth login'。${NC}"
+    git tag -a "$version_tag" -m "Release $version_tag"
+    if git push origin "$version_tag"; then
+        echo "${GREEN}标签 $version_tag 已推送到远程。${NC}"
+        # 尝试使用 GitHub CLI
+        if command -v gh >/dev/null 2>&1; then
+             gh release create "$version_tag" --title "$version_tag" --notes "Auto-generated release"
         fi
     fi
-    
-    # 嵌套仓库
-    if [[ "$apply_all" == "y" || "$apply_all" == "Y" ]]; then
-        get_nested_repos | while read repo; do
-            REL_PATH=${repo#$REPO_PATH/}
-            tag_repo "$repo" "$REL_PATH"
-        done
-    fi
-    
-    echo "${GREEN}=== Release 流程结束 ===${NC}"
 }
 
 # -----------------------------------------------------------------------------
-# 交互式菜单
+# 菜单
 # -----------------------------------------------------------------------------
 show_menu() {
-    clear
     echo "${CYAN}=========================================${NC}"
-    echo "${CYAN}   Antigravity Git Sync Tool (Ultimate)  ${NC}"
+    echo "${CYAN}     Antigravity Git Sync (Lite)         ${NC}"
     echo "${CYAN}=========================================${NC}"
-    echo "1. ${GREEN}全量同步${NC} (递归扫描所有Git仓库)"
-    echo "2. ${BLUE}检查状态${NC} (查看所有嵌套仓库状态)"
-    echo "3. ${YELLOW}生成报告${NC} (导出状态到文件)"
-    echo "4. ${RED}强制推送${NC} (慎用, 覆盖远程)"
-    echo "5. ${MAGENTA}创建Release${NC} (打标签并推送)"
-    echo "0. ${NC}退出${NC}"
+    echo "1. ${GREEN}快速同步${NC} (Add + Commit + Pull + Push)"
+    echo "2. ${BLUE}查看状态${NC}"
+    echo "3. ${MAGENTA}发布版本${NC} (Create Tag & Push)"
+    echo "4. ${RED}强制推送${NC} (覆盖远程)"
+    echo "0. 退出"
     echo "-----------------------------------------"
-    echo -n "请选择功能 [1-5]: "
+    echo -n "请选择 [0-4]: "
     read choice
-    echo ""
     
     case $choice in
-        1) run_full_sync false ;;
-        2) run_check_status ;;
-        3) run_generate_report ;;
-        4) 
-           echo "${RED}警告: 强制推送可能会覆盖远程记录。${NC}"
-           echo -n "确认要继续吗? (y/n): "
-           read confirm
-           if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-               run_full_sync true
-           else
-               echo "操作已取消。"
-           fi
-           ;;
-        5) run_create_release ;;
-        0) echo "再见！"; exit 0 ;;
-        *) echo "${RED}无效选项，请重新运行。${NC}" ;;
+        1) run_sync false ;;
+        2) run_status ;;
+        3) run_release ;;
+        4) run_sync true ;;
+        0) exit 0 ;;
+        *) echo "无效选择" ;;
     esac
 }
 
-# -----------------------------------------------------------------------------
-# 入口逻辑
-# -----------------------------------------------------------------------------
-
-# 如果有命令行参数，优先处理参数
 if [ $# -gt 0 ]; then
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -h|--help) 
-                echo "用法: ./git_sync.sh [无参数进入菜单]" 
-                echo "  -s  检查状态"
-                echo "  -r  生成报告"
-                echo "  -t  创建Release"
-                exit 0 ;;
-            -s|--status) run_check_status; exit 0 ;;
-            -r|--report) run_generate_report; exit 0 ;;
-            -f|--force)  run_full_sync true; exit 0 ;;
-            -t|--tag|--release) run_create_release; exit 0 ;;
-            *) echo "无效选项: $1"; exit 1 ;;
-        esac
-        shift
-    done
+    case $1 in
+        -s|--status) run_status ;;
+        -p|--push|--sync) run_sync false ;;
+        *) run_sync false ;;
+    esac
 else
-    # 无参数时，显示交互式菜单
     show_menu
 fi
