@@ -5,7 +5,7 @@
 """
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,13 +112,17 @@ async def get_current_manager_or_admin(
 @router.post("/login", response_model=LoginResponse)
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: Request,
 ):
     """
     用户登录
     
     验证用户名和密码，返回 JWT 访问令牌
     """
+    from app.services import log_audit
+    from app.models import AuditModule, AuditAction
+    
     # 查找用户
     result = await db.execute(
         select(User).where(User.username == form_data.username)
@@ -126,6 +130,17 @@ async def login(
     user = result.unique().scalar_one_or_none()
     
     if user is None or not verify_password(form_data.password, user.password_hash):
+        # 记录登录失败
+        await log_audit(
+            db=db,
+            user=None,
+            module=AuditModule.AUTH,
+            action=AuditAction.LOGIN_FAILED,
+            request=request,
+            description=f"登录失败: 用户名 {form_data.username}",
+            details={"username": form_data.username},
+        )
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
@@ -138,10 +153,22 @@ async def login(
             detail="用户已被禁用"
         )
     
+    # 记录登录成功
+    await log_audit(
+        db=db,
+        user=user,
+        module=AuditModule.AUTH,
+        action=AuditAction.LOGIN,
+        request=request,
+        description=f"用户 {user.real_name} 登录成功",
+    )
+    
     # 创建访问令牌
     access_token = create_access_token(
         data={"sub": user.username, "roles": [r.value for r in user.roles]}
     )
+    
+    await db.commit()
     
     return LoginResponse(
         access_token=access_token,

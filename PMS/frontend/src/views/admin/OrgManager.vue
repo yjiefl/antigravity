@@ -4,9 +4,10 @@
  *
  * 展示公司-部门-岗位树形结构，支持增删改查
  */
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted } from "vue";
 import api from "../../api"; // Adjust import path based on location
 import { useAuthStore } from "../../stores/auth";
+import OrgTreeItem from "../../components/OrgTreeItem.vue";
 
 const authStore = useAuthStore();
 const loading = ref(true);
@@ -110,7 +111,13 @@ function openAddDept(parent: any, orgId: string) {
 
 function openEditDept(dept: any) {
   isEdit.value = true;
-  deptForm.value = { ...dept, organization_id: "" }; // org_id might need to be passed or found
+  deptForm.value = {
+    id: dept.id,
+    name: dept.name,
+    code: dept.code || "",
+    parent_id: dept.parent_id || "",
+    organization_id: dept.organization_id || "",
+  };
   showDeptModal.value = true;
 }
 
@@ -194,127 +201,19 @@ onMounted(() => {
       v-else
       class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
     >
-      <!-- 递归组件或简单列表展示 -->
       <div class="p-6">
-        <template v-for="org in treeData" :key="org.id">
-          <div class="mb-6 last:mb-0">
-            <div class="flex items-center gap-2 mb-2 group">
-              <span class="text-xl">🏢</span>
-              <span class="font-bold text-lg text-slate-800">{{
-                org.name
-              }}</span>
-              <span class="text-xs px-2 py-0.5 bg-slate-100 rounded">{{
-                org.code
-              }}</span>
-              <button
-                @click="openAddDept(org, org.id)"
-                class="text-xs text-indigo-500 opacity-0 group-hover:opacity-100 hover:underline"
-              >
-                + 部门
-              </button>
-            </div>
-
-            <div class="pl-6 border-l-2 border-slate-100 space-y-3">
-              <template v-for="dept in org.children" :key="dept.id">
-                <div class="group">
-                  <div class="flex items-center gap-2 py-1">
-                    <button
-                      @click="toggleExpand(dept)"
-                      class="text-slate-400 hover:text-slate-600 w-4"
-                    >
-                      {{
-                        dept.children && dept.children.length > 0
-                          ? expandedKeys.has(dept.id)
-                            ? "▼"
-                            : "▶"
-                          : "•"
-                      }}
-                    </button>
-                    <span class="font-medium text-slate-700">{{
-                      dept.name
-                    }}</span>
-
-                    <div
-                      class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-4"
-                    >
-                      <button
-                        @click="openAddDept(dept, org.id)"
-                        class="text-xs text-indigo-600 hover:underline"
-                      >
-                        + 子部门
-                      </button>
-                      <button
-                        @click="openAddPos(dept)"
-                        class="text-xs text-purple-600 hover:underline"
-                      >
-                        + 岗位
-                      </button>
-                      <button
-                        @click="openEditDept(dept)"
-                        class="text-xs text-slate-500 hover:underline"
-                      >
-                        编辑
-                      </button>
-                      <button
-                        @click="deleteDept(dept.id)"
-                        class="text-xs text-red-500 hover:underline"
-                      >
-                        删除
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-                    v-if="expandedKeys.has(dept.id)"
-                    class="pl-6 border-l border-slate-100 mt-1"
-                  >
-                    <!-- 子部门和岗位渲染逻辑 (需递归) -->
-                    <!-- 这里简单处理一层子部门和岗位用于演示，实际建议封装 TreeItem 组件 -->
-                    <div
-                      v-for="child in dept.children"
-                      :key="child.id"
-                      class="py-1"
-                    >
-                      <div
-                        v-if="child.type === 'department'"
-                        class="flex items-center gap-2"
-                      >
-                        <span class="text-slate-400">↳ 📁</span>
-                        <span>{{ child.name }}</span>
-                        <button
-                          @click="deleteDept(child.id)"
-                          class="text-xs text-red-500 ml-2 opacity-0 hover:opacity-100 group-hover:block hidden"
-                        >
-                          删除
-                        </button>
-                      </div>
-                      <div
-                        v-else-if="child.type === 'position'"
-                        class="flex items-center gap-2"
-                      >
-                        <span class="text-slate-400">↳ 👤</span>
-                        <span class="text-sm text-slate-600">{{
-                          child.name
-                        }}</span>
-                        <span
-                          v-if="child.can_assign"
-                          class="text-[10px] bg-green-100 text-green-700 px-1 rounded"
-                          >主管权限</span
-                        >
-                      </div>
-                    </div>
-                    <div
-                      v-if="!dept.children || dept.children.length === 0"
-                      class="text-xs text-slate-400 py-1"
-                    >
-                      (空)
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-        </template>
+        <OrgTreeItem
+          v-for="org in treeData"
+          :key="org.id"
+          :node="org"
+          :depth="0"
+          :expanded-keys="expandedKeys"
+          @toggle-expand="toggleExpand"
+          @add-dept="openAddDept"
+          @add-pos="openAddPos"
+          @edit-dept="openEditDept"
+          @delete-dept="deleteDept"
+        />
       </div>
     </div>
 

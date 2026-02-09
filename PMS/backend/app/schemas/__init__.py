@@ -12,7 +12,9 @@ from app.schemas.user import (
     UserUpdate,
     UserResponse,
     UserBrief,
+    UserBrief,
     PasswordChange,
+    PasswordReset,
     OrganizationCreate,
     OrganizationUpdate,
     OrganizationResponse,
@@ -37,6 +39,12 @@ from app.schemas.task import (
     TaskFilter,
     TaskScorePreview,
     SubTaskCreate,
+    TaskExtensionRequest,
+)
+from app.schemas.audit import (
+    AuditLogCreate,
+    AuditLogResponse,
+    AuditLogQuery,
 )
 
 __all__ = [
@@ -50,7 +58,9 @@ __all__ = [
     "UserUpdate",
     "UserResponse",
     "UserBrief",
+    "UserBrief",
     "PasswordChange",
+    "PasswordReset",
     "OrganizationCreate",
     "OrganizationUpdate",
     "OrganizationResponse",
@@ -74,4 +84,9 @@ __all__ = [
     "TaskFilter",
     "TaskScorePreview",
     "SubTaskCreate",
+    "TaskExtensionRequest",
+    # 审计日志
+    "AuditLogCreate",
+    "AuditLogResponse",
+    "AuditLogQuery",
 ]

@@ -17,7 +17,7 @@ from app.models import User, Task, TaskLog, TaskStatus, TaskType, LogAction, Use
 from app.schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskBrief, TaskWithSubtasks,
     TaskApprove, TaskReview, TaskProgress, TaskComplete, TaskTransfer,
-    TaskFilter, SubTaskCreate,
+    TaskFilter, SubTaskCreate, TaskExtensionRequest,
 )
 from app.api.auth import get_current_user, get_current_manager_or_admin
 from app.services.kpi_service import calculate_timeliness, calculate_score
@@ -435,12 +435,12 @@ async def update_progress(
     
     progress_before = task.progress
     
-    # 防止进度倒退
-    if progress < progress_before:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"新进度 ({progress}%) 不能小于当前进度 ({progress_before}%)"
-        )
+    # 防止进度倒退 - 改为允许，但前端需提示确认
+    # if progress < progress_before:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail=f"新进度 ({progress}%) 不能小于当前进度 ({progress_before}%)"
+    #     )
     
     task.progress = progress
     
@@ -738,3 +738,89 @@ async def get_task_logs(
         }
         for log in logs
     ]
+# ============ 延期管理 ============
+
+@router.post("/{task_id}/request-extension", response_model=TaskResponse)
+async def request_extension(
+    task_id: uuid.UUID,
+    ext_in: TaskExtensionRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    申请任务延期
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    if task.status not in [TaskStatus.IN_PROGRESS, TaskStatus.REJECTED]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="只有进行中或驳回状态的任务可以申请延期"
+        )
+    
+    if task.executor_id != current_user.id and task.owner_id != current_user.id:
+         raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有任务负责人或实施人可以申请延期"
+        )
+
+    task.extension_status = "pending"
+    task.extension_reason = ext_in.extension_reason
+    task.extension_date = ext_in.extension_date
+    
+    await add_task_log(
+        db, task.id, current_user.id, LogAction.PROGRESS_UPDATED, 
+        f"申请延期至 {ext_in.extension_date.strftime('%Y-%m-%d %H:%M')}, 原因: {ext_in.extension_reason}"
+    )
+    
+    await db.flush()
+    return task
+
+
+@router.post("/{task_id}/approve-extension", response_model=TaskResponse)
+async def approve_extension(
+    task_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_manager_or_admin)],
+):
+    """
+    通过延期申请（仅主管/管理员）
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    if task.extension_status != "pending":
+        raise HTTPException(status_code=400, detail="没有待处理的延期申请")
+    
+    old_end = task.plan_end
+    task.plan_end = task.extension_date
+    task.extension_status = "approved"
+    
+    await add_task_log(
+        db, task.id, current_user.id, LogAction.APPROVED, 
+        f"通过延期申请。原截止: {old_end.strftime('%Y-%m-%d')}, 新截止: {task.plan_end.strftime('%Y-%m-%d')}"
+    )
+    
+    await db.flush()
+    return task
+
+
+@router.post("/{task_id}/reject-extension", response_model=TaskResponse)
+async def reject_extension(
+    task_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_manager_or_admin)],
+):
+    """
+    驳回延期申请（仅主管/管理员）
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    if task.extension_status != "pending":
+        raise HTTPException(status_code=400, detail="没有待处理的延期申请")
+    
+    task.extension_status = "rejected"
+    
+    await add_task_log(db, task.id, current_user.id, LogAction.REJECTED, "驳回延期申请")
+    
+    await db.flush()
+    return task

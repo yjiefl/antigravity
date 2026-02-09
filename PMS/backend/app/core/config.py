@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # 应用基础配置
     app_name: str = "Plan Management System"
     app_version: str = "1.0.0"
-    debug: bool = False
+    debug: bool = True
     
     # 数据库配置
     database_url: str = "sqlite+aiosqlite:///./plan_management.db"

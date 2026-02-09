@@ -29,6 +29,11 @@ from app.models.penalty import (
     AppealReason,
 )
 from app.models.attachment import Attachment
+from app.models.audit import (
+    AuditLog,
+    AuditModule,
+    AuditAction,
+)
 
 __all__ = [
     # 用户与组织
@@ -53,4 +58,8 @@ __all__ = [
     "AppealStatus",
     "AppealReason",
     "Attachment",
+    # 审计日志
+    "AuditLog",
+    "AuditModule",
+    "AuditAction",
 ]

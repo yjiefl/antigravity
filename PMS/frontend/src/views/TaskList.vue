@@ -4,11 +4,12 @@
  *
  * PC 端表格视图，移动端卡片视图
  */
-import { ref, onMounted, computed } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, computed, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import api from "../api";
 
 const router = useRouter();
+const route = useRoute();
 
 // 任务列表
 const tasks = ref<any[]>([]);
@@ -132,7 +133,23 @@ async function handleExport() {
   }
 }
 
+// 读取 URL query 参数初始化过滤状态
+function initFromQuery() {
+  const queryStatus = route.query.status as string;
+  if (queryStatus && statusOptions.some(opt => opt.value === queryStatus)) {
+    statusFilter.value = queryStatus;
+  }
+}
+
+// 监听路由变化 (从仪表盘点击进入时)
+watch(() => route.query.status, (newStatus) => {
+  if (newStatus && typeof newStatus === 'string') {
+    statusFilter.value = newStatus;
+  }
+});
+
 onMounted(() => {
+  initFromQuery();
   loadTasks();
 });
 </script>
@@ -247,6 +264,12 @@ onMounted(() => {
               状态
             </th>
             <th
+              class="text-center py-4 px-3 text-indigo-900/60 font-bold uppercase tracking-widest text-[10px]"
+              title="重要性/难度系数"
+            >
+              I/D
+            </th>
+            <th
               class="text-left py-4 px-6 text-indigo-900/60 font-bold uppercase tracking-widest text-[10px]"
             >
               进度
@@ -284,6 +307,17 @@ onMounted(() => {
               <span :class="['status-badge', getStatusClass(task.status)]">
                 {{ getStatusText(task.status) }}
               </span>
+            </td>
+            <td class="py-4 px-3 text-center">
+              <div v-if="task.importance_i || task.difficulty_d" class="flex flex-col items-center gap-0.5">
+                <span class="text-xs font-bold text-amber-600" :title="'重要性: ' + (task.importance_i || '-')">
+                  I:{{ task.importance_i?.toFixed(1) || '-' }}
+                </span>
+                <span class="text-xs font-bold text-blue-600" :title="'难度: ' + (task.difficulty_d || '-')">
+                  D:{{ task.difficulty_d?.toFixed(1) || '-' }}
+                </span>
+              </div>
+              <span v-else class="text-xs text-slate-300">-</span>
             </td>
             <td class="py-4 px-6">
               <div class="flex items-center gap-3">

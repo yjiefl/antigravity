@@ -54,6 +54,24 @@ const routes = [
         meta: { requiresAuth: true, roles: ['admin'] } 
       },
       {
+        path: 'admin/users',
+        name: 'UserList',
+        component: () => import('../views/admin/UserList.vue'),
+        meta: { requiresAuth: true, roles: ['admin'] }
+      },
+      {
+        path: 'admin/audit',
+        name: 'AuditLog',
+        component: () => import('../views/admin/AuditLog.vue'),
+        meta: { requiresAuth: true, roles: ['admin'] }
+      },
+      {
+        path: 'batch-import',
+        name: 'BatchImport',
+        component: () => import('../views/BatchImport.vue'),
+        meta: { requiresAuth: true, roles: ['admin', 'manager'] }
+      },
+      {
         path: 'help',
         name: 'Help',
         component: () => import('../views/Help.vue')

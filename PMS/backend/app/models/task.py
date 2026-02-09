@@ -137,6 +137,19 @@ class Task(Base):
         comment="完成进度 (0-100)"
     )
     
+    # 延期申请
+    extension_status: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        comment="延期状态: pending/approved/rejected"
+    )
+    extension_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="延期理由")
+    extension_date: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="申请延期至"
+    )
+    
     # 责任矩阵
     creator_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -148,6 +161,12 @@ class Task(Base):
         ForeignKey("departments.id", ondelete="SET NULL"),
         nullable=True,
         comment="归属部门"
+    )
+    reviewer_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="审批人/主管"
     )
     owner_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
@@ -230,6 +249,7 @@ class Task(Base):
     # 用户关联（用于 eager loading）
     creator: Mapped["User"] = relationship("User", foreign_keys=[creator_id])
     department: Mapped[Optional["Department"]] = relationship("Department")
+    reviewer: Mapped[Optional["User"]] = relationship("User", foreign_keys=[reviewer_id])
     owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
     executor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[executor_id])
 

@@ -26,6 +26,30 @@ const navItems = [
     icon: "⚖️",
     roles: ["admin", "manager"],
   },
+  {
+    name: "用户管理",
+    path: "/admin/users",
+    icon: "👥",
+    roles: ["admin"],
+  },
+  {
+    name: "组织架构",
+    path: "/admin/org",
+    icon: "🏢",
+    roles: ["admin"],
+  },
+  {
+    name: "审计日志",
+    path: "/admin/audit",
+    icon: "📋",
+    roles: ["admin"],
+  },
+  {
+    name: "批量导入",
+    path: "/batch-import",
+    icon: "📥",
+    roles: ["admin", "manager"],
+  },
   { name: "帮助说明", path: "/help", icon: "❓" },
 ];
 
@@ -33,7 +57,9 @@ const navItems = [
 const filteredNavItems = computed(() => {
   return navItems.filter((item) => {
     if (!item.roles) return true;
-    return item.roles.includes(authStore.user?.role || "");
+    // 检查用户是否拥有任一所需角色
+    const userRoles = authStore.user?.roles || [];
+    return item.roles.some((role: string) => userRoles.includes(role as any));
   });
 });
 
@@ -106,7 +132,7 @@ function handleLogout() {
             <p
               class="text-[10px] font-bold uppercase tracking-widest text-indigo-500 opacity-60"
             >
-              {{ authStore.user?.role }}
+              {{ authStore.user?.roles?.join(', ') || '无角色' }}
             </p>
           </div>
           <button

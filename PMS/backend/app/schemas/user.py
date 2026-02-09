@@ -39,8 +39,6 @@ class UserBase(BaseModel):
     """用户基础模式"""
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     real_name: str = Field(..., max_length=50, description="真实姓名")
-    email: Optional[EmailStr] = Field(None, description="邮箱")
-    phone: Optional[str] = Field(None, max_length=20, description="手机号")
     roles: List[UserRole] = Field(default=[UserRole.STAFF], description="用户角色")
     department_id: Optional[uuid.UUID] = Field(None, description="所属部门")
     position_id: Optional[uuid.UUID] = Field(None, description="岗位")
@@ -94,8 +92,6 @@ class OrganizationUpdate(BaseModel):
 class UserUpdate(BaseModel):
     """更新用户"""
     real_name: Optional[str] = Field(None, max_length=50)
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = Field(None, max_length=20)
     roles: Optional[List[UserRole]] = None
     department_id: Optional[uuid.UUID] = None
     position_id: Optional[uuid.UUID] = None
@@ -103,8 +99,13 @@ class UserUpdate(BaseModel):
 
 
 class PasswordChange(BaseModel):
-    """修改密码"""
+    """修改密码（用户自己）"""
     old_password: str = Field(..., description="旧密码")
+    new_password: str = Field(..., min_length=6, description="新密码")
+
+
+class PasswordReset(BaseModel):
+    """重置密码（管理员）"""
     new_password: str = Field(..., min_length=6, description="新密码")
 
 

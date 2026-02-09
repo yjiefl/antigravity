@@ -114,3 +114,25 @@
    - 执行 `./git_sync.sh` 脚本，完成远程代码拉取与本地状态推送。
    - 验证：仓库目前与 `origin/main` 保持同步。
 
+[2026-02-09 21:28:54] 修复前端多角色支持及UI问题
+- AuthStore 改用 roles[] 数组
+- 侧边栏添加组织架构入口 (Admin 专属)
+- 启用附件图片预览模态框
+- 文件上传改为追加模式，支持逐个添加和移除
+- 修复 filteredNavItems 角色过滤逻辑
+- 修复 null-safety lint 错误
+[2026-02-09 21:45:49] Phase 1-3 功能实现完成
+=== Phase 1: Bug 修复 ===
+- [x] 图片附件预览: 添加 /static 代理到 vite.config.ts
+- [x] 部门编辑保存: 修复 openEditDept 中 organization_id 填充
+
+=== Phase 2: 核心增强 ===
+- [x] 仪表盘穿透筛选: TaskList.vue 读取 URL query 参数
+- [x] 任务列表 I/D 列: 新增表头和数据单元格显示重要性/难度
+
+=== Phase 3: UX 改进 ===
+- [x] 时区修复: TaskForm.vue 使用 toLocalDateTimeString() 本地时间
+- [x] 必填项提示: 任务标题已有星号标识
+
+=== 待测试 ===
+请重启前端服务后验证以上功能

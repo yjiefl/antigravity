@@ -23,7 +23,7 @@ async def create_admin():
         result = await session.execute(
             select(User).where(User.username == "admin")
         )
-        if result.scalar_one_or_none():
+        if result.unique().scalar_one_or_none():
             print("管理员账户已存在")
             return
         

@@ -24,8 +24,9 @@ const showCompleteModal = ref(false);
 const showReviewModal = ref(false);
 const showApproveModal = ref(false);
 const showReturnModal = ref(false);
-// const showPreviewModal = ref(false);
-// const previewUrl = ref("");
+const showPreviewModal = ref(false);
+const showExtensionModal = ref(false);
+const previewUrl = ref("");
 
 // 表单数据
 const progressForm = ref({ percent: 0, content: "", files: [] as File[] });
@@ -33,27 +34,33 @@ const completeForm = ref({ comment: "", files: [] as File[] });
 const reviewForm = ref({ quality: 1.0, comment: "" });
 const approveForm = ref({ importance: 1.0, difficulty: 1.0 });
 const returnForm = ref({ reason: "" });
+const extensionForm = ref({ date: "", reason: "" });
 
 function handleProgressFileChange(event: Event) {
   const target = event.target as HTMLInputElement;
   if (target.files) {
-    // Append instead of replace to support "one by one" upload experience if requested
-    // But system currently replaces. Let's stick to simple multiple for now.
-    progressForm.value.files = Array.from(target.files);
+    // Append new files to existing list (支持逐个添加)
+    const newFiles = Array.from(target.files);
+    progressForm.value.files = [...progressForm.value.files, ...newFiles];
+    // Clear input to allow selecting same file again
+    target.value = '';
   }
 }
 
 function handleCompleteFileChange(event: Event) {
   const target = event.target as HTMLInputElement;
   if (target.files) {
-    completeForm.value.files = Array.from(target.files);
+    // Append new files to existing list (支持逐个添加)
+    const newFiles = Array.from(target.files);
+    completeForm.value.files = [...completeForm.value.files, ...newFiles];
+    target.value = '';
   }
 }
 
-// function openPreview(url: string) {
-//   previewUrl.value = url;
-//   showPreviewModal.value = true;
-// }
+function openPreview(url: string) {
+  previewUrl.value = url;
+  showPreviewModal.value = true;
+}
 
 // 加载任务
 async function loadTask() {
@@ -210,6 +217,39 @@ async function reviewTask() {
   showReviewModal.value = false;
   await loadTask();
 }
+
+async function requestExtension() {
+  if (!extensionForm.value.date || !extensionForm.value.reason) {
+    alert("请填写完整的延期日期和理由");
+    return;
+  }
+  try {
+    console.log("Submitting extension request:", extensionForm.value);
+    await api.post(`/api/tasks/${taskId.value}/request-extension`, {
+      extension_date: extensionForm.value.date,
+      extension_reason: extensionForm.value.reason,
+    });
+    alert("延期申请已提交");
+    showExtensionModal.value = false;
+    await loadTask();
+  } catch (e: any) {
+    console.error("申请延期失败", e);
+    alert("申请延期失败: " + (e.response?.data?.detail || e.message));
+  }
+}
+
+async function approveExtension() {
+  if (!confirm("确认通过该延期申请？")) return;
+  await api.post(`/api/tasks/${taskId.value}/approve-extension`);
+  await loadTask();
+}
+
+async function rejectExtension() {
+  if (!confirm("确认驳回该延期申请？")) return;
+  await api.post(`/api/tasks/${taskId.value}/reject-extension`);
+  await loadTask();
+}
+
 
 // 状态文本
 function getStatusText(status: string) {
@@ -430,8 +470,8 @@ onMounted(() => {
         <button
           v-if="
             task.status === 'pending_approval' &&
-            (task.creator_id === authStore.user.id ||
-              task.owner_id === authStore.user.id)
+            (task.creator_id === authStore.user?.id ||
+              task.owner_id === authStore.user?.id)
           "
           @click="withdrawTask"
           class="btn btn-secondary"
@@ -493,6 +533,41 @@ onMounted(() => {
           验收退回
         </button>
 
+        <!-- 进行中/驳回 -> 申请延期 (Owner/Executor) -->
+        <button
+          v-if="(task.status === 'in_progress' || task.status === 'rejected') && 
+                (task.executor_id === authStore.user?.id || task.owner_id === authStore.user?.id)"
+          @click="showExtensionModal = true"
+          class="btn bg-amber-50 text-amber-700 hover:bg-amber-100"
+        >
+          申请延期
+        </button>
+      </div>
+
+      <!-- 延期申请详情 (如有) -->
+      <div v-if="task.extension_status === 'pending'" class="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <h4 class="text-sm font-bold text-amber-800 flex items-center gap-2">
+              ⏳ 延期申请处理中
+            </h4>
+            <div class="mt-2 text-xs text-amber-700 space-y-1">
+              <p><span class="opacity-70">申请延期至:</span> <span class="font-bold">{{ new Date(task.extension_date).toLocaleDateString() }}</span></p>
+              <p><span class="opacity-70">延期理由:</span> <span class="italic">"{{ task.extension_reason }}"</span></p>
+            </div>
+          </div>
+          <div v-if="authStore.isManager" class="flex flex-col gap-2">
+            <button @click="approveExtension" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700">
+              通过申请
+            </button>
+            <button @click="rejectExtension" class="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50">
+              驳回
+            </button>
+          </div>
+        </div>
+      </div>
+
+
         <!-- 待验收 -> 回撤 (Creator/Executor) -->
         <button
           v-if="task.status === 'pending_review'"
@@ -550,13 +625,13 @@ onMounted(() => {
                   class="flex items-center gap-3 p-2 bg-white/50 border border-slate-100 rounded-lg group hover:bg-white transition-all"
                 >
                   <!-- 图片预览 -->
-                  <template v-if="att.file_type.startsWith('image/')">
-                    <a :href="att.file_path" target="_blank" class="shrink-0">
+                  <template v-if="att.file_type && att.file_type.startsWith('image/')">
+                    <div @click="openPreview(att.file_path)" class="shrink-0 cursor-pointer">
                       <img
                         :src="att.file_path"
                         class="h-12 w-12 object-cover rounded border border-slate-100 hover:scale-110 transition-transform"
                       />
-                    </a>
+                    </div>
                   </template>
                   <template v-else>
                     <span class="text-2xl shrink-0">📄</span>
@@ -799,12 +874,17 @@ onMounted(() => {
             </div>
             <div v-if="progressForm.files.length > 0" class="mt-2 space-y-1">
               <div
-                v-for="f in progressForm.files"
-                :key="f.name"
-                class="text-[10px] text-slate-500 flex justify-between"
+                v-for="(f, idx) in progressForm.files"
+                :key="f.name + idx"
+                class="text-[10px] text-slate-500 flex justify-between items-center bg-slate-50 px-2 py-1 rounded"
               >
-                <span>{{ f.name }}</span>
-                <span>{{ formatFileSize(f.size) }}</span>
+                <span class="truncate flex-1">{{ f.name }}</span>
+                <span class="mx-2">{{ formatFileSize(f.size) }}</span>
+                <button
+                  @click="progressForm.files.splice(idx, 1)"
+                  class="text-red-400 hover:text-red-600 text-xs"
+                  title="移除"
+                >✕</button>
               </div>
             </div>
           </div>
@@ -1058,6 +1138,69 @@ onMounted(() => {
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- 6. 图片预览模态框 -->
+    <div
+      v-if="showPreviewModal"
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      @click.self="showPreviewModal = false"
+    >
+      <div class="relative max-w-4xl max-h-[90vh]">
+        <button
+          @click="showPreviewModal = false"
+          class="absolute -top-10 right-0 text-white/80 hover:text-white text-2xl transition-colors"
+        >
+          ✕
+        </button>
+        <img
+          :src="previewUrl"
+          class="max-w-full max-h-[85vh] rounded-lg shadow-2xl"
+          alt="预览图片"
+        />
+      </div>
+    </div>
+    <!-- 7. 申请延期模态框 -->
+    <div
+      v-if="showExtensionModal"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+    >
+      <div
+        class="bg-white rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up"
+      >
+        <div class="p-4 border-b border-slate-100 bg-amber-50">
+          <h3 class="font-bold text-amber-800">⏳ 申请任务延期</h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-2">申请延期至 *</label>
+            <input
+              v-model="extensionForm.date"
+              type="datetime-local"
+              class="w-full px-3 py-2 border rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-2">延期理由 *</label>
+            <textarea
+              v-model="extensionForm.reason"
+              rows="3"
+              class="w-full px-3 py-2 border rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+              placeholder="请说明延期的具体原因..."
+            ></textarea>
+          </div>
+          <div class="flex gap-3">
+            <button
+              @click="showExtensionModal = false"
+              class="btn bg-slate-100 text-slate-700 hover:bg-slate-200 flex-1 py-2 font-bold rounded-lg"
+            >
+              取消
+            </button>
+            <button @click="requestExtension" class="btn bg-amber-600 text-white hover:bg-amber-700 flex-1 py-2 font-bold rounded-lg transition-colors">
+              确认申请
+            </button>
+          </div>
+        </div>
     </div>
   </div>
 </template>

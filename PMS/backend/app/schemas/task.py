@@ -77,6 +77,7 @@ class TaskCreate(TaskBase):
     """创建任务"""
     owner_id: Optional[uuid.UUID] = Field(None, description="负责人ID")
     executor_id: Optional[uuid.UUID] = Field(None, description="实施人ID")
+    reviewer_id: Optional[uuid.UUID] = Field(None, description="审批人ID")
     parent_id: Optional[uuid.UUID] = Field(None, description="父任务ID")
     weight: float = Field(1.0, ge=0.0, le=10.0, description="权重")
 
@@ -128,6 +129,7 @@ class TaskUpdate(BaseModel):
     plan_end: Optional[datetime] = None
     owner_id: Optional[uuid.UUID] = None
     executor_id: Optional[uuid.UUID] = None
+    reviewer_id: Optional[uuid.UUID] = None
 
     @field_validator('plan_start', 'plan_end', mode='before')
     @classmethod
@@ -185,6 +187,24 @@ class TaskComplete(BaseModel):
     comment: Optional[str] = Field(None, description="完成备注")
 
 
+class TaskExtensionRequest(BaseModel):
+    """申请延期"""
+    extension_reason: str = Field(..., description="延期理由")
+    extension_date: datetime = Field(..., description="申请延期至")
+
+    @field_validator('extension_date', mode='before')
+    @classmethod
+    def parse_datetime(cls, v):
+        if isinstance(v, str):
+            try:
+                from datetime import datetime
+                return datetime.fromisoformat(v.replace('Z', '+00:00'))
+            except ValueError:
+                pass
+        return v
+
+
+
 class TaskTransfer(BaseModel):
     """任务转移"""
     new_executor_id: uuid.UUID = Field(..., description="新实施人ID")
@@ -229,6 +249,11 @@ class TaskResponse(TaskBase):
     weight: float
     final_score: Optional[float]
     evidence_url: Optional[str]
+    # 延期字段
+    extension_status: Optional[str] = None
+    extension_reason: Optional[str] = None
+    extension_date: Optional[datetime] = None
+    reviewer_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
 

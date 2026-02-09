@@ -6,17 +6,18 @@
 import uuid
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core import get_db, get_password_hash
-from app.models import User, Organization, Department, Position, UserRole, UserRoleBinding
+from app.models import User, Organization, Department, Position, UserRole, UserRoleBinding, AuditModule, AuditAction
 from app.schemas import (
-    UserCreate, UserUpdate, UserResponse, UserBrief,
+    UserCreate, UserUpdate, UserResponse, UserBrief, PasswordReset,
 )
 from app.api.auth import get_current_user, get_current_admin
+from app.services import log_audit
 
 router = APIRouter()
 
@@ -51,11 +52,62 @@ async def list_users(
     return result.unique().scalars().all()
 
 
+@router.get("/manage", response_model=List[UserResponse])
+async def manage_users(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_admin)],
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    keyword: str = Query(None, description="搜索用户名或姓名"),
+):
+    """
+    管理用户列表（包含禁用用户，仅管理员）
+    """
+    query = select(User)
+    
+    if keyword:
+        query = query.where(
+            (User.username.ilike(f"%{keyword}%")) | 
+            (User.real_name.ilike(f"%{keyword}%"))
+        )
+    
+    query = query.order_by(User.created_at.desc()).offset(skip).limit(limit)
+    result = await db.execute(query)
+    
+    return result.unique().scalars().all()
+
+
+@router.get("/manage", response_model=List[UserResponse])
+async def manage_users(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_admin)],
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    keyword: str = Query(None, description="搜索用户名或姓名"),
+):
+    """
+    管理用户列表（包含禁用用户，仅管理员）
+    """
+    query = select(User)
+    
+    if keyword:
+        query = query.where(
+            (User.username.ilike(f"%{keyword}%")) | 
+            (User.real_name.ilike(f"%{keyword}%"))
+        )
+    
+    query = query.order_by(User.created_at.desc()).offset(skip).limit(limit)
+    result = await db.execute(query)
+    
+    return result.unique().scalars().all()
+
+
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_in: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_admin)],
+    request: Request,
 ):
     """
     创建用户（仅管理员）
@@ -75,8 +127,6 @@ async def create_user(
         username=user_in.username,
         password_hash=get_password_hash(user_in.password),
         real_name=user_in.real_name,
-        email=user_in.email,
-        phone=user_in.phone,
         department_id=user_in.department_id,
         position_id=user_in.position_id,
     )
@@ -88,6 +138,19 @@ async def create_user(
     for role in user_in.roles:
         binding = UserRoleBinding(user_id=user.id, role=role)
         db.add(binding)
+    
+    # 记录审计日志
+    await log_audit(
+        db=db,
+        user=current_user,
+        module=AuditModule.USER,
+        action=AuditAction.USER_CREATE,
+        request=request,
+        target_type="user",
+        target_id=str(user.id),
+        target_name=user.real_name,
+        description=f"创建用户 {user.real_name} ({user.username})",
+    )
         
     await db.flush()
     await db.refresh(user)
@@ -151,6 +214,14 @@ async def update_user(
         for role in user_in.roles:
             binding = UserRoleBinding(user_id=user.id, role=role)
             db.add(binding)
+    
+    # 更新其他字段
+    update_data = user_in.model_dump(exclude_unset=True)
+    if 'roles' in update_data:
+        del update_data['roles']
+    
+    for field, value in update_data.items():
+        setattr(user, field, value)
             
     await db.flush()
     await db.refresh(user)
@@ -186,5 +257,84 @@ async def delete_user(
     
     user.is_active = False
     await db.flush()
+
+
+@router.patch("/{user_id}/status", response_model=UserResponse)
+async def toggle_status(
+    user_id: uuid.UUID,
+    active: bool,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_admin)],
+    request: Request,
+):
+    """
+    启用/禁用用户
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.unique().scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+        
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="不能修改自己的状态")
+    
+    old_status = user.is_active
+    user.is_active = active
+    
+    # 记录审计日志
+    await log_audit(
+        db=db,
+        user=current_user,
+        module=AuditModule.USER,
+        action=AuditAction.USER_ENABLE if active else AuditAction.USER_DISABLE,
+        request=request,
+        target_type="user",
+        target_id=str(user.id),
+        target_name=user.real_name,
+        description=f"{'启用' if active else '禁用'}用户 {user.real_name}",
+        details={"old_status": old_status, "new_status": active},
+    )
+    
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/{user_id}/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    user_id: uuid.UUID,
+    password_in: PasswordReset,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_admin)],
+    request: Request,
+):
+    """
+    重置用户密码（仅管理员）
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.unique().scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+        
+    user.password_hash = get_password_hash(password_in.new_password)
+    
+    # 记录审计日志
+    await log_audit(
+        db=db,
+        user=current_user,
+        module=AuditModule.USER,
+        action=AuditAction.PASSWORD_RESET,
+        request=request,
+        target_type="user",
+        target_id=str(user.id),
+        target_name=user.real_name,
+        description=f"重置用户 {user.real_name} 的密码",
+    )
+    
+    await db.flush()
+    
+    return {"message": "密码重置成功"}
 
 

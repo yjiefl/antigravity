@@ -75,6 +75,10 @@ app.include_router(reports.router, prefix="/api/reports", tags=["报表"])
 app.include_router(appeals.router, prefix="/api/appeals", tags=["申诉管理"])
 from app.api import attachments
 app.include_router(attachments.router, prefix="/api/attachments", tags=["附件管理"])
+from app.api import audit
+app.include_router(audit.router, prefix="/api/audit", tags=["审计日志"])
+from app.api import batch_import
+app.include_router(batch_import.router, prefix="/api/batch", tags=["批量导入"])
 
 # 挂载静态文件目录 (用于访问上传的附件)
 from fastapi.staticfiles import StaticFiles
