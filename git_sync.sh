@@ -1,9 +1,9 @@
 #!/bin/zsh
 
 # =============================================================================
-# Antigravity Git Sync Script
-# 功能：自动同步/检查/报告 Git 仓库状态
-# 用法：./git_sync.sh [options]
+# Antigravity Git Sync Script (Ultimate)
+# 功能：递归同步主仓库及所有嵌套 Git 仓库 (不管是否注册为 submodule)
+# 逻辑：Nested Repos (Commit->Push) -> Main Repo (Commit->Pull->Push)
 # =============================================================================
 
 # 设置颜色输出
@@ -12,6 +12,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # 1. 动态获取项目路径
@@ -32,189 +33,239 @@ log_to_file() {
     echo "$timestamp - [Git Sync] $msg" >> "$LOG_FILE"
 }
 
-show_help() {
-    echo "${CYAN}Antigravity Git Sync Tool${NC}"
-    echo "用法: ./git_sync.sh [选项]"
-    echo ""
-    echo "选项:"
-    echo "  -h, --help      显示帮助信息"
-    echo "  -s, --status    仅检查同步状态（不执行同步）"
-    echo "  -r, --report    生成当前仓库状态报告到日志目录"
-    echo "  -f, --force     强制推送（慎用）"
-    echo ""
-    echo "默认行为: 执行完整的 Check -> Commit -> Pull(Rebase) -> Push 流程"
+# 获取所有嵌套仓库列表 (排除根目录)
+get_nested_repos() {
+    find "$REPO_PATH" -name ".git" -not -path "$REPO_PATH/.git" | while read git_dir; do
+        dirname "$git_dir"
+    done
 }
 
-check_status() {
-    echo "${BLUE}>>> 正在检查仓库状态...${NC}"
+# -----------------------------------------------------------------------------
+# 关键功能模块
+# -----------------------------------------------------------------------------
+
+# 1. 检查状态
+check_repo_status() {
+    local repo_path=$1
+    local name=$2
+    
+    # 尝试进入目录，失败则跳过
+    if ! cd "$repo_path" >/dev/null 2>&1; then
+        return
+    fi
     
     # 检查本地修改
-    LOCAL_CHANGES=$(git status --porcelain | wc -l | tr -d ' ')
+    LOCAL_CHANGES=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
     
-    # 检查落后/领先提交
-    git fetch origin main > /dev/null 2>&1
-    BEHIND=$(git rev-list --count HEAD..origin/main)
-    AHEAD=$(git rev-list --count origin/main..HEAD)
+    # 检查远程同步
+    git fetch origin HEAD > /dev/null 2>&1
+    CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
     
-    echo "----------------------------------------"
+    if [ -z "$CURRENT_BRANCH" ]; then
+        REMOTE_STATUS="${MAGENTA}Detached/No Branch${NC}"
+    else
+        BEHIND=$(git rev-list --count HEAD..origin/"$CURRENT_BRANCH" 2>/dev/null || echo 0)
+        AHEAD=$(git rev-list --count origin/"$CURRENT_BRANCH"..HEAD 2>/dev/null || echo 0)
+        
+        if [ "$BEHIND" -gt 0 ]; then REMOTE_STATUS="${YELLOW}↓ 落后 $BEHIND${NC}"; 
+        elif [ "$AHEAD" -gt 0 ]; then REMOTE_STATUS="${YELLOW}↑ 领先 $AHEAD${NC}";
+        else REMOTE_STATUS="${GREEN}✓ 同步${NC}"; fi
+    fi
+
     if [ "$LOCAL_CHANGES" -gt 0 ]; then
-        echo "${YELLOW}● 本地有 $LOCAL_CHANGES 个文件被修改 (未提交)${NC}"
+        FILE_STATUS="${YELLOW}● 修改: $LOCAL_CHANGES${NC}"
     else
-        echo "${GREEN}● 工作区干净${NC}"
+        FILE_STATUS="${GREEN}✓ 干净${NC}"
     fi
     
-    if [ "$BEHIND" -gt 0 ]; then
-        echo "${YELLOW}↓ 落后远程 $BEHIND 个提交 (需拉取)${NC}"
-    else
-        echo "${GREEN}✓ 已包含远程所有提交${NC}"
-    fi
+    # 计算相对路径用于显示
+    REL_PATH=${repo_path#$REPO_PATH/}
+    if [ "$repo_path" = "$REPO_PATH" ]; then REL_PATH="Main (Root)"; fi
     
-    if [ "$AHEAD" -gt 0 ]; then
-        echo "${YELLOW}↑ 领先远程 $AHEAD 个提交 (需推送)${NC}"
-    else
-        echo "${GREEN}✓以此分支为准，无需推送${NC}"
-    fi
-    echo "----------------------------------------"
+    printf "%-40s %-20s %s\n" "$REL_PATH" "$FILE_STATUS" "$REMOTE_STATUS"
 }
 
-generate_report() {
+run_check_status() {
+    echo "${BLUE}>>> 仓库状态概览 (自动扫描所有嵌套仓库)...${NC}"
+    printf "${CYAN}%-40s %-20s %s${NC}\n" "仓库/模块" "工作区" "远程状态"
+    echo "--------------------------------------------------------------------------------"
+    
+    # 1. 检查主仓库
+    check_repo_status "$REPO_PATH" "Main (Root)"
+    
+    # 2. 检查所有嵌套仓库
+    get_nested_repos | while read repo; do
+        check_repo_status "$repo"
+    done
+    
+    echo "--------------------------------------------------------------------------------"
+    log_to_file "Checked repo status."
+}
+
+# 2. 生成报告
+run_generate_report() {
     REPORT_TIME=$(date '+%Y-%m-%d_%H%M%S')
     REPORT_FILE="$REPO_PATH/log/repo_status_${REPORT_TIME}.txt"
-    
     echo "${BLUE}>>> 正在生成详细报告...${NC}"
-    
     {
-        echo "=== Antigravity Repository Status Report ==="
-        echo "Generated: $(date '+%Y-%m-%d %H:%M:%S')"
-        echo "Branch: $(git branch --show-current)"
+        echo "=== Repository Status Report ==="
+        echo "Generated: $(date)"
         echo ""
-        echo "--- 1. Commit History (Last 5) ---"
-        git log -n 5 --oneline --graph --decorate
+        echo ">>> Main Repository"
+        cd "$REPO_PATH" && git status
         echo ""
-        echo "--- 2. Status Short ---"
-        git status -s
-        echo ""
-        echo "--- 3. Remote Info ---"
-        git remote -v
-        echo ""
-        echo "--- 4. Detailed Status ---"
-        git status
+        echo ">>> Nested Repositories"
+        get_nested_repos | while read repo; do
+            echo "--- ${repo#$REPO_PATH/} ---"
+            cd "$repo" && git status -s
+            echo ""
+        done
     } > "$REPORT_FILE"
-    
     echo "${GREEN}报告已生成: $REPORT_FILE${NC}"
-    log_to_file "Report generated: $REPORT_FILE"
+    log_to_file "Generated report: $REPORT_FILE"
 }
 
-# -----------------------------------------------------------------------------
-# 核心同步逻辑 (原有逻辑封装)
-# -----------------------------------------------------------------------------
-run_sync() {
-    local force_push=$1
-    echo "${GREEN}>>> 开始同步流程...${NC}"
+# 3. 核心同步逻辑 (单个仓库)
+sync_one_repo() {
+    local repo_path=$1
+    local name=$2
+    local force=$3
     
-    # [Step 1] Commit
-    echo "${YELLOW}[1/3] 检查本地修改...${NC}"
-    STATUS=$(git status --porcelain)
+    if ! cd "$repo_path" >/dev/null 2>&1; then
+        echo "${RED}错误: 无法进入 $repo_path${NC}"
+        return
+    fi
+    
+    echo "${CYAN}>>> 同步: $name${NC}"
+    
+    # Commit
+    STATUS=$(git status --porcelain 2>/dev/null)
     if [ -n "$STATUS" ]; then
-        echo "${BLUE}检测到本地有未提交的更改，正在提交...${NC}"
+        echo "   ${YELLOW}检测到修改，正在提交...${NC}"
         git add .
         COMMIT_MSG="chore: auto sync updates at $(date '+%Y-%m-%d %H:%M:%S')"
         if git commit -m "$COMMIT_MSG"; then
-            echo "${GREEN}本地修改已提交。${NC}"
-            log_to_file "Local changes committed: $COMMIT_MSG"
-        else
-            echo "${RED}提交失败。${NC}"; exit 1
+            echo "   ${GREEN}已提交。${NC}"
+            log_to_file "[$name] Committed changes."
         fi
     else
-        echo "${GREEN}工作区干净。${NC}"
+        echo "   ${GREEN}工作区干净。${NC}"
     fi
-
-    # [Step 2] Pull (Rebase)
-    echo "${YELLOW}[2/3] 拉取远程更新 (Rebase)...${NC}"
-    if git pull --rebase --autostash origin main; then
-        echo "${GREEN}拉取成功。${NC}"
-    else
-        echo "${RED}错误: 拉取失败！合并冲突。${NC}"
-        # 生成冲突报告
-        REPORT_TIME=$(date '+%Y-%m-%d_%H%M%S')
-        REPORT_FILE="$REPO_PATH/log/conflict_report_${REPORT_TIME}.log"
-        {
-            echo "=== Conflict Report ==="
-            git diff --name-only --diff-filter=U
-            echo "---"
-            git status
-        } > "$REPORT_FILE"
-        echo "${YELLOW}详情请见: $REPORT_FILE${NC}"
-        log_to_file "Error: Pull failed. See $REPORT_FILE"
-        exit 1
-    fi
-
-    # [Step 3] Push
-    echo "${YELLOW}[3/3] 检查推送需求...${NC}"
-    NEEDS_PUSH=$(git cherry -v origin/main 2>/dev/null | wc -l | tr -d ' ')
     
-    if [ "$NEEDS_PUSH" -gt 0 ] || [ "$force_push" = true ]; then
-        if [ "$force_push" = true ]; then
-            echo "${RED}!!! 正在执行强制推送 !!!${NC}"
-            CMD="git push --force origin main"
+    # Pull
+    BRANCH=$(git branch --show-current 2>/dev/null)
+    if [ -z "$BRANCH" ]; then
+        echo "   ${MAGENTA}警告: Detached HEAD 或非 Git 目录，跳过 Pull/Push。${NC}"
+        return
+    fi
+
+    echo "   ${YELLOW}正在拉取 (Rebase)...${NC}"
+    if git pull --rebase --autostash origin "$BRANCH" 2>/dev/null; then
+        echo "   ${GREEN}拉取成功。${NC}"
+    else
+        echo "   ${RED}错误: 拉取失败 (冲突)。停止同步该仓库。${NC}"
+        log_to_file "[$name] Pull failed."
+        return # 子模块失败不应终止整个脚本，继续下一个
+    fi
+    
+    # Push
+    NEEDS_PUSH=$(git cherry -v origin/"$BRANCH" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$NEEDS_PUSH" -gt 0 ] || [ "$force" = true ]; then
+        echo "   ${YELLOW}正在推送...${NC}"
+        if [ "$force" = true ]; then
+            git push --force origin "$BRANCH"
         else
-            echo "${YELLOW}正在推送 ($NEEDS_PUSH commits)...${NC}"
-            CMD="git push origin main"
+            git push origin "$BRANCH"
         fi
         
-        if eval "$CMD"; then
-            echo "${GREEN}>>> 同步完成！${NC}"
-            log_to_file "Sync completed. Pushed $NEEDS_PUSH commits."
+        if [ $? -eq 0 ]; then
+            echo "   ${GREEN}推送成功。${NC}"
+            log_to_file "[$name] Pushed changes."
         else
-            echo "${RED}推送失败。${NC}"; exit 1
+            echo "   ${RED}推送失败。${NC}"
         fi
     else
-        echo "${GREEN}>>> 无需推送。${NC}"
-        log_to_file "Sync check: No push needed."
+        echo "   ${GREEN}无需推送。${NC}"
     fi
 }
 
-# -----------------------------------------------------------------------------
-# 参数解析
-# -----------------------------------------------------------------------------
+# 4. 执行全量同步
+run_full_sync() {
+    local force=$1
+    echo "${GREEN}=== 开始递归同步 (自动扫描所有嵌套仓库) ===${NC}"
+    log_to_file "Started recursive sync (Force: ${force:-false})."
+    
+    # 同步所有嵌套仓库
+    get_nested_repos | while read repo; do
+        REL_PATH=${repo#$REPO_PATH/}
+        sync_one_repo "$repo" "$REL_PATH" "$force"
+    done
+    
+    # 同步主仓库
+    sync_one_repo "$REPO_PATH" "Main Repository" "$force"
+    
+    echo "${GREEN}=== 所有同步完成 ===${NC}"
+    log_to_file "Recursive sync completed."
+}
 
-# 如果没有参数，默认执行同步
-if [ $# -eq 0 ]; then
-    check_status # 同步前先显示状态
-    run_sync false
-    exit 0
-fi
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        -h|--help)
-            show_help
-            exit 0
-            ;;
-        -s|--status)
-            check_status
-            exit 0
-            ;;
-        -r|--report)
-            generate_report
-            exit 0
-            ;;
-        -f|--force)
-            echo "${RED}警告: 您即将执行强制推送，这可能会覆盖远程的历史记录。${NC}"
-            read -q "REPLY?确认执行吗? (y/n) "
-            echo ""
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                run_sync true
-            else
-                echo "操作已取消。"
-            fi
-            exit 0
-            ;;
-        *)
-            echo "${RED}未知选项: $1${NC}"
-            show_help
-            exit 1
-            ;;
+# -----------------------------------------------------------------------------
+# 交互式菜单
+# -----------------------------------------------------------------------------
+show_menu() {
+    clear
+    echo "${CYAN}=========================================${NC}"
+    echo "${CYAN}   Antigravity Git Sync Tool (Ultimate)  ${NC}"
+    echo "${CYAN}=========================================${NC}"
+    echo "1. ${GREEN}全量同步${NC} (递归扫描所有Git仓库)"
+    echo "2. ${BLUE}检查状态${NC} (查看所有嵌套仓库状态)"
+    echo "3. ${YELLOW}生成报告${NC} (导出状态到文件)"
+    echo "4. ${RED}强制推送${NC} (慎用, 覆盖远程)"
+    echo "0. ${NC}退出${NC}"
+    echo "-----------------------------------------"
+    echo -n "请选择功能 [1-4]: "
+    read choice
+    echo ""
+    
+    case $choice in
+        1) run_full_sync false ;;
+        2) run_check_status ;;
+        3) run_generate_report ;;
+        4) 
+           echo "${RED}警告: 强制推送可能会覆盖远程记录。${NC}"
+           echo -n "确认要继续吗? (y/n): "
+           read confirm
+           if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+               run_full_sync true
+           else
+               echo "操作已取消。"
+           fi
+           ;;
+        0) echo "再见！"; exit 0 ;;
+        *) echo "${RED}无效选项，请重新运行。${NC}" ;;
     esac
-    shift
-done
+}
+
+# -----------------------------------------------------------------------------
+# 入口逻辑
+# -----------------------------------------------------------------------------
+
+# 如果有命令行参数，优先处理参数
+if [ $# -gt 0 ]; then
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help) 
+                echo "用法: ./git_sync.sh [无参数进入菜单]" 
+                echo "  -s  检查状态"
+                echo "  -r  生成报告"
+                exit 0 ;;
+            -s|--status) run_check_status; exit 0 ;;
+            -r|--report) run_generate_report; exit 0 ;;
+            -f|--force)  run_full_sync true; exit 0 ;;
+            *) echo "无效选项: $1"; exit 1 ;;
+        esac
+        shift
+    done
+else
+    # 无参数时，显示交互式菜单
+    show_menu
+fi
