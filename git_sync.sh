@@ -84,16 +84,63 @@ run_sync() {
 
 # 检查状态
 run_status() {
-    echo "${BLUE}>>> 仓库状态概览...${NC}"
+    BRANCH=$(git branch --show-current)
+    echo "${BLUE}>>> 仓库状态概览 ($BRANCH)...${NC}"
+    
+    # 显示简洁状态
     git status -s
     echo "--------------------------------"
+    
+    # 抓取远程更新
+    echo "${YELLOW}正在获取远程状态...${NC}"
     git fetch origin "$BRANCH" 2>/dev/null
-    BRANCH=$(git branch --show-current)
+    
     BEHIND=$(git rev-list --count HEAD..origin/"$BRANCH" 2>/dev/null || echo 0)
     AHEAD=$(git rev-list --count origin/"$BRANCH"..HEAD 2>/dev/null || echo 0)
     
-    echo "当前分支: $BRANCH"
-    echo "领先: $AHEAD | 落后: $BEHIND"
+    echo "领先: ${GREEN}$AHEAD${NC} | 落后: ${RED}$BEHIND${NC}"
+    
+    if [ "$AHEAD" -gt 0 ]; then
+        echo "${YELLOW}提示: 您有 $AHEAD 个本地提交尚未推送。${NC}"
+    fi
+}
+
+# 以本地数据为准强制覆盖远程 (Local Overwrite Remote)
+run_local_overwrite() {
+    echo "${RED}！！！警告：此操作将跳过远程拉取，直接使用本地数据强制覆盖远程仓库！！！${NC}"
+    echo "${RED}！！！远程仓库中比本地新的提交将会丢失！！！${NC}"
+    echo -n "确认要继续吗？(y/n): "
+    read -r confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "操作已取消。"
+        return
+    fi
+
+    echo "${CYAN}=== 开始以本地为主覆盖同步 ===${NC}"
+    
+    # 1. 提交本地所有修改（包括删除）
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "   ${YELLOW}检测到本地修改，正在提交 (含删除)...${NC}"
+        git add -A
+        COMMIT_MSG="feat: local overwrite sync at $(date '+%Y-%m-%d %H:%M:%S')"
+        if git commit -m "$COMMIT_MSG"; then
+            echo "   ${GREEN}本地提交成功。${NC}"
+            log_to_file "Committed changes for local overwrite."
+        fi
+    else
+        echo "   ${GREEN}工作区干净，准备同步当前状态。${NC}"
+    fi
+
+    # 2. 强制推送
+    BRANCH=$(git branch --show-current)
+    echo "   ${YELLOW}正在强制推送到远程 (origin/$BRANCH)...${NC}"
+    if git push --force origin "$BRANCH"; then
+        echo "   ${GREEN}覆盖成功！远程已同步为本地最新状态。${NC}"
+        log_to_file "Force pushed local state to remote (Overwrite)."
+    else
+        echo "${RED}错误: 推送失败！${NC}"
+        log_to_file "Force push overwrite failed."
+    fi
 }
 
 # 创建 Release
@@ -123,17 +170,19 @@ show_menu() {
     echo "1. ${GREEN}快速同步${NC} (Add + Commit + Pull + Push)"
     echo "2. ${BLUE}查看状态${NC}"
     echo "3. ${MAGENTA}发布版本${NC} (Create Tag & Push)"
-    echo "4. ${RED}强制推送${NC} (覆盖远程)"
+    echo "4. ${YELLOW}以本地为准同步${NC} (Overwrite Remote! Skip Pull)"
+    echo "5. ${RED}强制推送${NC} (仅 Push --force)"
     echo "0. 退出"
     echo "-----------------------------------------"
-    echo -n "请选择 [0-4]: "
+    echo -n "请选择 [0-5]: "
     read choice
     
     case $choice in
         1) run_sync false ;;
         2) run_status ;;
         3) run_release ;;
-        4) run_sync true ;;
+        4) run_local_overwrite ;;
+        5) run_sync true ;;
         0) exit 0 ;;
         *) echo "无效选择" ;;
     esac
@@ -143,6 +192,8 @@ if [ $# -gt 0 ]; then
     case $1 in
         -s|--status) run_status ;;
         -p|--push|--sync) run_sync false ;;
+        -o|--overwrite) run_local_overwrite ;;
+        -f|--force) run_sync true ;;
         *) run_sync false ;;
     esac
 else
