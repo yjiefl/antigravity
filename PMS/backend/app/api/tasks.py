@@ -165,8 +165,9 @@ async def list_tasks(
     
     query = query.order_by(Task.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(query)
-    
-    return result.scalars().all()
+    tasks = result.scalars().all()
+    print(f"DEBUG: list_tasks found {len(tasks)} tasks for user {current_user.username}")
+    return tasks
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

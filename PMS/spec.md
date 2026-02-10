@@ -1,6 +1,6 @@
 # 计划管理系统技术规格 (spec.md)
 
-> 版本: 1.1 | 更新时间: 2026-02-08
+> 版本: 1.2 | 更新时间: 2026-02-11
 
 ## 1. 系统概述
 
@@ -132,21 +132,21 @@ erDiagram
 ## 4. 任务状态机
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Draft: 创建
-    Draft --> PendingApproval: 提交审批
-    PendingApproval --> InProgress: 审批通过
-    PendingApproval --> Draft: 退回修改
+    state if_is_subtask <<choice>>
+    [*] --> if_is_subtask: 创建
+    if_is_subtask --> Draft: 主任务
+    if_is_subtask --> InProgress: 子任务 (直接开始)
+    Draft --> PendingSubmission: 保存
+    PendingSubmission --> PendingLeaderApproval: 提交审批 (组长)
+    PendingLeaderApproval --> PendingApproval: 组长通过
+    PendingApproval --> InProgress: 主管通过
     InProgress --> PendingReview: 提交验收
-    InProgress --> InProgress: 更新进展
     PendingReview --> Completed: 验收通过
-    PendingReview --> Rejected: 验收不通过
+    PendingReview --> Rejected: 验收驳回
     Rejected --> InProgress: 返工
     InProgress --> Cancelled: 取消
     InProgress --> Suspended: 挂起
-    Suspended --> InProgress: 恢复
     Completed --> [*]
-    Cancelled --> [*]
 ```
 
 **状态定义**:

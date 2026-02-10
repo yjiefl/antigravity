@@ -21,7 +21,8 @@ async def migrate():
                 "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS extension_status VARCHAR(20)",
                 "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS extension_reason TEXT",
                 "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS extension_date TIMESTAMPTZ",
-                "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reviewer_id UUID"
+                "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reviewer_id UUID",
+                "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE"
             ]
             
             for query in queries:

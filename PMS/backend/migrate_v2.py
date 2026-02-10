@@ -26,12 +26,16 @@ def migrate():
         # Add reviewer_id
         try:
             cursor.execute("ALTER TABLE tasks ADD COLUMN reviewer_id CHAR(32)")
-            # Actually, looking at the models, they might be using String for UUID if not configured otherwise.
-            # But SQLAlchemy with SQLite often uses BLOB for UUID if 'as_uuid=True' is set.
-            # Let's check a current column type.
             print("Added reviewer_id field.")
         except sqlite3.OperationalError as e:
-            print(f"Warning: {e}")
+            print(f"Warning reviewer_id: {e}")
+
+        # Add is_deleted
+        try:
+            cursor.execute("ALTER TABLE tasks ADD COLUMN is_deleted BOOLEAN DEFAULT 0")
+            print("Added is_deleted field.")
+        except sqlite3.OperationalError as e:
+            print(f"Warning is_deleted: {e}")
 
         conn.commit()
         print("Migration completed successfully!")
