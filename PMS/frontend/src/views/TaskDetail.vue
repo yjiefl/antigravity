@@ -43,7 +43,7 @@ function handleProgressFileChange(event: Event) {
     const newFiles = Array.from(target.files);
     progressForm.value.files = [...progressForm.value.files, ...newFiles];
     // Clear input to allow selecting same file again
-    target.value = '';
+    target.value = "";
   }
 }
 
@@ -53,7 +53,7 @@ function handleCompleteFileChange(event: Event) {
     // Append new files to existing list (支持逐个添加)
     const newFiles = Array.from(target.files);
     completeForm.value.files = [...completeForm.value.files, ...newFiles];
-    target.value = '';
+    target.value = "";
   }
 }
 
@@ -250,11 +250,24 @@ async function rejectExtension() {
   await loadTask();
 }
 
+// 判断当前用户是否为该任务的审批人或管理员
+function canReview(): boolean {
+  if (!task.value || !authStore.user) return false;
+  if (authStore.isAdmin) return true;
+  if (!authStore.isManager) return false;
+  // 如果任务指定了审批人，只有审批人才能操作
+  if (task.value.reviewer_id) {
+    return task.value.reviewer_id === authStore.user.id;
+  }
+  // 未指定审批人时，所有 manager 可操作
+  return true;
+}
 
 // 状态文本
 function getStatusText(status: string) {
   const map: Record<string, string> = {
     draft: "草稿",
+    pending_submission: "待提交",
     pending_approval: "待审批",
     in_progress: "进行中",
     pending_review: "待验收",
@@ -466,6 +479,23 @@ onMounted(() => {
           编辑任务
         </button>
 
+        <!-- 待提交 -> 提交审批 / 编辑 -->
+        <button
+          v-if="task.status === 'pending_submission'"
+          @click="submitTask"
+          class="btn btn-primary"
+        >
+          提交审批
+        </button>
+
+        <button
+          v-if="task.status === 'pending_submission'"
+          @click="router.push(`/tasks/new?id=${task.id}`)"
+          class="btn btn-secondary"
+        >
+          编辑任务
+        </button>
+
         <!-- 待审批 -> 撤回 (Creator/Owner) -->
         <button
           v-if="
@@ -479,18 +509,18 @@ onMounted(() => {
           撤回申请
         </button>
 
-        <!-- 待审批 -> 审批通过 (Manager) -->
+        <!-- 待审批 -> 审批通过 (审批人/Admin) -->
         <button
-          v-if="task.status === 'pending_approval' && authStore.isManager"
+          v-if="task.status === 'pending_approval' && canReview()"
           @click="showApproveModal = true"
           class="btn btn-primary"
         >
           审批通过
         </button>
 
-        <!-- 待审批 -> 退回 (Manager) -->
+        <!-- 待审批 -> 退回 (审批人/Admin) -->
         <button
-          v-if="task.status === 'pending_approval' && authStore.isManager"
+          v-if="task.status === 'pending_approval' && canReview()"
           @click="showReturnModal = true"
           class="btn btn-danger"
         >
@@ -515,18 +545,18 @@ onMounted(() => {
           提交验收
         </button>
 
-        <!-- 待验收 -> 验收评分 (Manager) -->
+        <!-- 待验收 -> 验收评分 (审批人/Admin) -->
         <button
-          v-if="task.status === 'pending_review' && authStore.isManager"
+          v-if="task.status === 'pending_review' && canReview()"
           @click="showReviewModal = true"
           class="btn btn-primary"
         >
           验收评分
         </button>
 
-        <!-- 待验收 -> 退回 (Manager) -->
+        <!-- 待验收 -> 退回 (审批人/Admin) -->
         <button
-          v-if="task.status === 'pending_review' && authStore.isManager"
+          v-if="task.status === 'pending_review' && canReview()"
           @click="showReturnModal = true"
           class="btn btn-danger"
         >
@@ -535,8 +565,11 @@ onMounted(() => {
 
         <!-- 进行中/驳回 -> 申请延期 (Owner/Executor) -->
         <button
-          v-if="(task.status === 'in_progress' || task.status === 'rejected') && 
-                (task.executor_id === authStore.user?.id || task.owner_id === authStore.user?.id)"
+          v-if="
+            (task.status === 'in_progress' || task.status === 'rejected') &&
+            (task.executor_id === authStore.user?.id ||
+              task.owner_id === authStore.user?.id)
+          "
           @click="showExtensionModal = true"
           class="btn bg-amber-50 text-amber-700 hover:bg-amber-100"
         >
@@ -545,662 +578,692 @@ onMounted(() => {
       </div>
 
       <!-- 延期申请详情 (如有) -->
-      <div v-if="task.extension_status === 'pending'" class="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100">
+      <div
+        v-if="task.extension_status === 'pending'"
+        class="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100"
+      >
         <div class="flex justify-between items-start">
           <div class="flex-1">
-            <h4 class="text-sm font-bold text-amber-800 flex items-center gap-2">
+            <h4
+              class="text-sm font-bold text-amber-800 flex items-center gap-2"
+            >
               ⏳ 延期申请处理中
             </h4>
             <div class="mt-2 text-xs text-amber-700 space-y-1">
-              <p><span class="opacity-70">申请延期至:</span> <span class="font-bold">{{ new Date(task.extension_date).toLocaleDateString() }}</span></p>
-              <p><span class="opacity-70">延期理由:</span> <span class="italic">"{{ task.extension_reason }}"</span></p>
+              <p>
+                <span class="opacity-70">申请延期至:</span>
+                <span class="font-bold">{{
+                  new Date(task.extension_date).toLocaleDateString()
+                }}</span>
+              </p>
+              <p>
+                <span class="opacity-70">延期理由:</span>
+                <span class="italic">"{{ task.extension_reason }}"</span>
+              </p>
             </div>
           </div>
           <div v-if="authStore.isManager" class="flex flex-col gap-2">
-            <button @click="approveExtension" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700">
+            <button
+              @click="approveExtension"
+              class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700"
+            >
               通过申请
             </button>
-            <button @click="rejectExtension" class="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50">
+            <button
+              @click="rejectExtension"
+              class="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50"
+            >
               驳回
             </button>
           </div>
         </div>
       </div>
 
-
-        <!-- 待验收 -> 回撤 (Creator/Executor) -->
-        <button
-          v-if="task.status === 'pending_review'"
-          @click="rollbackTask"
-          class="btn btn-secondary"
-        >
-          ↩️ 回撤申请
-        </button>
-      </div>
+      <!-- 待验收 -> 回撤 (Creator/Executor) -->
+      <button
+        v-if="task.status === 'pending_review'"
+        @click="rollbackTask"
+        class="btn btn-secondary"
+      >
+        ↩️ 回撤申请
+      </button>
     </div>
+  </div>
 
-    <!-- 日志 -->
-    <div class="card">
-      <h2
-        class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2"
-      >
-        <span>📝</span> 任务日志
-      </h2>
-      <div v-if="logs.length === 0" class="text-slate-400 text-center py-4">
-        暂无日志
-      </div>
-      <div
-        v-else
-        class="space-y-0 relative border-l-2 border-slate-100 ml-4 pl-6 pb-2"
-      >
-        <div v-for="log in logs" :key="log.id" class="relative mb-8 last:mb-0">
-          <!-- 时间轴点 -->
-          <div
-            class="absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 border-white box-content"
-            :class="
-              log.action.includes('error') || log.action === 'rejected'
-                ? 'bg-red-500'
-                : 'bg-indigo-500'
-            "
-          ></div>
+  <!-- 日志 -->
+  <div class="card">
+    <h2
+      class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2"
+    >
+      <span>📝</span> 任务日志
+    </h2>
+    <div v-if="logs.length === 0" class="text-slate-400 text-center py-4">
+      暂无日志
+    </div>
+    <div
+      v-else
+      class="space-y-0 relative border-l-2 border-slate-100 ml-4 pl-6 pb-2"
+    >
+      <div v-for="log in logs" :key="log.id" class="relative mb-8 last:mb-0">
+        <!-- 时间轴点 -->
+        <div
+          class="absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 border-white box-content"
+          :class="
+            log.action.includes('error') || log.action === 'rejected'
+              ? 'bg-red-500'
+              : 'bg-indigo-500'
+          "
+        ></div>
 
-          <div class="flex justify-between items-start">
-            <div>
-              <p class="font-bold text-slate-700">
-                {{ getActionText(log.action) }}
-              </p>
-              <p
-                v-if="log.content"
-                class="text-sm text-slate-600 mt-1 bg-slate-50 p-2 rounded-lg inline-block"
-              >
-                {{ log.content }}
-              </p>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="font-bold text-slate-700">
+              {{ getActionText(log.action) }}
+            </p>
+            <p
+              v-if="log.content"
+              class="text-sm text-slate-600 mt-1 bg-slate-50 p-2 rounded-lg inline-block"
+            >
+              {{ log.content }}
+            </p>
+            <div
+              v-if="log.attachments && log.attachments.length > 0"
+              class="mt-3 space-y-2"
+            >
               <div
-                v-if="log.attachments && log.attachments.length > 0"
-                class="mt-3 space-y-2"
+                v-for="att in log.attachments"
+                :key="att.id"
+                class="flex items-center gap-3 p-2 bg-white/50 border border-slate-100 rounded-lg group hover:bg-white transition-all"
               >
-                <div
-                  v-for="att in log.attachments"
-                  :key="att.id"
-                  class="flex items-center gap-3 p-2 bg-white/50 border border-slate-100 rounded-lg group hover:bg-white transition-all"
+                <!-- 图片预览 -->
+                <template
+                  v-if="att.file_type && att.file_type.startsWith('image/')"
                 >
-                  <!-- 图片预览 -->
-                  <template v-if="att.file_type && att.file_type.startsWith('image/')">
-                    <div @click="openPreview(att.file_path)" class="shrink-0 cursor-pointer">
-                      <img
-                        :src="att.file_path"
-                        class="h-12 w-12 object-cover rounded border border-slate-100 hover:scale-110 transition-transform"
-                      />
-                    </div>
-                  </template>
-                  <template v-else>
-                    <span class="text-2xl shrink-0">📄</span>
-                  </template>
-
-                  <div class="flex-1 min-w-0">
-                    <p
-                      class="text-xs font-medium text-slate-700 truncate"
-                      :title="att.filename"
-                    >
-                      {{ att.filename }}
-                    </p>
-                    <p class="text-[10px] text-slate-400">
-                      {{ formatFileSize(att.file_size) }} •
-                      {{ new Date(att.created_at).toLocaleString() }} • 下载
-                      {{ att.download_count }} 次
-                    </p>
-                  </div>
-
-                  <a
-                    :href="`/api/attachments/${att.id}/download?token=${authStore.token}`"
-                    target="_blank"
-                    class="btn btn-secondary !py-1 !px-2 !text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                  <div
+                    @click="openPreview(att.file_path)"
+                    class="shrink-0 cursor-pointer"
                   >
-                    📥 下载
-                  </a>
-                </div>
-              </div>
-              <div v-else-if="log.evidence_url" class="mt-2 text-xs">
-                <div
-                  v-if="log.evidence_url.match(/\.(jpg|jpeg|png|gif)$/i)"
-                  class="mt-1"
-                >
-                  <a :href="log.evidence_url" target="_blank">
                     <img
-                      :src="log.evidence_url"
-                      class="h-20 rounded border border-slate-200 hover:scale-110 transition-transform cursor-zoom-in"
-                      alt="证据截图"
+                      :src="att.file_path"
+                      class="h-12 w-12 object-cover rounded border border-slate-100 hover:scale-110 transition-transform"
                     />
-                  </a>
+                  </div>
+                </template>
+                <template v-else>
+                  <span class="text-2xl shrink-0">📄</span>
+                </template>
+
+                <div class="flex-1 min-w-0">
+                  <p
+                    class="text-xs font-medium text-slate-700 truncate"
+                    :title="att.filename"
+                  >
+                    {{ att.filename }}
+                  </p>
+                  <p class="text-[10px] text-slate-400">
+                    {{ formatFileSize(att.file_size) }} •
+                    {{ new Date(att.created_at).toLocaleString() }} • 下载
+                    {{ att.download_count }} 次
+                  </p>
                 </div>
+
                 <a
-                  v-else
-                  :href="log.evidence_url"
+                  :href="`/api/attachments/${att.id}/download?token=${authStore.token}`"
                   target="_blank"
-                  class="text-blue-500 hover:underline flex items-center gap-1"
+                  class="btn btn-secondary !py-1 !px-2 !text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  📎 查看附件/证据
+                  📥 下载
                 </a>
               </div>
             </div>
-            <span class="text-xs text-slate-400">
-              {{ new Date(log.created_at).toLocaleString("zh-CN") }}
-            </span>
-          </div>
-
-          <div
-            v-if="log.progress_after !== null"
-            class="text-xs font-bold text-indigo-600 mt-1 flex items-center gap-1"
-          >
-            <span>🚀 进度更新:</span>
-            <span class="text-slate-400 line-through"
-              >{{ log.progress_before }}%</span
-            >
-            <span>→</span>
-            <span>{{ log.progress_after }}%</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 模态框组 -->
-
-    <!-- 1. 审批模态框 -->
-    <div
-      v-if="showApproveModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    >
-      <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up"
-      >
-        <div
-          class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center"
-        >
-          <h3 class="font-bold text-slate-800">✅ 审批定级</h3>
-          <button
-            @click="showApproveModal = false"
-            class="text-slate-400 hover:text-slate-600"
-          >
-            ✕
-          </button>
-        </div>
-        <div class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1"
-              >重要性系数 (I)</label
-            >
-            <input
-              type="number"
-              step="0.1"
-              min="0.5"
-              max="1.5"
-              v-model.number="approveForm.importance"
-              class="w-full input"
-            />
-            <p class="text-xs text-slate-400 mt-1">范围: 0.5 - 1.5</p>
-          </div>
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1"
-              >难度系数 (D)</label
-            >
-            <input
-              type="number"
-              step="0.1"
-              min="0.8"
-              max="1.5"
-              v-model.number="approveForm.difficulty"
-              class="w-full input"
-            />
-            <p class="text-xs text-slate-400 mt-1">范围: 0.8 - 1.5</p>
-          </div>
-          <button @click="approveTask" class="btn btn-primary w-full mt-2">
-            确认通过
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 1.5. 退回模态框 -->
-    <div
-      v-if="showReturnModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    >
-      <div
-        class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up"
-      >
-        <div
-          class="p-4 border-b border-slate-100 bg-red-50 flex justify-between items-center"
-        >
-          <h3 class="font-bold text-red-800">↩️ 退回任务</h3>
-          <button
-            @click="showReturnModal = false"
-            class="text-slate-400 hover:text-slate-600"
-          >
-            ✕
-          </button>
-        </div>
-        <div class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1"
-              >退回原因 *</label
-            >
-            <textarea
-              v-model="returnForm.reason"
-              rows="3"
-              class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
-              placeholder="请输入退回原因..."
-            ></textarea>
-          </div>
-          <button @click="returnTask" class="btn btn-danger w-full mt-2">
-            确认退回
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2. 更新进展模态框 -->
-    <div
-      v-if="showProgressModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    >
-      <div
-        class="bg-white rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up"
-      >
-        <div class="p-4 border-b border-slate-100 bg-slate-50">
-          <h3 class="font-bold text-slate-800">📈 更新进展</h3>
-        </div>
-        <div class="p-6 space-y-4">
-          <div>
-            <label
-              class="block text-sm font-bold text-slate-700 mb-2 flex justify-between"
-            >
-              <span>当前进度</span>
-              <span class="text-indigo-600">{{ progressForm.percent }}%</span>
-            </label>
-            <input
-              type="range"
-              v-model.number="progressForm.percent"
-              min="0"
-              max="100"
-              class="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-            />
-            <p
-              v-if="progressForm.percent < task.progress"
-              class="text-xs text-amber-600 mt-2 font-bold flex items-center gap-1"
-            >
-              ⚠️ 如果新进度低于当前进度 ({{
-                task.progress
-              }}%)，将被视为进度回退。
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2"
-              >进展说明</label
-            >
-            <textarea
-              v-model="progressForm.content"
-              rows="3"
-              class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none"
-              placeholder="描述本次完成了什么..."
-            ></textarea>
-          </div>
-
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2"
-              >附件/截图 (可多选)</label
-            >
-            <div class="relative group">
-              <input
-                type="file"
-                @change="handleProgressFileChange"
-                class="hidden"
-                id="progress-file"
-                multiple
-              />
-              <label
-                for="progress-file"
-                class="flex items-center gap-2 w-full px-3 py-2 border border-slate-200 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
-              >
-                <span class="text-xl">📎</span>
-                <span class="text-sm text-slate-500 truncate">
-                  {{
-                    progressForm.files.length > 0
-                      ? `已选择 ${progressForm.files.length} 个文件`
-                      : "点击上传文件..."
-                  }}
-                </span>
-              </label>
-            </div>
-            <div v-if="progressForm.files.length > 0" class="mt-2 space-y-1">
+            <div v-else-if="log.evidence_url" class="mt-2 text-xs">
               <div
-                v-for="(f, idx) in progressForm.files"
-                :key="f.name + idx"
-                class="text-[10px] text-slate-500 flex justify-between items-center bg-slate-50 px-2 py-1 rounded"
+                v-if="log.evidence_url.match(/\.(jpg|jpeg|png|gif)$/i)"
+                class="mt-1"
               >
-                <span class="truncate flex-1">{{ f.name }}</span>
-                <span class="mx-2">{{ formatFileSize(f.size) }}</span>
-                <button
-                  @click="progressForm.files.splice(idx, 1)"
-                  class="text-red-400 hover:text-red-600 text-xs"
-                  title="移除"
-                >✕</button>
+                <a :href="log.evidence_url" target="_blank">
+                  <img
+                    :src="log.evidence_url"
+                    class="h-20 rounded border border-slate-200 hover:scale-110 transition-transform cursor-zoom-in"
+                    alt="证据截图"
+                  />
+                </a>
               </div>
-            </div>
-          </div>
-
-          <div class="flex gap-3 mt-2">
-            <button
-              @click="showProgressModal = false"
-              class="btn btn-secondary flex-1"
-            >
-              取消
-            </button>
-            <button @click="updateProgress" class="btn btn-primary flex-1">
-              提交更新
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3. 提交验收模态框 -->
-    <div
-      v-if="showCompleteModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    >
-      <div
-        class="bg-white rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up"
-      >
-        <div class="p-4 border-b border-slate-100 bg-green-50">
-          <h3 class="font-bold text-green-800">🎉 提交验收</h3>
-        </div>
-        <div class="p-6 space-y-4">
-          <div class="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-700 mb-2">
-            ⚠️ 提交验收前请确保任务已 100% 完成。
-          </div>
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2"
-              >交付物/证据 (可多选) *</label
-            >
-            <div class="relative group">
-              <input
-                type="file"
-                @change="handleCompleteFileChange"
-                class="hidden"
-                id="complete-file"
-                multiple
-              />
-              <label
-                for="complete-file"
-                class="flex items-center gap-2 w-full px-3 py-2 border border-slate-200 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+              <a
+                v-else
+                :href="log.evidence_url"
+                target="_blank"
+                class="text-blue-500 hover:underline flex items-center gap-1"
               >
-                <span class="text-xl">📦</span>
-                <span class="text-sm text-slate-500 truncate">
-                  {{
-                    completeForm.files.length > 0
-                      ? `已选择 ${completeForm.files.length} 个文件`
-                      : "点击上传交付物 (必须)..."
-                  }}
-                </span>
-              </label>
-            </div>
-            <div v-if="completeForm.files.length > 0" class="mt-2 space-y-1">
-              <div
-                v-for="f in completeForm.files"
-                :key="f.name"
-                class="text-[10px] text-slate-500 flex justify-between"
-              >
-                <span>{{ f.name }}</span>
-                <span>{{ formatFileSize(f.size) }}</span>
-              </div>
+                📎 查看附件/证据
+              </a>
             </div>
           </div>
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2"
-              >完成备注</label
-            >
-            <textarea
-              v-model="completeForm.comment"
-              rows="3"
-              class="w-full px-3 py-2 border rounded-lg"
-              placeholder="如果有特别说明..."
-            ></textarea>
-          </div>
-          <div class="flex gap-3">
-            <button
-              @click="showCompleteModal = false"
-              class="btn btn-secondary flex-1"
-            >
-              取消
-            </button>
-            <button @click="completeTask" class="btn btn-primary flex-1">
-              确认提交
-            </button>
-          </div>
+          <span class="text-xs text-slate-400">
+            {{ new Date(log.created_at).toLocaleString("zh-CN") }}
+          </span>
         </div>
-      </div>
-    </div>
 
-    <!-- 4. 验收评分模态框 -->
-    <div
-      v-if="showReviewModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    >
-      <div
-        class="bg-white rounded-xl w-full max-w-sm overflow-hidden animate-fade-in-up"
-      >
-        <div class="p-4 border-b border-slate-100 bg-slate-50">
-          <h3 class="font-bold text-slate-800">⚖️ 验收评分</h3>
-        </div>
-        <div class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2"
-              >质量系数 (Q)</label
-            >
-            <div class="flex items-center gap-4">
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="1.2"
-                v-model.number="reviewForm.quality"
-                class="w-20 px-3 py-2 border rounded-lg font-bold text-center"
-              />
-              <input
-                type="range"
-                class="flex-1 accent-indigo-600"
-                min="0"
-                max="1.2"
-                step="0.1"
-                v-model.number="reviewForm.quality"
-              />
-            </div>
-            <p class="text-xs text-slate-400 mt-1">
-              范围: 0.0 - 1.2 (1.0 为合格)
-            </p>
-          </div>
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2"
-              >评语</label
-            >
-            <textarea
-              v-model="reviewForm.comment"
-              rows="3"
-              class="w-full px-3 py-2 border rounded-lg"
-              placeholder="做得好，但是..."
-            ></textarea>
-          </div>
-          <div class="flex gap-3">
-            <button
-              @click="showReviewModal = false"
-              class="btn btn-secondary flex-1"
-            >
-              取消
-            </button>
-            <button @click="reviewTask" class="btn btn-primary flex-1">
-              提交结果
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5. 历史记录模态框 -->
-    <div
-      v-if="showHistoryModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-      @click.self="showHistoryModal = false"
-    >
-      <div
-        class="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-fade-in-up"
-      >
         <div
-          class="p-4 border-b border-slate-100 flex justify-between items-center"
+          v-if="log.progress_after !== null"
+          class="text-xs font-bold text-indigo-600 mt-1 flex items-center gap-1"
         >
-          <h3 class="font-bold text-slate-800">📅 进度变更历史</h3>
-          <button
-            @click="showHistoryModal = false"
-            class="text-slate-400 hover:text-slate-600"
+          <span>🚀 进度更新:</span>
+          <span class="text-slate-400 line-through"
+            >{{ log.progress_before }}%</span
           >
-            ✕
-          </button>
-        </div>
-        <div class="flex-1 overflow-y-auto p-0">
-          <table class="w-full text-sm text-left">
-            <thead class="bg-slate-50 text-slate-500 font-medium">
-              <tr>
-                <th class="p-3">时间</th>
-                <th class="p-3">变更</th>
-                <th class="p-3">说明</th>
-                <th class="p-3">附件</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr
-                v-for="h in progressHistory"
-                :key="h.id"
-                class="hover:bg-slate-50/50"
-              >
-                <td class="p-3 text-slate-500">
-                  {{ new Date(h.created_at).toLocaleString() }}
-                </td>
-                <td class="p-3">
-                  <span class="font-bold text-indigo-600"
-                    >{{ h.progress_after }}%</span
-                  >
-                  <span class="text-xs text-slate-400 ml-1"
-                    >(从 {{ h.progress_before }}%)</span
-                  >
-                </td>
-                <td class="p-3 text-slate-700">{{ h.content || "-" }}</td>
-                <td class="p-3">
-                  <div
-                    v-if="h.attachments && h.attachments.length > 0"
-                    class="flex flex-wrap gap-2"
-                  >
-                    <a
-                      v-for="att in h.attachments"
-                      :key="att.id"
-                      :href="`/api/attachments/${att.id}/download?token=${authStore.token}`"
-                      target="_blank"
-                      class="text-blue-500 hover:underline flex items-center gap-1 text-[10px]"
-                      :title="att.filename"
-                    >
-                      <span>{{
-                        att.file_type.startsWith("image/") ? "📷" : "📎"
-                      }}</span>
-                      <span class="max-w-[80px] truncate">{{
-                        att.filename
-                      }}</span>
-                    </a>
-                  </div>
-                  <a
-                    v-else-if="h.evidence_url"
-                    :href="h.evidence_url"
-                    target="_blank"
-                    class="text-blue-500 hover:underline flex items-center gap-1"
-                  >
-                    <span v-if="h.evidence_url.match(/\.(jpg|jpeg|png|gif)$/i)"
-                      >📷 图片</span
-                    >
-                    <span v-else>📎 文件</span>
-                  </a>
-                  <span v-else class="text-slate-300">-</span>
-                </td>
-              </tr>
-              <tr v-if="progressHistory.length === 0">
-                <td colspan="4" class="p-8 text-center text-slate-400">
-                  暂无进度变更记录
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <span>→</span>
+          <span>{{ log.progress_after }}%</span>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- 6. 图片预览模态框 -->
+  <!-- 模态框组 -->
+
+  <!-- 1. 审批模态框 -->
+  <div
+    v-if="showApproveModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+  >
     <div
-      v-if="showPreviewModal"
-      class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-      @click.self="showPreviewModal = false"
+      class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up"
     >
-      <div class="relative max-w-4xl max-h-[90vh]">
+      <div
+        class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center"
+      >
+        <h3 class="font-bold text-slate-800">✅ 审批定级</h3>
         <button
-          @click="showPreviewModal = false"
-          class="absolute -top-10 right-0 text-white/80 hover:text-white text-2xl transition-colors"
+          @click="showApproveModal = false"
+          class="text-slate-400 hover:text-slate-600"
         >
           ✕
         </button>
-        <img
-          :src="previewUrl"
-          class="max-w-full max-h-[85vh] rounded-lg shadow-2xl"
-          alt="预览图片"
-        />
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1"
+            >重要性系数 (I)</label
+          >
+          <input
+            type="number"
+            step="0.1"
+            min="0.5"
+            max="1.5"
+            v-model.number="approveForm.importance"
+            class="w-full input"
+          />
+          <p class="text-xs text-slate-400 mt-1">范围: 0.5 - 1.5</p>
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1"
+            >难度系数 (D)</label
+          >
+          <input
+            type="number"
+            step="0.1"
+            min="0.8"
+            max="1.5"
+            v-model.number="approveForm.difficulty"
+            class="w-full input"
+          />
+          <p class="text-xs text-slate-400 mt-1">范围: 0.8 - 1.5</p>
+        </div>
+        <button @click="approveTask" class="btn btn-primary w-full mt-2">
+          确认通过
+        </button>
       </div>
     </div>
-    <!-- 7. 申请延期模态框 -->
+  </div>
+
+  <!-- 1.5. 退回模态框 -->
+  <div
+    v-if="showReturnModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+  >
     <div
-      v-if="showExtensionModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up"
     >
       <div
-        class="bg-white rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up"
+        class="p-4 border-b border-slate-100 bg-red-50 flex justify-between items-center"
       >
-        <div class="p-4 border-b border-slate-100 bg-amber-50">
-          <h3 class="font-bold text-amber-800">⏳ 申请任务延期</h3>
+        <h3 class="font-bold text-red-800">↩️ 退回任务</h3>
+        <button
+          @click="showReturnModal = false"
+          class="text-slate-400 hover:text-slate-600"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1"
+            >退回原因 *</label
+          >
+          <textarea
+            v-model="returnForm.reason"
+            rows="3"
+            class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-100 outline-none"
+            placeholder="请输入退回原因..."
+          ></textarea>
         </div>
-        <div class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2">申请延期至 *</label>
+        <button @click="returnTask" class="btn btn-danger w-full mt-2">
+          确认退回
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 更新进展模态框 -->
+  <div
+    v-if="showProgressModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+  >
+    <div
+      class="bg-white rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up"
+    >
+      <div class="p-4 border-b border-slate-100 bg-slate-50">
+        <h3 class="font-bold text-slate-800">📈 更新进展</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label
+            class="block text-sm font-bold text-slate-700 mb-2 flex justify-between"
+          >
+            <span>当前进度</span>
+            <span class="text-indigo-600">{{ progressForm.percent }}%</span>
+          </label>
+          <input
+            type="range"
+            v-model.number="progressForm.percent"
+            min="0"
+            max="100"
+            class="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+          />
+          <p
+            v-if="progressForm.percent < task.progress"
+            class="text-xs text-amber-600 mt-2 font-bold flex items-center gap-1"
+          >
+            ⚠️ 如果新进度低于当前进度 ({{ task.progress }}%)，将被视为进度回退。
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >进展说明</label
+          >
+          <textarea
+            v-model="progressForm.content"
+            rows="3"
+            class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none"
+            placeholder="描述本次完成了什么..."
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >附件/截图 (可多选)</label
+          >
+          <div class="relative group">
             <input
-              v-model="extensionForm.date"
-              type="datetime-local"
-              class="w-full px-3 py-2 border rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+              type="file"
+              @change="handleProgressFileChange"
+              class="hidden"
+              id="progress-file"
+              multiple
+            />
+            <label
+              for="progress-file"
+              class="flex items-center gap-2 w-full px-3 py-2 border border-slate-200 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+            >
+              <span class="text-xl">📎</span>
+              <span class="text-sm text-slate-500 truncate">
+                {{
+                  progressForm.files.length > 0
+                    ? `已选择 ${progressForm.files.length} 个文件`
+                    : "点击上传文件..."
+                }}
+              </span>
+            </label>
+          </div>
+          <div v-if="progressForm.files.length > 0" class="mt-2 space-y-1">
+            <div
+              v-for="(f, idx) in progressForm.files"
+              :key="f.name + idx"
+              class="text-[10px] text-slate-500 flex justify-between items-center bg-slate-50 px-2 py-1 rounded"
+            >
+              <span class="truncate flex-1">{{ f.name }}</span>
+              <span class="mx-2">{{ formatFileSize(f.size) }}</span>
+              <button
+                @click="progressForm.files.splice(idx, 1)"
+                class="text-red-400 hover:text-red-600 text-xs"
+                title="移除"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-2">
+          <button
+            @click="showProgressModal = false"
+            class="btn btn-secondary flex-1"
+          >
+            取消
+          </button>
+          <button @click="updateProgress" class="btn btn-primary flex-1">
+            提交更新
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 提交验收模态框 -->
+  <div
+    v-if="showCompleteModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+  >
+    <div
+      class="bg-white rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up"
+    >
+      <div class="p-4 border-b border-slate-100 bg-green-50">
+        <h3 class="font-bold text-green-800">🎉 提交验收</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="bg-yellow-50 p-3 rounded-lg text-xs text-yellow-700 mb-2">
+          ⚠️ 提交验收前请确保任务已 100% 完成。
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >交付物/证据 (可多选) *</label
+          >
+          <div class="relative group">
+            <input
+              type="file"
+              @change="handleCompleteFileChange"
+              class="hidden"
+              id="complete-file"
+              multiple
+            />
+            <label
+              for="complete-file"
+              class="flex items-center gap-2 w-full px-3 py-2 border border-slate-200 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+            >
+              <span class="text-xl">📦</span>
+              <span class="text-sm text-slate-500 truncate">
+                {{
+                  completeForm.files.length > 0
+                    ? `已选择 ${completeForm.files.length} 个文件`
+                    : "点击上传交付物 (必须)..."
+                }}
+              </span>
+            </label>
+          </div>
+          <div v-if="completeForm.files.length > 0" class="mt-2 space-y-1">
+            <div
+              v-for="f in completeForm.files"
+              :key="f.name"
+              class="text-[10px] text-slate-500 flex justify-between"
+            >
+              <span>{{ f.name }}</span>
+              <span>{{ formatFileSize(f.size) }}</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >完成备注</label
+          >
+          <textarea
+            v-model="completeForm.comment"
+            rows="3"
+            class="w-full px-3 py-2 border rounded-lg"
+            placeholder="如果有特别说明..."
+          ></textarea>
+        </div>
+        <div class="flex gap-3">
+          <button
+            @click="showCompleteModal = false"
+            class="btn btn-secondary flex-1"
+          >
+            取消
+          </button>
+          <button @click="completeTask" class="btn btn-primary flex-1">
+            确认提交
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 验收评分模态框 -->
+  <div
+    v-if="showReviewModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+  >
+    <div
+      class="bg-white rounded-xl w-full max-w-sm overflow-hidden animate-fade-in-up"
+    >
+      <div class="p-4 border-b border-slate-100 bg-slate-50">
+        <h3 class="font-bold text-slate-800">⚖️ 验收评分</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >质量系数 (Q)</label
+          >
+          <div class="flex items-center gap-4">
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="1.2"
+              v-model.number="reviewForm.quality"
+              class="w-20 px-3 py-2 border rounded-lg font-bold text-center"
+            />
+            <input
+              type="range"
+              class="flex-1 accent-indigo-600"
+              min="0"
+              max="1.2"
+              step="0.1"
+              v-model.number="reviewForm.quality"
             />
           </div>
-          <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2">延期理由 *</label>
-            <textarea
-              v-model="extensionForm.reason"
-              rows="3"
-              class="w-full px-3 py-2 border rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
-              placeholder="请说明延期的具体原因..."
-            ></textarea>
-          </div>
-          <div class="flex gap-3">
-            <button
-              @click="showExtensionModal = false"
-              class="btn bg-slate-100 text-slate-700 hover:bg-slate-200 flex-1 py-2 font-bold rounded-lg"
-            >
-              取消
-            </button>
-            <button @click="requestExtension" class="btn bg-amber-600 text-white hover:bg-amber-700 flex-1 py-2 font-bold rounded-lg transition-colors">
-              确认申请
-            </button>
-          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            范围: 0.0 - 1.2 (1.0 为合格)
+          </p>
         </div>
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >评语</label
+          >
+          <textarea
+            v-model="reviewForm.comment"
+            rows="3"
+            class="w-full px-3 py-2 border rounded-lg"
+            placeholder="做得好，但是..."
+          ></textarea>
+        </div>
+        <div class="flex gap-3">
+          <button
+            @click="showReviewModal = false"
+            class="btn btn-secondary flex-1"
+          >
+            取消
+          </button>
+          <button @click="reviewTask" class="btn btn-primary flex-1">
+            提交结果
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 历史记录模态框 -->
+  <div
+    v-if="showHistoryModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+    @click.self="showHistoryModal = false"
+  >
+    <div
+      class="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-fade-in-up"
+    >
+      <div
+        class="p-4 border-b border-slate-100 flex justify-between items-center"
+      >
+        <h3 class="font-bold text-slate-800">📅 进度变更历史</h3>
+        <button
+          @click="showHistoryModal = false"
+          class="text-slate-400 hover:text-slate-600"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-0">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-slate-50 text-slate-500 font-medium">
+            <tr>
+              <th class="p-3">时间</th>
+              <th class="p-3">变更</th>
+              <th class="p-3">说明</th>
+              <th class="p-3">附件</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr
+              v-for="h in progressHistory"
+              :key="h.id"
+              class="hover:bg-slate-50/50"
+            >
+              <td class="p-3 text-slate-500">
+                {{ new Date(h.created_at).toLocaleString() }}
+              </td>
+              <td class="p-3">
+                <span class="font-bold text-indigo-600"
+                  >{{ h.progress_after }}%</span
+                >
+                <span class="text-xs text-slate-400 ml-1"
+                  >(从 {{ h.progress_before }}%)</span
+                >
+              </td>
+              <td class="p-3 text-slate-700">{{ h.content || "-" }}</td>
+              <td class="p-3">
+                <div
+                  v-if="h.attachments && h.attachments.length > 0"
+                  class="flex flex-wrap gap-2"
+                >
+                  <a
+                    v-for="att in h.attachments"
+                    :key="att.id"
+                    :href="`/api/attachments/${att.id}/download?token=${authStore.token}`"
+                    target="_blank"
+                    class="text-blue-500 hover:underline flex items-center gap-1 text-[10px]"
+                    :title="att.filename"
+                  >
+                    <span>{{
+                      att.file_type.startsWith("image/") ? "📷" : "📎"
+                    }}</span>
+                    <span class="max-w-[80px] truncate">{{
+                      att.filename
+                    }}</span>
+                  </a>
+                </div>
+                <a
+                  v-else-if="h.evidence_url"
+                  :href="h.evidence_url"
+                  target="_blank"
+                  class="text-blue-500 hover:underline flex items-center gap-1"
+                >
+                  <span v-if="h.evidence_url.match(/\.(jpg|jpeg|png|gif)$/i)"
+                    >📷 图片</span
+                  >
+                  <span v-else>📎 文件</span>
+                </a>
+                <span v-else class="text-slate-300">-</span>
+              </td>
+            </tr>
+            <tr v-if="progressHistory.length === 0">
+              <td colspan="4" class="p-8 text-center text-slate-400">
+                暂无进度变更记录
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 图片预览模态框 -->
+  <div
+    v-if="showPreviewModal"
+    class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+    @click.self="showPreviewModal = false"
+  >
+    <div class="relative max-w-4xl max-h-[90vh]">
+      <button
+        @click="showPreviewModal = false"
+        class="absolute -top-10 right-0 text-white/80 hover:text-white text-2xl transition-colors"
+      >
+        ✕
+      </button>
+      <img
+        :src="previewUrl"
+        class="max-w-full max-h-[85vh] rounded-lg shadow-2xl"
+        alt="预览图片"
+      />
+    </div>
+  </div>
+  <!-- 7. 申请延期模态框 -->
+  <div
+    v-if="showExtensionModal"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+  >
+    <div
+      class="bg-white rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up"
+    >
+      <div class="p-4 border-b border-slate-100 bg-amber-50">
+        <h3 class="font-bold text-amber-800">⏳ 申请任务延期</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >申请延期至 *</label
+          >
+          <input
+            v-model="extensionForm.date"
+            type="datetime-local"
+            class="w-full px-3 py-2 border rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-2"
+            >延期理由 *</label
+          >
+          <textarea
+            v-model="extensionForm.reason"
+            rows="3"
+            class="w-full px-3 py-2 border rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+            placeholder="请说明延期的具体原因..."
+          ></textarea>
+        </div>
+        <div class="flex gap-3">
+          <button
+            @click="showExtensionModal = false"
+            class="btn bg-slate-100 text-slate-700 hover:bg-slate-200 flex-1 py-2 font-bold rounded-lg"
+          >
+            取消
+          </button>
+          <button
+            @click="requestExtension"
+            class="btn bg-amber-600 text-white hover:bg-amber-700 flex-1 py-2 font-bold rounded-lg transition-colors"
+          >
+            确认申请
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

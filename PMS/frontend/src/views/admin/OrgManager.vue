@@ -2,10 +2,10 @@
 /**
  * 组织架构管理
  *
- * 展示公司-部门-岗位树形结构，支持增删改查
+ * 展示公司-部门-岗位树形结构，支持完整增删改查
  */
 import { ref, onMounted } from "vue";
-import api from "../../api"; // Adjust import path based on location
+import api from "../../api";
 import { useAuthStore } from "../../stores/auth";
 import OrgTreeItem from "../../components/OrgTreeItem.vue";
 
@@ -40,6 +40,7 @@ const posForm = ref({
 // 当前选中的节点（用于添加子节点）
 const currentNode = ref<any>(null);
 const isEdit = ref(false);
+const errorMsg = ref("");
 
 // 加载组织架构树
 async function loadTree() {
@@ -73,25 +74,56 @@ function toggleExpand(node: any) {
   }
 }
 
+/**
+ * 提取后端返回的错误信息
+ */
+function extractError(e: any): string {
+  return e.response?.data?.detail || e.message || "操作失败";
+}
+
 // === 公司操作 ===
 function openAddOrg() {
   isEdit.value = false;
   orgForm.value = { id: "", name: "", code: "" };
+  errorMsg.value = "";
+  showOrgModal.value = true;
+}
+
+function openEditOrg(org: any) {
+  isEdit.value = true;
+  orgForm.value = { id: org.id, name: org.name, code: org.code || "" };
+  errorMsg.value = "";
   showOrgModal.value = true;
 }
 
 async function submitOrg() {
+  errorMsg.value = "";
   try {
     if (isEdit.value) {
-      // API expected to be implemented if editing org is needed, currently only create in plan
-      alert("编辑功能暂未开放");
+      await api.put(`/api/org/organizations/${orgForm.value.id}`, {
+        name: orgForm.value.name,
+        code: orgForm.value.code || null,
+      });
     } else {
-      await api.post("/api/org/organizations", orgForm.value);
+      await api.post("/api/org/organizations", {
+        name: orgForm.value.name,
+        code: orgForm.value.code || null,
+      });
     }
     showOrgModal.value = false;
     await loadTree();
-  } catch (e) {
-    alert("操作失败");
+  } catch (e: any) {
+    errorMsg.value = extractError(e);
+  }
+}
+
+async function deleteOrg(id: string) {
+  if (!confirm("确认删除该公司？如果有部门将无法删除。")) return;
+  try {
+    await api.delete(`/api/org/organizations/${id}`);
+    await loadTree();
+  } catch (e: any) {
+    alert(extractError(e));
   }
 }
 
@@ -103,14 +135,16 @@ function openAddDept(parent: any, orgId: string) {
     id: "",
     name: "",
     code: "",
-    parent_id: parent.type === "department" ? parent.id : null,
+    parent_id: parent.type === "department" ? parent.id : "",
     organization_id: orgId,
   };
+  errorMsg.value = "";
   showDeptModal.value = true;
 }
 
 function openEditDept(dept: any) {
   isEdit.value = true;
+  currentNode.value = null;
   deptForm.value = {
     id: dept.id,
     name: dept.name,
@@ -118,33 +152,44 @@ function openEditDept(dept: any) {
     parent_id: dept.parent_id || "",
     organization_id: dept.organization_id || "",
   };
+  errorMsg.value = "";
   showDeptModal.value = true;
 }
 
 async function submitDept() {
+  errorMsg.value = "";
   try {
     if (isEdit.value) {
-      await api.put(
-        `/api/org/departments/${deptForm.value.id}`,
-        deptForm.value,
-      );
+      await api.put(`/api/org/departments/${deptForm.value.id}`, {
+        name: deptForm.value.name,
+        code: deptForm.value.code || null,
+      });
     } else {
-      await api.post("/api/org/departments", deptForm.value);
+      const payload: any = {
+        name: deptForm.value.name,
+        code: deptForm.value.code || null,
+        organization_id: deptForm.value.organization_id,
+      };
+      // 只有在部门下新增子部门时才传 parent_id
+      if (deptForm.value.parent_id) {
+        payload.parent_id = deptForm.value.parent_id;
+      }
+      await api.post("/api/org/departments", payload);
     }
     showDeptModal.value = false;
     await loadTree();
-  } catch (e) {
-    alert("操作失败");
+  } catch (e: any) {
+    errorMsg.value = extractError(e);
   }
 }
 
 async function deleteDept(id: string) {
-  if (!confirm("确认删除该部门？如果有子部门或人员将无法删除。")) return;
+  if (!confirm("确认删除该部门？如果有子部门、岗位或人员将无法删除。")) return;
   try {
     await api.delete(`/api/org/departments/${id}`);
     await loadTree();
   } catch (e: any) {
-    alert(e.response?.data?.detail || "删除失败");
+    alert(extractError(e));
   }
 }
 
@@ -160,20 +205,58 @@ function openAddPos(dept: any) {
     can_assign_task: false,
     can_transfer_task: false,
   };
+  errorMsg.value = "";
+  showPosModal.value = true;
+}
+
+function openEditPos(pos: any) {
+  isEdit.value = true;
+  currentNode.value = null;
+  posForm.value = {
+    id: pos.id,
+    name: pos.name,
+    code: pos.code || "",
+    department_id: pos.department_id || "",
+    can_assign_task: pos.can_assign || false,
+    can_transfer_task: pos.can_transfer || false,
+  };
+  errorMsg.value = "";
   showPosModal.value = true;
 }
 
 async function submitPos() {
+  errorMsg.value = "";
   try {
     if (isEdit.value) {
-      // API for position update if needed
+      await api.put(`/api/org/positions/${posForm.value.id}`, {
+        name: posForm.value.name,
+        code: posForm.value.code || null,
+        can_assign_task: posForm.value.can_assign_task,
+        can_transfer_task: posForm.value.can_transfer_task,
+      });
     } else {
-      await api.post("/api/org/positions", posForm.value);
+      await api.post("/api/org/positions", {
+        name: posForm.value.name,
+        code: posForm.value.code || null,
+        department_id: posForm.value.department_id,
+        can_assign_task: posForm.value.can_assign_task,
+        can_transfer_task: posForm.value.can_transfer_task,
+      });
     }
     showPosModal.value = false;
     await loadTree();
-  } catch (e) {
-    alert("操作失败");
+  } catch (e: any) {
+    errorMsg.value = extractError(e);
+  }
+}
+
+async function deletePos(id: string) {
+  if (!confirm("确认删除该岗位？如果有用户关联将无法删除。")) return;
+  try {
+    await api.delete(`/api/org/positions/${id}`);
+    await loadTree();
+  } catch (e: any) {
+    alert(extractError(e));
   }
 }
 
@@ -213,7 +296,17 @@ onMounted(() => {
           @add-pos="openAddPos"
           @edit-dept="openEditDept"
           @delete-dept="deleteDept"
+          @edit-pos="openEditPos"
+          @delete-pos="deletePos"
+          @edit-org="openEditOrg"
+          @delete-org="deleteOrg"
         />
+        <div
+          v-if="treeData.length === 0"
+          class="text-center py-8 text-slate-400"
+        >
+          暂无组织架构数据，请先新增公司
+        </div>
       </div>
     </div>
 
@@ -235,6 +328,12 @@ onMounted(() => {
             placeholder="编码 (可选)"
             class="input w-full"
           />
+          <div
+            v-if="errorMsg"
+            class="text-sm text-red-500 bg-red-50 p-2 rounded"
+          >
+            {{ errorMsg }}
+          </div>
           <div class="flex gap-2">
             <button
               @click="showOrgModal = false"
@@ -258,7 +357,7 @@ onMounted(() => {
       <div class="bg-white rounded-xl p-6 w-96">
         <h3 class="font-bold mb-4">{{ isEdit ? "编辑" : "新增" }}部门</h3>
         <div class="space-y-4">
-          <div v-if="currentNode" class="text-sm text-slate-500">
+          <div v-if="currentNode && !isEdit" class="text-sm text-slate-500">
             上级: {{ currentNode.name }}
           </div>
           <input
@@ -271,6 +370,12 @@ onMounted(() => {
             placeholder="编码 (可选)"
             class="input w-full"
           />
+          <div
+            v-if="errorMsg"
+            class="text-sm text-red-500 bg-red-50 p-2 rounded"
+          >
+            {{ errorMsg }}
+          </div>
           <div class="flex gap-2">
             <button
               @click="showDeptModal = false"
@@ -292,9 +397,9 @@ onMounted(() => {
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
     >
       <div class="bg-white rounded-xl p-6 w-96">
-        <h3 class="font-bold mb-4">新增岗位</h3>
+        <h3 class="font-bold mb-4">{{ isEdit ? "编辑" : "新增" }}岗位</h3>
         <div class="space-y-4">
-          <div v-if="currentNode" class="text-sm text-slate-500">
+          <div v-if="currentNode && !isEdit" class="text-sm text-slate-500">
             所属部门: {{ currentNode.name }}
           </div>
           <input
@@ -314,6 +419,20 @@ onMounted(() => {
               id="can_assign"
             />
             <label for="can_assign" class="text-sm">允许分配任务（主管）</label>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              v-model="posForm.can_transfer_task"
+              id="can_transfer"
+            />
+            <label for="can_transfer" class="text-sm">允许转办任务</label>
+          </div>
+          <div
+            v-if="errorMsg"
+            class="text-sm text-red-500 bg-red-50 p-2 rounded"
+          >
+            {{ errorMsg }}
           </div>
           <div class="flex gap-2">
             <button

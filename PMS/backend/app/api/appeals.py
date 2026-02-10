@@ -173,7 +173,7 @@ async def get_pending_appeals(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
     """管理员获取待审核的申诉列表"""
-    if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+    if not set(current_user.roles).intersection({UserRole.ADMIN, UserRole.MANAGER}):
         raise HTTPException(status_code=403, detail="权限不足")
         
     stmt = select(Appeal).where(
@@ -196,7 +196,7 @@ async def review_appeal(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
     """管理员审核申诉"""
-    if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+    if not set(current_user.roles).intersection({UserRole.ADMIN, UserRole.MANAGER}):
         raise HTTPException(status_code=403, detail="权限不足")
         
     if review_data.status not in [AppealStatus.APPROVED, AppealStatus.REJECTED]:

@@ -20,6 +20,7 @@ class TaskStatus(str, Enum):
     任务状态枚举（状态机）
     
     - DRAFT: 草稿，仅创建者可见
+    - PENDING_SUBMISSION: 待提交，员工已准备好但未正式提交审批
     - PENDING_APPROVAL: 待审批，等待主管定级 I/D
     - IN_PROGRESS: 进行中，开始计时
     - PENDING_REVIEW: 待验收，停止计时
@@ -29,6 +30,7 @@ class TaskStatus(str, Enum):
     - SUSPENDED: 已挂起
     """
     DRAFT = "draft"
+    PENDING_SUBMISSION = "pending_submission"
     PENDING_APPROVAL = "pending_approval"
     IN_PROGRESS = "in_progress"
     PENDING_REVIEW = "pending_review"

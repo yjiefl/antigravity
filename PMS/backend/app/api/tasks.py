@@ -224,14 +224,14 @@ async def update_task(
     """
     更新任务
     
-    仅草稿状态可编辑基本信息
+    草稿和待提交状态可编辑基本信息
     """
     task = await get_task_or_404(task_id, db)
     
-    if task.status != TaskStatus.DRAFT:
+    if task.status not in (TaskStatus.DRAFT, TaskStatus.PENDING_SUBMISSION):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只有草稿状态的任务可以编辑"
+            detail="只有草稿或待提交状态的任务可以编辑"
         )
     
     for field, value in task_in.model_dump(exclude_unset=True).items():
@@ -254,14 +254,14 @@ async def submit_task(
     """
     提交任务审批
     
-    草稿 → 待审批
+    草稿/待提交 → 待审批
     """
     task = await get_task_or_404(task_id, db)
     
-    if task.status != TaskStatus.DRAFT:
+    if task.status not in (TaskStatus.DRAFT, TaskStatus.PENDING_SUBMISSION):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="只有草稿状态的任务可以提交审批"
+            detail="只有草稿或待提交状态的任务可以提交审批"
         )
     
     task.status = TaskStatus.PENDING_APPROVAL
@@ -270,6 +270,32 @@ async def submit_task(
     await db.flush()
     # await db.refresh(task)
     
+    return task
+
+
+@router.post("/{task_id}/mark-pending", response_model=TaskResponse)
+async def mark_pending_submission(
+    task_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    标记任务为待提交状态
+    
+    草稿 → 待提交
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    if task.status != TaskStatus.DRAFT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="只有草稿状态的任务可以标记为待提交"
+        )
+    
+    task.status = TaskStatus.PENDING_SUBMISSION
+    await add_task_log(db, task.id, current_user.id, LogAction.SUBMITTED, "标记为待提交")
+    
+    await db.flush()
     return task
 
 
@@ -318,8 +344,16 @@ async def return_task(
     
     待审批 → 草稿
     待验收 → 进行中
+    仅任务指定的审批人或管理员可操作
     """
     task = await get_task_or_404(task_id, db)
+    
+    # 校验审批权限
+    if task.reviewer_id and task.reviewer_id != current_user.id and UserRole.ADMIN not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有该任务指定的审批人才能退回"
+        )
     
     if task.status == TaskStatus.PENDING_APPROVAL:
         # 退回到草稿
@@ -329,7 +363,6 @@ async def return_task(
     elif task.status == TaskStatus.PENDING_REVIEW:
         # 退回到进行中
         task.status = TaskStatus.IN_PROGRESS
-        # 重置进度为 90% (或保持 100% 但状态变更为进行中) - 这里选择不自动改进度，由用户自己改
         action = LogAction.REVIEW_REJECTED
         msg = f"退回任务（至进行中）：{reason}"
     else:
@@ -355,6 +388,7 @@ async def approve_task(
     审批通过任务（设定 I/D 系数）
     
     待审批 → 进行中
+    仅任务指定的审批人或管理员可操作
     """
     task = await get_task_or_404(task_id, db)
     
@@ -362,6 +396,13 @@ async def approve_task(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="只有待审批状态的任务可以审批"
+        )
+    
+    # 校验审批权限：必须是指定的 reviewer 或 admin
+    if task.reviewer_id and task.reviewer_id != current_user.id and UserRole.ADMIN not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有该任务指定的审批人才能审批"
         )
     
     task.status = TaskStatus.IN_PROGRESS
@@ -391,6 +432,7 @@ async def reject_task(
     审批驳回任务
     
     待审批 → 草稿
+    仅任务指定的审批人或管理员可操作
     """
     task = await get_task_or_404(task_id, db)
     
@@ -398,6 +440,13 @@ async def reject_task(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="只有待审批状态的任务可以驳回"
+        )
+    
+    # 校验审批权限
+    if task.reviewer_id and task.reviewer_id != current_user.id and UserRole.ADMIN not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有该任务指定的审批人才能驳回"
         )
     
     task.status = TaskStatus.DRAFT
@@ -540,6 +589,7 @@ async def review_task(
     验收评分
     
     待验收 → 已完成（计算得分）
+    仅任务指定的审批人或管理员可操作
     """
     task = await get_task_or_404(task_id, db)
     
@@ -547,6 +597,13 @@ async def review_task(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="只有待验收的任务可以评分"
+        )
+    
+    # 校验验收权限
+    if task.reviewer_id and task.reviewer_id != current_user.id and UserRole.ADMIN not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有该任务指定的审批人才能验收评分"
         )
     
     task.status = TaskStatus.COMPLETED

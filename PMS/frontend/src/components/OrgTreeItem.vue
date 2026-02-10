@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * 组织架构树节点组件
+ *
+ * 递归渲染公司-部门-岗位结构，支持增删改查操作
+ */
 import { computed } from "vue";
 
 const props = defineProps<{
@@ -13,6 +18,10 @@ const emit = defineEmits([
   "add-pos",
   "edit-dept",
   "delete-dept",
+  "edit-pos",
+  "delete-pos",
+  "edit-org",
+  "delete-org",
 ]);
 
 const isExpanded = computed(() => props.expandedKeys.has(props.node.id));
@@ -20,9 +29,6 @@ const isExpanded = computed(() => props.expandedKeys.has(props.node.id));
 function handleToggle() {
   emit("toggle-expand", props.node);
 }
-
-// 计算缩进样式，虽然是递归，但为了视觉层级，我们可以利用 padding
-// 或者直接嵌套 div。这里使用嵌套 div 结构 naturally indentation.
 </script>
 
 <template>
@@ -59,8 +65,8 @@ function handleToggle() {
           node.type === 'organization'
             ? 'text-lg text-slate-800'
             : node.type === 'department'
-            ? 'text-slate-700'
-            : 'text-sm text-slate-600'
+              ? 'text-slate-700'
+              : 'text-sm text-slate-600'
         "
       >
         {{ node.name }}
@@ -79,11 +85,18 @@ function handleToggle() {
       >
         主管
       </span>
+      <span
+        v-if="node.type === 'position' && node.can_transfer"
+        class="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded border border-blue-100"
+      >
+        可转办
+      </span>
 
       <!-- 操作按钮 (Hover 显示) -->
       <div
         class="flex items-center gap-2 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
       >
+        <!-- 公司操作 -->
         <template v-if="node.type === 'organization'">
           <button
             @click="$emit('add-dept', node, node.id)"
@@ -91,8 +104,21 @@ function handleToggle() {
           >
             + 部门
           </button>
+          <button
+            @click="$emit('edit-org', node)"
+            class="text-xs text-slate-500 hover:bg-slate-100 px-2 py-1 rounded"
+          >
+            编辑
+          </button>
+          <button
+            @click="$emit('delete-org', node.id)"
+            class="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded"
+          >
+            删除
+          </button>
         </template>
 
+        <!-- 部门操作 -->
         <template v-if="node.type === 'department'">
           <button
             @click="$emit('add-dept', node, node.organization_id || '')"
@@ -114,6 +140,22 @@ function handleToggle() {
           </button>
           <button
             @click="$emit('delete-dept', node.id)"
+            class="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded"
+          >
+            删除
+          </button>
+        </template>
+
+        <!-- 岗位操作 -->
+        <template v-if="node.type === 'position'">
+          <button
+            @click="$emit('edit-pos', node)"
+            class="text-xs text-slate-500 hover:bg-slate-100 px-2 py-1 rounded"
+          >
+            编辑
+          </button>
+          <button
+            @click="$emit('delete-pos', node.id)"
             class="text-xs text-red-500 hover:bg-red-50 px-2 py-1 rounded"
           >
             删除
@@ -143,6 +185,10 @@ function handleToggle() {
         @add-pos="(n) => $emit('add-pos', n)"
         @edit-dept="(n) => $emit('edit-dept', n)"
         @delete-dept="(id) => $emit('delete-dept', id)"
+        @edit-pos="(n) => $emit('edit-pos', n)"
+        @delete-pos="(id) => $emit('delete-pos', id)"
+        @edit-org="(n) => $emit('edit-org', n)"
+        @delete-org="(id) => $emit('delete-org', id)"
       />
     </div>
   </div>
