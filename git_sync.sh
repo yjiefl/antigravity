@@ -100,21 +100,53 @@ run_status() {
     
     echo "领先: ${GREEN}$AHEAD${NC} | 落后: ${RED}$BEHIND${NC}"
     
-    if [ "$AHEAD" -gt 0 ]; then
-        echo "${YELLOW}提示: 您有 $AHEAD 个本地提交尚未推送。${NC}"
+    if [ "$AHEAD" -gt 0 ] || [ "$BEHIND" -gt 0 ]; then
+         echo "${CYAN}提示: 输入 'd' 可查看差异详情，回车返回菜单${NC}"
+         read -r -t 5 -n 1 opt
+         if [[ "$opt" == "d" ]]; then
+             run_compare
+         fi
+    fi
+}
+
+# 对比本地与远程的差异
+run_compare() {
+    BRANCH=$(git branch --show-current)
+    echo "${CYAN}=== 差异对比: 本地(HEAD) vs 远程(origin/$BRANCH) ===${NC}"
+    
+    # 获取差异统计
+    echo "${YELLOW}1. 文件变动统计:${NC}"
+    git diff --stat "origin/$BRANCH"..HEAD
+    
+    echo "\n${YELLOW}2. 具体文件状态 (A:新增, M:修改, D:删除):${NC}"
+    git diff --name-status "origin/$BRANCH"..HEAD
+    
+    echo "\n${YELLOW}是否查看详细代码差异? (y/n):${NC} "
+    read -r show_detail
+    if [[ "$show_detail" =~ ^[Yy]$ ]]; then
+        git diff "origin/$BRANCH"..HEAD
     fi
 }
 
 # 以本地数据为准强制覆盖远程 (Local Overwrite Remote)
 run_local_overwrite() {
+    BRANCH=$(git branch --show-current)
+    echo "${YELLOW}正在获取远程最新状态以供对比...${NC}"
+    git fetch origin "$BRANCH" 2>/dev/null
+
     echo "${RED}！！！警告：此操作将跳过远程拉取，直接使用本地数据强制覆盖远程仓库！！！${NC}"
-    echo "${RED}！！！远程仓库中比本地新的提交将会丢失！！！${NC}"
-    echo -n "确认要继续吗？(y/n): "
-    read -r confirm
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        echo "操作已取消。"
-        return
-    fi
+    echo "${RED}！！！远程仓库中比本地新的提交 (落后部分) 将会丢失！！！${NC}"
+    
+    while true; do
+        echo -n "请确认操作: [y]继续, [n]取消, [v]查看差异详情: "
+        read -r confirm
+        case "$confirm" in
+            [Vv]) run_compare ;;
+            [Yy]) break ;;
+            [Nn]) echo "操作已取消。"; return ;;
+            *) echo "无效输入，请输入 y, n 或 v" ;;
+        esac
+    done
 
     echo "${CYAN}=== 开始以本地为主覆盖同步 ===${NC}"
     
