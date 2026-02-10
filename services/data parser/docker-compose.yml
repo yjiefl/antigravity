@@ -1,0 +1,13 @@
+services:
+  analysis-web:
+    build: .
+    container_name: power-prediction-analysis
+    ports:
+      - "5004:5000" # NAS 端口映射，避免 5000 冲突
+
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1

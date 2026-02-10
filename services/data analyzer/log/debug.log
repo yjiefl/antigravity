@@ -1,0 +1,105 @@
+2026-01-29 14:50:04 - 项目初始化：创建 spec.md 和 readme.md，完成可行性评估。
+2026-01-29 14:54:53 - 完成单元测试并推送最终代码。
+2026-01-29 15:04:24 - 通过浏览器 subagent 验证 UI 渲染（磨砂玻璃风格正常）。运行单元测试验证数据解析逻辑（通过）。项目已就绪。
+2026-01-29 15:10:31 - 创建 start.sh 脚本并更新 update.md。
+2026-01-29 15:17:05 - 增加拖拽导入、文本粘贴导入功能。优化 CSV 解析逻辑支持中文表头及分列日期时间。单元测试已通过。
+2026-01-29 15:18:45 - 更新 start.sh 脚本，支持启动成功后自动打开浏览器。
+2026-01-29 15:23:08 - 修复 Safari 浏览器日期解析不兼容问题（- 替换为 /）。增强中文表头（包含括号单位）的识别能力。完善测试用例。
+2026-01-29 15:49:18 - 修复图表空白问题。重构 ECharts 初始化逻辑，将生命周期管理（init/dispose）与数据更新（setOption）分离，并确保容器始终存在（通过 opacity 控制显隐）。
+2026-01-29 16:00:52 - 新增多维数据支持。现在可以一次性粘贴包含多个指标（温度、湿度、风速等）的复杂表格，系统会自动识别并分配动态多列纵坐标（Y轴）。
+2026-01-29 18:05:00 - 修复拖拽导入功能；增强数值点显示效果（加粗）；新增坐标轴手动范围设置（最小值/最大值）。确认支持多文件同时导入显示。
+2026-01-29 20:41:06 - 修复拖拽导入文件失效的 bug。优化 handleFileUpload 逻辑以正确兼容事件对象和 File 对象，增强健壮性并添加错误日志。
+2026-01-29 21:12:02 - 实现功能改进：优化图表图例显示（隐藏文件名后缀）、重构坐标轴设置界面、新增导出 CSV 功能。同步更新 UI 样式以提升操作效率。
+2026-01-29 21:38:46 - 优化坐标轴控制界面：实现单行显示，指标标签与输入框对齐。输入框 Placeholder 现在动态展示数据的真实最小值和最大值，满足用户查看默认数值的需求。同步更新 CSS 以提升 UI 紧凑度和美观度。
+2026-01-29 21:46:35 - 功能增强：实现左侧纵坐标随鼠标悬停动态切换，避免多轴干扰。新增曲线积分（AUC）计算与勾选显示功能。新增后端状态监控灯，实时反馈连接情况。优化 UI 紧凑度。
+2026-01-29 22:01:58 - 功能增强：支持多维数据分析。现在可以识别“城市”、“天气”等维度，并在侧边栏提供动态筛选下拉框，支持更精细的数据对比与过滤。同步优化了数据解析引擎。
+2026-01-29 22:08:49 - UI 改进：将维度筛选（如城市）从下拉列表重构为交互式标签组（Tags/Pills），提升视觉直观性与操作便捷度。
+2026-01-29 22:16:48 - 功能增强：支持动态维度切换。用户现在可以选择按任意维度（城市、天气等）分组并进行多选。新增单位自动识别逻辑，并在 AUC 积分结果中展示单位（如 ℃·h）。修复了导出按钮可能不显示的逻辑 bug 并优化了其 UI。
+2026-01-30 06:21:33 - UI 深度优化：1. 实现深浅色主题切换（Apple 风格浅色模式）；2. 侧边栏支持动态缩放与折叠；3. 控制台 UI 紧凑化；4. 修复图例重叠；5. 优化导出按钮效果。
+2026-01-30 06:44:20 - UI 交互深度优化：1. 实现侧边栏按钮一键折叠；2. 重构侧边栏布局，指标设置区固定在底部（占比1/3）；3. 优化拖拽缩放性能（requestAnimationFrame）；4. 已选系列改为单行展示。
+2026-01-31 11:35 - 完成坐标轴优化、历史清空修复及时间粒度功能实现。修复了 updateChart 语法错误，通过 Linter 检查。
+2026-01-31 13:45 - 功能深度优化与部署：
+- UI/UX：重构全局调节系数为极简单行布局（0.5-1.5x）；优化功率类指标（出清、预测、负荷）自动识别与统一设置；压缩侧边栏高度提升信息密度。
+- 数据管理：开放系列名称、指标名称及数值 JSON 的手动编辑功能；优化数据解析引擎，识别并过滤 `--/nan` 等空值占位符，修复 0 积分值异常。
+- 部署与验证：通过 deploy_to_vps.sh 成功部署至 VPS 环境；通过生产环境构建验证。
+2026-02-02 12:28 - 开始处理数据分析系统改进任务：更换图标、增加模板与校验、AGC/超短期单位及限值设置、Bug 修复、版本显示等。
+2026-02-02 12:30 - 完成所有任务。已更换图标、增加模版、优化导入校验、设置 AGC/超短期默认单位与限值、修复颜色生效 bug 与下载 bug、增加版本显示、配置数据库持久化。
+2026-02-02 13:14 - 再次修复下载链接，调整调节系数范围为 0.2-1.8，步长 0.1。
+2026-02-02 13:19 - 解决模版下载被不可见图表层遮挡的问题，并调整缩放系数步长为 0.05。
+[2026-02-07 13:53:42] Update Summary:
+1. Implemented default range (0-1000) for shortwave radiation (and related metrics).
+2. Added Power Curtailment Analysis feature:
+   - Logic: Irradiance > Threshold AND (AGC < ActualPower OR |AGC - ActualPower| < DiffThreshold)
+   - UI: Added checkbox to enable/disable, and inputs for irradiance threshold (default 20) and diff threshold (default 3).
+   - Validation: Visualized using MarkArea on the first series.
+3. Enhanced Dimension Selection: Added 'Select All' and 'Clear All' buttons for dimension values.
+Files modified: frontend/src/App.jsx, update.md
+[2026-02-07 15:57:29] Update Summary:
+1. Fixed frontend crash (black screen) caused by undefined 'index' in series map loop.
+2. Implemented Station Selection Modal for historical irradiance data fetch:
+   - Added Backend API: GET /api/stations to list supported stations.
+   - Added Frontend UI: Modal with search/filter for station selection instead of raw prompt.
+   - Refactored fetch logic to support custom selection from the list.
+Files modified: backend/server.js, frontend/src/App.jsx
+
+2026-02-07 18:20:00 - 开始任务：
+1. 修复「显示所有分组」勾选后消失：原因是 ECharts series name 重复且 legendSelected 逻辑冲突，改为动态 series name。
+2. 修复限电背景显示 bug：优化 dimensionGroups 逻辑，适配多场站且不依赖 UI 选中，修正分组聚合。
+3. 导出增加限电标志：在导出逻辑中集成限电判断算子。
+4. 历史辐照度改进：增加 STATION_LOCATIONS 配置及 UI 管理，支持自定义经纬度和方位角，后端支持方位角参数传递。
+
+2026-02-07 21:05:00 - 完成修复：
+1. 重构辅助函数 (hexToRgba, getAggregatedData, getCurtailmentRanges) 到组件层级，解决嵌套定义问题。
+2. 修复导出 CSV 重复变量声明语法错误，恢复导出功能正常。
+3. 维度标签始终可点击：移除 isShowAllGroups 禁用逻辑，使「显示所有分组」时仍可选择维度筛选。
+4. 颜色一致性：统一使用 metricKey 传递给 getUserColor，确保图表与侧边栏颜色匹配。
+5. 扩展场站配置：后端 stations 表增加 azimuth/tilt 字段，前端导入支持多列格式。
+
+
+2026-02-07 21:40:00 - UI 优化与修复：
+1. 修复「选中数据详情」列表显隐 bug：现在点击列表项可准确 toggle 对应的单条曲线（此前基于指标名 toggle 导致分组失效）。
+2. 历史辐照度获取增强：增加场站下拉选择框，支持搜索与手动选择双向绑定；自动关联所选场站维度，确保分组正确。
+3. 限电分析 UI 优化：改为 2 列紧凑网格布局，节省侧边栏空间。
+
+2026-02-08 11:45:00 - 完成 Task 1: 历史辐照度增强
+1. 修复 Bug: 修复了 App.jsx 中 executeFetchIrradiance 函数里引用未定义变量 prev 的错误，该错误曾导致前端报错“网络异常或超时”。
+2. 维度匹配增强: 优化了历史数据导入时的维度识别逻辑。现在会自动扫描现有序列（同日期或全局）中使用的维度键名（如“场站”、“Station”等），并将新抓取的历史辐照度数据自动归类到该维度下，实现无缝分组对比，避免了因键名不一致导致的重复分组。
+3. 后端验证: 经核查 backend 日志，Open-Meteo API 调用正常（HTTP 200），确认为纯前端逻辑错误。
+
+2026-02-08 14:48:00 - UI 优化：简化图表 Tooltip 限电文案为“限电/正常”；实现坐标轴设置与图例显示强联动（隐藏系列时置灰，点击标题批量显隐）；扩展默认配色方案至 20+ 色。
+2026-02-08 14:55:00 - UI 交互优化：
+   - 增加行号识别: 在指标坐标轴设置项中增加行号（01, 02...），提升阅读参考性。
+   - 布局空间优化: 增加坐标轴行高与间距（Padding 从 5px 增至 8px，Margin 增至 6px），解决显示过于拥挤的问题。
+   - 重点视觉加强: 优化“统一上下限”调整区，增加高光背景与主色调边框，提升全局控制的可识别度。
+   - 输入框优化: 增加输入框宽度（55px -> 65px）与内边距，提升数字输入体验。
+
+2026-02-08 15:00:00 - UI 坐标轴设置微调：
+   - 移除物理行号：取消此前增加的 01, 02 序号。
+   - 增加行间距：Padding 从 8px 增至 10px，提升垂直空间。
+   - 字体与换行优化：指标名称字号下调至 0.7rem，强制单行不换行并显示省略号。
+   - 输入框精细化：输入框宽度回调至 58px，字号下调至 0.75rem，保持外观精简。
+
+2026-02-08 17:15:00 - UI/UX 深度重构 (Premium Minimalist):
+   - 全局视觉系统: 引入 Poppins (标题/数字) + Open Sans (正文) 方案；数字强制使用等宽字体。
+   - 极简侧边栏: 宽度压缩至 220px，应用 backdrop-filter: blur(20px) 全磨砂质感；控件全面行内化 (Inline) 处理。
+   - 高信息密度: 全局侧边栏字号压缩至 10-11px (0.7rem)；坐标轴卡片高度大幅缩减，移除冗余装饰。
+   - 图表区占比: 优化容器布局，确保 ECharts 区域占据屏幕 85% 以上重心。
+   - 交互联动增强: 实现图例隐藏时的侧边栏联动置灰 (Opacity 0.4 + saturate(0))；重写 ECharts Tooltip 为全透明磨砂简约风格。
+   - 配色方案: 切换至 20 色高对比度专业级色板，优化多指标叠加辨识度。
+2026-02-08 20:05:00 - UI 高密度优化完成：
+   - 修复页头标题重叠：通过 premium-button secondary 变体替换 icon-btn-mini，并精简按钮文案（重置面板->重置，清空当前->清空）。
+   - 补全侧边栏样式：追加丢失的 toggle-group-modern、range-fine-tune-compact 等 CSS 类，恢复时间粒度选择等控件的视觉深度。
+   - 字体与细节优化：全局应用 Fira Sans (UI) 及 Fira Code (数字)；增加 Logo 区域呼吸感；通过浏览器 subagent 验证布局平衡。
+   - 性能：Tooltip 模糊度下调（20px -> 8px）以提升低配机型渲染性能，同时保持磨砂玻璃效果。
+[2026-02-08 20:30:00] UI/UX V2 Refinement Complete:
+- Modernized dimension filters with icons (Select All/Clear/Invert).
+- Refactored Action Bar buttons (Export/Reset/Clear) to circular icons.
+- Enhanced Power Curtailment module visuals (High-contrast inputs, longer slider).
+- Implemented Sticky layout for Axis & Unit settings at sidebar bottom.
+- Updated to 20-color high-contrast industrial palette for better curve distinction.
+- Verified layout stability across resolutions.
+[2026-02-08 21:25:00] Selection Logic Fix & UI Unification:
+- Fixed bug in global 'Select All' that caused it to fail on initial data load.
+- Unified dimension filter headers with a consistent 3-button pattern (Select All, None, Invert).
+- Added visual feedback (opacity 0.3) for redundant selection actions.
+- Verified functional correctness across all dimension controls.
