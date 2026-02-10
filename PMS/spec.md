@@ -166,24 +166,25 @@ stateDiagram-v2
 
 ### 5.1 得分公式
 
-$$S = \max(0, (B \times I \times D) \times Q \times T - P)$$
+$$S_{exec} = B_{sub} \times I_{main} \times D_{main} \times Q_{sub} \times T_{sub}$$
 
 | 参数 | 名称 | 范围 | 说明 |
 | :--- | :--- | :--- | :--- |
-| B | 基准分 | 100 | 固定值 |
-| I | 重要性 | 0.5-1.5 | Manager 设定 |
-| D | 难度 | 0.8-1.5 | Manager 设定 |
-| Q | 质量 | 0.0-1.2 | 验收时评分 |
+| B | 子任务工作量 | >0 | 实施人工作量基准分 (建议 20/50/80) |
+| I | 重要性 | 0.5-1.5 | **继承女主任务** (Manager 设定) |
+| D | 难度 | 0.8-1.5 | **继承自主任务** (Manager 设定) |
+| Q | 质量 | 0.0-1.2 | 验收时对子任务评分 |
 | T | 时效 | 0.2-1.0 | 系统自动计算 |
-| P | 罚分 | ≥0 | 红牌扣分 |
 
-### 5.2 时效系数计算
+> **注意**: 主任务得分为其下所有管理型子任务得分之和。
 
-$$T = \begin{cases} 1.0, & \Delta t \le 0 \\ \max(0.2, 1.0 - \frac{\Delta t}{D} \cdot f), & \Delta t > 0 \end{cases}$$
+### 5.2 时效系数计算 (v2.0)
 
-- Δt = 实际完成时间 - 计划完成时间
-- D = 计划总工期
-- f = 惩罚因子（默认 1.0）
+$$T = \begin{cases} 1.0, & \Delta t \le 0 \\ \max \left( 0.2, 1.0 - \frac{\Delta t}{D_{duration}} \cdot f \right), & \Delta t > 0 \end{cases}$$
+
+- $\Delta t$: 逾期时长 (Actual End - Plan End)
+- $D_{duration}$: 计划工期 (Plan End - Plan Start)
+- $f$: 惩罚因子 (默认 1.0)
 
 ### 5.3 红黄牌规则
 

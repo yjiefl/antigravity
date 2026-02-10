@@ -97,6 +97,7 @@ class SubTaskCreate(BaseModel):
     executor_id: Optional[uuid.UUID] = Field(None, description="实施人ID")
     plan_end: Optional[datetime] = Field(None, description="截止时间")
     weight: float = Field(1.0, ge=0.0, le=10.0, description="权重")
+    workload_b: float = Field(0.0, ge=0.0, description="工作量基准分")
 
     @field_validator('plan_end', mode='before')
     @classmethod
@@ -130,6 +131,8 @@ class TaskUpdate(BaseModel):
     owner_id: Optional[uuid.UUID] = None
     executor_id: Optional[uuid.UUID] = None
     reviewer_id: Optional[uuid.UUID] = None
+    weight: Optional[float] = None
+    workload_b: Optional[float] = None
 
     @field_validator('plan_start', 'plan_end', mode='before')
     @classmethod
@@ -161,6 +164,12 @@ class TaskUpdate(BaseModel):
              if v < info.data['plan_start']:
                  raise ValueError('计划完成时间不能早于计划开始时间')
          return v
+
+
+
+class TaskCoefficientUpdate(TaskCoefficients):
+    """更新任务系数"""
+    reason: str = Field(..., max_length=200, description="调整原因")
 
 
 class TaskApprove(TaskCoefficients):
@@ -247,6 +256,7 @@ class TaskResponse(TaskBase):
     executor_id: Optional[uuid.UUID]
     parent_id: Optional[uuid.UUID]
     weight: float
+    workload_b: float
     final_score: Optional[float]
     evidence_url: Optional[str]
     # 延期字段

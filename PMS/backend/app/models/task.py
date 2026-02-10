@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List
 
-from sqlalchemy import String, Text, ForeignKey, DateTime, Float, Integer, func
+from sqlalchemy import String, Text, ForeignKey, DateTime, Float, Integer, func, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Uuid as UUID
 
@@ -31,6 +31,7 @@ class TaskStatus(str, Enum):
     """
     DRAFT = "draft"
     PENDING_SUBMISSION = "pending_submission"
+    PENDING_LEADER_APPROVAL = "pending_leader_approval"  # 待组长审批
     PENDING_APPROVAL = "pending_approval"
     IN_PROGRESS = "in_progress"
     PENDING_REVIEW = "pending_review"
@@ -197,6 +198,11 @@ class Task(Base):
     )
     
     # 得分（完成后计算）
+    workload_b: Mapped[float] = mapped_column(
+        Float,
+        default=0.0,
+        comment="子任务工作量基准分 B (Sub-workload)"
+    )
     final_score: Mapped[Optional[float]] = mapped_column(
         Float,
         comment="最终得分 S"
@@ -220,6 +226,11 @@ class Task(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         comment="更新时间"
+    )
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="逻辑删除标记"
     )
     
     # 关联关系

@@ -48,18 +48,21 @@ def calculate_timeliness(task: Task) -> float:
     if delta_t <= 0:
         return 1.0
     
-    # 计划总工期 D（天）
-    total_duration = (task.plan_end - task.plan_start).total_seconds() / (24 * 60 * 60)
+    # 计划总工期 D_duration（天）
+    planned_duration = (task.plan_end - task.plan_start).total_seconds() / (24 * 60 * 60)
     
     # 防止除零
-    if total_duration <= 0:
-        total_duration = 1.0
+    if planned_duration <= 0:
+        planned_duration = 1.0
     
     # 计算时效系数
     penalty_factor = settings.penalty_factor
     min_timeliness = settings.min_timeliness
     
-    timeliness = 1.0 - (delta_t / total_duration) * penalty_factor
+    # T = max(0.2, 1.0 - (Delta_t / Duration) * f)
+    # 逾期计算公式更新：
+    # if delta_t > 0: T = max(0.2, 1.0 - (delta_t / planned_duration) * penalty_factor)
+    timeliness = 1.0 - (delta_t / planned_duration) * penalty_factor
     
     # 保底 0.2
     return max(min_timeliness, timeliness)
@@ -78,26 +81,36 @@ def calculate_score(task: Task, penalty: float = 0.0) -> float:
     Returns:
         float: 最终得分
     """
-    # 基准分 B
-    base_score = settings.base_score
+    # 子任务工作量 B_sub (Sub-workload)
+    # 如果是子任务且设置了 workload_b，则使用 workload_b
+    # 否则使用 settings.base_score (兼容旧数据或主任务)
+    workload_b = task.workload_b if task.workload_b > 0 else settings.base_score
     
-    # 重要性系数 I
-    importance_i = task.importance_i or 1.0
+    # 重要性系数 I & 难度系数 D
+    # "性质继承"：如果存在父任务，则继承父任务的 I/D
+    if task.parent:
+        importance_i = task.parent.importance_i or 1.0
+        difficulty_d = task.parent.difficulty_d or 1.0
+    else:
+        importance_i = task.importance_i or 1.0
+        difficulty_d = task.difficulty_d or 1.0
     
-    # 难度系数 D
-    difficulty_d = task.difficulty_d or 1.0
-    
-    # 质量系数 Q（如果未评分，默认 1.0）
+    # 质量系数 Q_sub（如果未评分，默认 1.0）
     quality_q = task.quality_q or 1.0
     
-    # 时效系数 T
+    # 时效系数 T_sub
     timeliness_t = calculate_timeliness(task)
     
-    # 完成度系数
+    # 计算得分 S_exec = B_sub * I_main * D_main * Q_sub * T_sub
+    # 注意：不再减去 Penalty，Penalty 建议单独记录 or 在最终结算时扣除。
+    # 这里遵照原逻辑先减去 penalty 参数
+    # 新公式：Score = B * I * D * Q * T
+    raw_score = workload_b * importance_i * difficulty_d * quality_q * timeliness_t
+    
+    # 暂时保留 completion_rate 逻辑，虽然公式只针对 Completed 任务
     completion_rate = (task.progress or 0) / 100.0
     
-    # 计算得分
-    score = (base_score * importance_i * difficulty_d) * quality_q * timeliness_t * completion_rate - penalty
+    score = raw_score * completion_rate - penalty
     
     # 最低为 0
     return max(0, score)

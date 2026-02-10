@@ -26,6 +26,7 @@ class UserRole(str, Enum):
     ADMIN = "admin"
     MANAGER = "manager"
     STAFF = "staff"
+    GROUP_LEADER = "group_leader"
 
 
 # 用户-角色关联模型

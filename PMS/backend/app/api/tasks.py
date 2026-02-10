@@ -17,7 +17,7 @@ from app.models import User, Task, TaskLog, TaskStatus, TaskType, LogAction, Use
 from app.schemas import (
     TaskCreate, TaskUpdate, TaskResponse, TaskBrief, TaskWithSubtasks,
     TaskApprove, TaskReview, TaskProgress, TaskComplete, TaskTransfer,
-    TaskFilter, SubTaskCreate, TaskExtensionRequest,
+    TaskFilter, SubTaskCreate, TaskExtensionRequest, TaskCoefficientUpdate,
 )
 from app.api.auth import get_current_user, get_current_manager_or_admin
 from app.services.kpi_service import calculate_timeliness, calculate_score
@@ -33,7 +33,12 @@ async def get_task_or_404(
     result = await db.execute(
         select(Task)
         .where(Task.id == task_id)
-        .options(selectinload(Task.subtasks))
+        .options(
+            selectinload(Task.subtasks),
+            selectinload(Task.reviewer).selectinload(User.roles_binding),
+            selectinload(Task.owner),
+            selectinload(Task.executor),
+        )
     )
     task = result.scalar_one_or_none()
     
@@ -108,6 +113,9 @@ async def list_tasks(
     """
     query = select(Task)  # 不再强制过滤子任务，以便让执行人看到分配给自己的子任务
     
+    # 过滤已删除任务
+    query = query.where(Task.is_deleted == False)
+
     # 权限过滤：普通员工只能看到自己相关的任务
     if UserRole.STAFF in current_user.roles and UserRole.ADMIN not in current_user.roles and UserRole.MANAGER not in current_user.roles:
         query = query.where(
@@ -159,6 +167,41 @@ async def list_tasks(
     result = await db.execute(query)
     
     return result.scalars().all()
+
+
+@router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(
+    task_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    删除任务 (逻辑删除)
+    
+    仅草稿状态可删除
+    仅创建者或管理员可删除
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    # 权限校验
+    if task.creator_id != current_user.id and UserRole.ADMIN not in current_user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有创建者或管理员可以删除任务"
+        )
+        
+    # 状态校验
+    if task.status != TaskStatus.DRAFT and UserRole.ADMIN not in current_user.roles:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="只有草稿状态的任务可以删除"
+        )
+    
+    task.is_deleted = True
+    await add_task_log(db, task.id, current_user.id, LogAction.SYSTEM_NOTICE, "任务已删除")
+    
+    await db.flush()
+    return None
 
 
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
@@ -264,8 +307,23 @@ async def submit_task(
             detail="只有草稿或待提交状态的任务可以提交审批"
         )
     
-    task.status = TaskStatus.PENDING_APPROVAL
-    await add_task_log(db, task.id, current_user.id, LogAction.SUBMITTED, "提交审批")
+    # 判断是否需要组长审批 (L1)
+    # 检查审批人角色，如果是组长则进入组长审批，否则直接进主管审批
+    target_status = TaskStatus.PENDING_APPROVAL
+    if task.reviewer:
+        # User roles are loaded via lazy="joined" but we explicitly loaded roles_binding in get_task_or_404 to be safe
+        if hasattr(task.reviewer, 'roles') and UserRole.GROUP_LEADER in task.reviewer.roles:
+            target_status = TaskStatus.PENDING_LEADER_APPROVAL
+    
+    task.status = target_status
+    
+    log_content = "提交审批"
+    if target_status == TaskStatus.PENDING_LEADER_APPROVAL:
+        log_content += " (待组长审批)"
+    else:
+        log_content += " (待主管审批)"
+
+    await add_task_log(db, task.id, current_user.id, LogAction.SUBMITTED, log_content)
     
     await db.flush()
     # await db.refresh(task)
@@ -355,7 +413,7 @@ async def return_task(
             detail="只有该任务指定的审批人才能退回"
         )
     
-    if task.status == TaskStatus.PENDING_APPROVAL:
+    if task.status == TaskStatus.PENDING_APPROVAL or task.status == TaskStatus.PENDING_LEADER_APPROVAL:
         # 退回到草稿
         task.status = TaskStatus.DRAFT
         action = LogAction.REJECTED
@@ -732,12 +790,19 @@ async def create_subtask(
             detail="不能为子任务创建子任务"
         )
     
+    if not subtask_in.executor_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="子任务必须指定实施人"
+        )
+
     subtask = Task(
         title=subtask_in.title,
         description=subtask_in.description,
         executor_id=subtask_in.executor_id,
         plan_end=subtask_in.plan_end,
         weight=subtask_in.weight,
+        workload_b=subtask_in.workload_b,
         parent_id=task_id,
         creator_id=current_user.id,
         task_type=parent_task.task_type,
@@ -880,4 +945,104 @@ async def reject_extension(
     await add_task_log(db, task.id, current_user.id, LogAction.REJECTED, "驳回延期申请")
     
     await db.flush()
+    return task
+
+
+@router.post("/{task_id}/approve-leader", response_model=TaskResponse)
+async def approve_task_leader(
+    task_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)], 
+):
+    """
+    组长审批通过
+    
+    待组长审批 → 待审批 (主管)
+    """
+    task = await get_task_or_404(task_id, db)
+    
+    if task.status != TaskStatus.PENDING_LEADER_APPROVAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="只有待组长审批状态的任务可以进行此操作"
+        )
+    
+    # 权限校验: 指定的 reviewer (Leader) 或 Admin
+    is_reviewer = task.reviewer_id and task.reviewer_id == current_user.id
+    is_admin = UserRole.ADMIN in current_user.roles
+    
+    if not (is_reviewer or is_admin):
+         raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有该任务指定的审批人(组长)才能审批"
+        )
+
+    # 状态流转
+    task.status = TaskStatus.PENDING_APPROVAL
+    
+    # 清空 reviewer_id 以便由主管领取或后续分配
+    task.reviewer_id = None
+    
+    await add_task_log(
+        db, task.id, current_user.id, LogAction.APPROVED,
+        "组长审批通过，提交主管审批"
+    )
+    
+    await db.flush()
+    return task
+
+
+@router.put("/{task_id}/coefficients", response_model=TaskResponse)
+async def update_coefficients(
+    task_id: uuid.UUID,
+    coeff_in: TaskCoefficientUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_manager_or_admin)],
+):
+    """
+    调整任务系数 (I/D)
+    
+    仅主管/管理员可操作，必须提供原因
+    """
+    from app.models.audit import CoefficientAudit
+    
+    task = await get_task_or_404(task_id, db)
+    
+    # Check if changes are actually made
+    updated = False
+    
+    # task.importance_i is updated
+    if task.importance_i != coeff_in.importance_i:
+        audit_i = CoefficientAudit(
+            task_id=task.id,
+            user_id=current_user.id,
+            field="importance_i",
+            old_value=task.importance_i or 1.0,
+            new_value=coeff_in.importance_i,
+            reason=coeff_in.reason
+        )
+        db.add(audit_i)
+        task.importance_i = coeff_in.importance_i
+        updated = True
+        
+    if task.difficulty_d != coeff_in.difficulty_d:
+        audit_d = CoefficientAudit(
+            task_id=task.id,
+            user_id=current_user.id,
+            field="difficulty_d",
+            old_value=task.difficulty_d or 1.0,
+            new_value=coeff_in.difficulty_d,
+            reason=coeff_in.reason
+        )
+        db.add(audit_d)
+        task.difficulty_d = coeff_in.difficulty_d
+        updated = True
+        
+    if updated:
+        await add_task_log(
+            db, task.id, current_user.id, LogAction.SYSTEM_NOTICE,
+            f"调整系数: I={coeff_in.importance_i}, D={coeff_in.difficulty_d}, 原因: {coeff_in.reason}"
+        )
+        await db.flush()
+        
     return task

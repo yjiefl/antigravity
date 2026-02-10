@@ -40,6 +40,7 @@ from app.schemas.task import (
     TaskScorePreview,
     SubTaskCreate,
     TaskExtensionRequest,
+    TaskCoefficientUpdate,
 )
 from app.schemas.audit import (
     AuditLogCreate,

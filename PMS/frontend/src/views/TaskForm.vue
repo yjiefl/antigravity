@@ -8,21 +8,10 @@ import api from "../api";
 
 const router = useRouter();
 const route = useRoute();
-const taskId = route.query.id as string;
+const parentId = route.query.parent_id as string;
+const taskId = route.params.id as string;
 const isEdit = !!taskId;
-
-/**
- * 将 Date 转换为 datetime-local 格式的本地时间字符串
- * 格式: YYYY-MM-DDTHH:mm
- */
-function toLocalDateTimeString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
+const isSubtask = ref(!!parentId); // Use ref to update if we find it's a subtask during edit
 
 // 表单数据
 const form = ref({
@@ -35,6 +24,10 @@ const form = ref({
   reviewer_id: "",
   owner_id: "",
   executor_id: "",
+  // 子任务特有字段
+  weight: 1.0,
+  workload_b: 20.0,
+  parent_id: parentId || null,
 });
 
 const users = ref<any[]>([]);
@@ -78,7 +71,14 @@ async function handleSubmit(mode: "save" | "submit" | "pending" = "save") {
     error.value = "请输入任务标题";
     return;
   }
-  if (!form.value.reviewer_id) {
+  // isSubtask is ref now
+  if (isSubtask.value && !form.value.executor_id) {
+     error.value = "子任务必须指定实施人";
+     return;
+  }
+  
+  // 普通任务校验
+  if (!isSubtask.value && !form.value.reviewer_id) {
     error.value = "请选择审批人";
     return;
   }
@@ -92,30 +92,82 @@ async function handleSubmit(mode: "save" | "submit" | "pending" = "save") {
 
   try {
     let res;
-    const taskData = {
-      ...form.value,
-      reviewer_id: form.value.reviewer_id || null,
-      owner_id: form.value.owner_id || null,
-      executor_id: form.value.executor_id || null,
-      plan_start: form.value.plan_start || null,
-      plan_end: form.value.plan_end || null,
-    };
-
-    if (isEdit) {
-      res = await api.put(`/api/tasks/${taskId}`, taskData);
+    
+    // Check if we are editing a subtask OR creating a NEW subtask
+    if (isSubtask.value) {
+      const subtaskData = {
+        title: form.value.title,
+        description: form.value.description,
+        executor_id: form.value.executor_id, // 必须
+        plan_end: form.value.plan_end || null,
+        weight: Number(form.value.weight),
+        workload_b: Number(form.value.workload_b),
+      };
+      
+      if (isEdit) {
+         // 编辑模式
+         const updateData: any = {
+           title: form.value.title,
+           description: form.value.description,
+           executor_id: form.value.executor_id || null,
+           weight: Number(form.value.weight), // API needs to support this
+           workload_b: Number(form.value.workload_b), // API needs to support this
+           // Subtask usually doesn't have plan_start? Inherited? Or independent?
+           // Schema TaskUpdate includes plan_start/plan_end
+           plan_end: form.value.plan_end || null,
+         };
+         res = await api.put(`/api/tasks/${taskId}`, updateData);
+      } else {
+         // 创建模式
+         // We need parentId
+         const pid = form.value.parent_id;
+         if (!pid) { throw new Error("缺少父任务ID"); }
+         res = await api.post(`/api/tasks/${pid}/subtasks`, subtaskData);
+      }
+      
     } else {
-      res = await api.post("/api/tasks", taskData);
+      // 普通任务
+      const taskData = {
+        ...form.value,
+        reviewer_id: form.value.reviewer_id || null,
+        owner_id: form.value.owner_id || null,
+        executor_id: form.value.executor_id || null,
+        plan_start: form.value.plan_start || null,
+        plan_end: form.value.plan_end || null,
+      };
+
+      if (isEdit) {
+        res = await api.put(`/api/tasks/${taskId}`, taskData);
+      } else {
+        res = await api.post("/api/tasks", taskData);
+      }
     }
 
     const currentId = isEdit ? taskId : res.data?.id;
 
-    if (mode === "submit" && currentId) {
-      await api.post(`/api/tasks/${currentId}/submit`);
-    } else if (mode === "pending" && currentId) {
-      await api.post(`/api/tasks/${currentId}/mark-pending`);
+    if (!isSubtask.value) {
+        if (mode === "submit" && currentId) {
+          await api.post(`/api/tasks/${currentId}/submit`);
+        } else if (mode === "pending" && currentId) {
+          await api.post(`/api/tasks/${currentId}/mark-pending`);
+        }
+    } else {
+         // 子任务提交
+         // If subtask needs specific submit logic
+         if (mode === "submit" && currentId) {
+             await api.post(`/api/tasks/${currentId}/submit`);
+         }
     }
 
-    router.push("/tasks");
+    if (isSubtask.value) {
+        // Return to parent if possible, else tasks list
+        // If editing, we know we have a parent?
+        // We can fetch to be sure, or just go back
+        router.back();
+    } else {
+        router.push("/tasks");
+    }
+
   } catch (e: any) {
     console.error("提交任务失败", e);
     const detail = e.response?.data?.detail;
@@ -140,26 +192,51 @@ async function fetchUsers() {
 }
 
 async function loadExistingTask() {
-  if (!isEdit) return;
-  loading.value = true;
-  try {
-    const res = await api.get(`/api/tasks/${taskId}`);
-    const t = res.data;
-    form.value = {
-      title: t.title,
-      description: t.description || "",
-      task_type: t.task_type,
-      category: t.category,
-      plan_start: t.plan_start ? t.plan_start.slice(0, 16) : "",
-      plan_end: t.plan_end ? t.plan_end.slice(0, 16) : "",
-      reviewer_id: t.reviewer_id || "",
-      owner_id: t.owner_id || "",
-      executor_id: t.executor_id || "",
-    };
-  } catch (e) {
-    error.value = "加载任务数据失败";
-  } finally {
-    loading.value = false;
+  if (isEdit) {
+    loading.value = true;
+    try {
+        const res = await api.get(`/api/tasks/${taskId}`);
+        const t = res.data;
+        
+        // Detect if subtask
+        if (t.parent_id) {
+            isSubtask.value = true;
+            form.value.parent_id = t.parent_id;
+        }
+
+        form.value = {
+        ...form.value, // keep defaults
+        title: t.title,
+        description: t.description || "",
+        task_type: t.task_type,
+        category: t.category,
+        plan_start: t.plan_start ? t.plan_start.slice(0, 16) : "",
+        plan_end: t.plan_end ? t.plan_end.slice(0, 16) : "",
+        reviewer_id: t.reviewer_id || "",
+        owner_id: t.owner_id || "",
+        executor_id: t.executor_id || "",
+        weight: t.weight || 1.0,
+        workload_b: t.workload_b || 0.0,
+        parent_id: t.parent_id || null,
+        };
+    } catch (e) {
+        error.value = "加载任务数据失败";
+    } finally {
+        loading.value = false;
+    }
+  } 
+  
+  if (parentId && !isEdit) {
+      // New Subtask
+      // 加载父任务信息以预填（如类型）
+      try {
+          const res = await api.get(`/api/tasks/${parentId}`);
+          const p = res.data;
+          form.value.task_type = p.task_type;
+          form.value.category = p.category; // 子任务通常继承分类
+      } catch (e) {
+          console.error("加载父任务失败", e);
+      }
   }
 }
 
@@ -180,7 +257,7 @@ onMounted(() => {
 
     <div class="card bg-white p-8 rounded-2xl shadow-sm">
       <h1 class="text-2xl font-bold text-slate-800 mb-6">
-        {{ isEdit ? "📝 编辑任务" : "➕ 新建任务" }}
+        {{ isEdit ? "📝 编辑任务" : (isSubtask ? "📂 新建子任务" : "➕ 新建任务") }}
       </h1>
 
       <form @submit.prevent="handleSubmit('save')" class="space-y-6">
@@ -208,7 +285,7 @@ onMounted(() => {
           ></textarea>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-6">
+        <div class="grid md:grid-cols-2 gap-6" v-if="!isSubtask">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-2"
               >任务类型</label
@@ -238,7 +315,7 @@ onMounted(() => {
         </div>
 
         <div class="grid md:grid-cols-3 gap-6">
-          <div>
+          <div v-if="!isSubtask">
             <label class="block text-sm font-medium text-slate-700 mb-2"
               >审批人/主管 *</label
             >
@@ -252,9 +329,9 @@ onMounted(() => {
               </option>
             </select>
           </div>
-          <div>
+          <div v-if="!isSubtask">
             <label class="block text-sm font-medium text-slate-700 mb-2"
-              >负责人</label
+              >负责人 (Owner)</label
             >
             <select
               v-model="form.owner_id"
@@ -266,20 +343,50 @@ onMounted(() => {
               </option>
             </select>
           </div>
-          <div>
+          <div class="col-span-1" :class="{'col-span-3': isSubtask}">
             <label class="block text-sm font-medium text-slate-700 mb-2"
-              >实施人</label
+              >实施人 (Executor) <span v-if="isSubtask" class="text-red-500">*</span></label
             >
             <select
               v-model="form.executor_id"
               class="w-full px-4 py-3 border border-slate-200 rounded-lg outline-none"
             >
-              <option value="">（待认领或指派）</option>
+              <option value="">（{{ isSubtask ? '请选择实施人' : '待认领或指派' }}）</option>
               <option v-for="u in users" :key="u.id" :value="u.id">
                 {{ u.real_name }} (@{{ u.username }})
               </option>
             </select>
           </div>
+        </div>
+
+        <!-- 子任务专属字段 -->
+        <div class="grid md:grid-cols-2 gap-6" v-if="isSubtask">
+           <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2"
+              >工作量基准 (B) *</label
+            >
+            <input
+              v-model.number="form.workload_b"
+              type="number"
+              step="1"
+              min="0"
+              class="w-full px-4 py-3 border border-slate-200 rounded-lg outline-none"
+              placeholder="建议 20/50/80"
+            />
+            <p class="text-xs text-slate-400 mt-1">推荐值：简单(20) / 标准(50) / 困难(80)</p>
+           </div>
+           <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2"
+              >权重</label
+            >
+            <input
+              v-model.number="form.weight"
+              type="number"
+              step="0.1"
+              min="0"
+              class="w-full px-4 py-3 border border-slate-200 rounded-lg outline-none"
+            />
+           </div>
         </div>
 
         <div class="grid md:grid-cols-2 gap-6">

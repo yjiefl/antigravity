@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from sqlalchemy import String, Text, ForeignKey, DateTime, func, JSON
+from sqlalchemy import String, Text, ForeignKey, DateTime, func, JSON, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Uuid as UUID
 
@@ -148,3 +148,63 @@ class AuditLog(Base):
 
 # 避免循环导入
 from app.models.user import User
+
+class CoefficientAudit(Base):
+    """
+    系数调整审计表
+    
+    记录 I/D 系数的变更历史
+    """
+    __tablename__ = "coefficient_audits"
+    
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
+    
+    task_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="任务ID"
+    )
+    
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="修改人ID"
+    )
+    
+    field: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        comment="修改字段 (importance_i / difficulty_d)"
+    )
+    
+    old_value: Mapped[float] = mapped_column(
+        Float,
+        comment="旧值"
+    )
+    
+    new_value: Mapped[float] = mapped_column(
+        Float,
+        comment="新值"
+    )
+    
+    reason: Mapped[Optional[str]] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="修改原因/Reason Code"
+    )
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        comment="修改时间"
+    )
+    
+    # 关联
+    task = relationship("Task", backref="coefficient_audits")
+    user = relationship("User")

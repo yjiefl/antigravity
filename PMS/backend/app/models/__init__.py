@@ -33,6 +33,7 @@ from app.models.audit import (
     AuditLog,
     AuditModule,
     AuditAction,
+    CoefficientAudit,
 )
 
 __all__ = [
@@ -61,5 +62,7 @@ __all__ = [
     # 审计日志
     "AuditLog",
     "AuditModule",
+    "AuditModule",
     "AuditAction",
+    "CoefficientAudit",
 ]
