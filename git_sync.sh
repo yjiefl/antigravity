@@ -87,25 +87,35 @@ run_status() {
     BRANCH=$(git branch --show-current)
     echo "${BLUE}>>> 仓库状态概览 ($BRANCH)...${NC}"
     
-    # 显示简洁状态
-    git status -s
+    # 1. 检查本地工作区 (包含未追踪文件)
+    MODIFIED_COUNT=$(git status --porcelain | wc -l | tr -d ' ')
+    if [ "$MODIFIED_COUNT" -gt 0 ]; then
+        git status -s
+        echo "   ${YELLOW}提示: 您有 $MODIFIED_COUNT 个本地文件变动 (M/??)${NC}"
+    else
+        echo "   ${GREEN}工作区干净 (无本地修改)${NC}"
+    fi
+    
     echo "--------------------------------"
     
-    # 抓取远程更新
+    # 2. 检查云端同步状态 (基于 Commit)
     echo "${YELLOW}正在获取远程状态...${NC}"
     git fetch origin "$BRANCH" 2>/dev/null
     
     BEHIND=$(git rev-list --count HEAD..origin/"$BRANCH" 2>/dev/null || echo 0)
     AHEAD=$(git rev-list --count origin/"$BRANCH"..HEAD 2>/dev/null || echo 0)
     
-    echo "领先: ${GREEN}$AHEAD${NC} | 落后: ${RED}$BEHIND${NC}"
+    echo "同步状态: 领先: ${GREEN}$AHEAD${NC} 提交 | 落后: ${RED}$BEHIND${NC} 提交"
     
+    # 3. 后续操作提示
     if [ "$AHEAD" -gt 0 ] || [ "$BEHIND" -gt 0 ]; then
-         echo "${CYAN}提示: 输入 'd' 可查看差异详情，回车返回菜单${NC}"
-         read -r -t 5 -n 1 opt
+         echo "\n${CYAN}>>> 输入 'd' 可查看详细差异，回车返回主菜单${NC}"
+         read -r -t 8 -n 1 opt
          if [[ "$opt" == "d" ]]; then
              run_compare
          fi
+    elif [ "$MODIFIED_COUNT" -gt 0 ]; then
+        echo "\n${CYAN}>>> 提示: 本地文件已修改但尚未提交。请选择 [1] 自动提交并同步。${NC}"
     fi
 }
 
