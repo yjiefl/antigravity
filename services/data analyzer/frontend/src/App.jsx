@@ -215,7 +215,7 @@ function App() {
   const [editingMetricName, setEditingMetricName] = useState("");
   const [editingDataText, setEditingDataText] = useState("");
   const [isSolarMode, setIsSolarMode] = useState(() =>
-    getInitialState("isSolarMode", true),
+    getInitialState("isSolarMode", false),
   );
   const [solarRange, setSolarRange] = useState(() =>
     getInitialState("solarRange", { start: 7, end: 19 }),
