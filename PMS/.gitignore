@@ -1,0 +1,28 @@
+# PMS 子项目 Git 忽略规则
+
+# Python 编译文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 虚拟环境
+backend/venv/
+venv/
+ENV/
+
+# 日志
+*.log
+log/
+PMS/log/
+
+# 数据库 (本地测试用的 sqlite)
+*.db
+!plan_management.db # 如果你确定要同步 sqlite 数据库，可以保留这一行
+
+# 操作系统文件
+.DS_Store
+
+# 前端构建
+frontend/node_modules/
+frontend/dist/
+.npm
