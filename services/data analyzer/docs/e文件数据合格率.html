@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2025年南方区域新能源场站E文件数据合格率智能助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f0f4f8; /* Light gray-blue background */
+            color: #1e293b;
+        }
+
+        /* Chart Container Styling - Mandatory Requirement */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px; /* Constrain max width */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Custom Utilities */
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .tab-inactive {
+            color: #64748b;
+        }
+        
+        .tab-inactive:hover {
+            color: #334155;
+        }
+
+        /* Range Input Styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -6px; 
+        }
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+    </style>
+    <!-- Chosen Palette: "Data Guardian" - Slate (Neutral), Blue (Primary), Emerald (Safe), Rose (Danger), Amber (Warning) -->
+    <!-- Application Structure Plan: 
+         1. Header: Clear title and purpose.
+         2. "The Golden Rules" (Dashboard): An interactive score calculator to demonstrate the penalty logic (Late vs. Quality).
+         3. "Indicator Inspector" (Main Content): A tabbed interface dividing rules by file type (Wind, PV, Meteo, Stats). Each tab contains interactive cards for specific indicators.
+         4. "Diagnostic Toolkit": Interactive calculators for complex rules (Irradiance Consistency, Wind Shear) to allow operators to input real data and test compliance immediately.
+         5. "Alert & Response": A troubleshooting guide mapping common alarms to specific actions.
+         Why: This structure moves from high-level impact (Money/Score) to specific rules (How to calc) to action (What to do), mirroring the user's cognitive flow during O&M.
+    -->
+    <!-- Visualization & Content Choices:
+         1. Scoring Impact: Doughnut Chart (Chart.js) -> Shows the weight of penalties. Goal: Inform/Motivate.
+         2. Indicator Logic: Cards with Status Badges. Goal: Organize. No SVG.
+         3. Dead Value Sim: Line Chart (Chart.js) -> Visualizes what a "Dead Value" looks like vs normal data. Goal: Change/Teach.
+         4. Calculators: Input fields + Auto-calculation. Goal: Interact/Verify.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center gap-2">
+                        <span class="text-2xl">⚡</span>
+                        <span class="font-bold text-xl text-slate-800 tracking-tight">E文件数据运维助手</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-slate-500 hidden md:block">依据：2025年南方区域指引</span>
+                    <button onclick="scrollToSection('diagnostic')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                        故障诊断
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+        <!-- SECTION 1: Scoring Rules & Impact -->
+        <section id="scoring-rules" class="space-y-6">
+            <div class="text-center max-w-3xl mx-auto">
+                <h2 class="text-3xl font-bold text-slate-900">核心评分机制</h2>
+                <p class="mt-4 text-lg text-slate-600 leading-relaxed">
+                    合格率是考核的核心。理解“扣分阶梯”是避免低分的关键。下方模拟器展示了不同类型的数据问题对最终得分的毁灭性打击。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <!-- Interactive Simulator -->
+                <div class="bg-white rounded-xl card-shadow p-6 border border-slate-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold text-slate-800">合格率模拟器</h3>
+                        <span class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full">每日96点/项</span>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <div class="w-full md:w-1/2 flex flex-col justify-center">
+                            <div class="chart-container">
+                                <canvas id="scoreChart"></canvas>
+                            </div>
+                            <div class="text-center mt-4">
+                                <span class="text-sm text-slate-500">预计得分</span>
+                                <div id="finalScoreDisplay" class="text-4xl font-extrabold text-emerald-600">100%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full md:w-1/2 space-y-6">
+                            <!-- Sliders -->
+                            <div>
+                                <label class="flex justify-between text-sm font-medium text-slate-700 mb-1">
+                                    <span>正常点数 (满分)</span>
+                                    <span id="val-normal">96</span>
+                                </label>
+                                <input type="range" id="input-normal" min="0" max="96" value="96" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" disabled>
+                            </div>
+
+                            <div>
+                                <label class="flex justify-between text-sm font-medium text-amber-700 mb-1">
+                                    <span>延迟 > 4小时 (得分 x 0.5)</span>
+                                    <span id="val-late4">0</span>
+                                </label>
+                                <input type="range" id="input-late4" min="0" max="96" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500" oninput="updateScoreSim()">
+                                <p class="text-xs text-slate-400 mt-1">权重：50%</p>
+                            </div>
+
+                            <div>
+                                <label class="flex justify-between text-sm font-medium text-rose-700 mb-1">
+                                    <span>质量不达标 (得分 x 0.5)</span>
+                                    <span id="val-bad">0</span>
+                                </label>
+                                <input type="range" id="input-bad" min="0" max="96" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-rose-500" oninput="updateScoreSim()">
+                                <p class="text-xs text-slate-400 mt-1">权重：50% (校验失败)</p>
+                            </div>
+
+                            <div>
+                                <label class="flex justify-between text-sm font-medium text-slate-900 mb-1">
+                                    <span>延迟 > 24小时 / 缺数 (0分)</span>
+                                    <span id="val-miss">0</span>
+                                </label>
+                                <input type="range" id="input-miss" min="0" max="96" value="0" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-800" oninput="updateScoreSim()">
+                                <p class="text-xs text-slate-400 mt-1">权重：0%</p>
+                            </div>
+                            
+                            <div class="bg-blue-50 p-3 rounded text-sm text-blue-800">
+                                💡 <strong>提示：</strong> 延迟超过4小时不仅影响时效分，也会直接导致该点得分减半。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rule Summary Cards -->
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="bg-white p-5 rounded-lg border-l-4 border-rose-500 shadow-sm">
+                        <h4 class="font-bold text-rose-700 mb-1">红线一：上报时效</h4>
+                        <p class="text-sm text-slate-600">每15分钟上报一次。延迟超过 <span class="font-bold">4小时</span>，得分减半；超过 <span class="font-bold">24小时</span>，不得分。</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg border-l-4 border-amber-500 shadow-sm">
+                        <h4 class="font-bold text-amber-700 mb-1">红线二：数据质量</h4>
+                        <p class="text-sm text-slate-600">数据虽然送达，但若触发“死数”、“越限”或“逻辑矛盾”校验，该点得分直接 <span class="font-bold">减半</span>。</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg border-l-4 border-indigo-500 shadow-sm">
+                        <h4 class="font-bold text-indigo-700 mb-1">红线三：一致性</h4>
+                        <p class="text-sm text-slate-600">气象、单机、统计文件之间的数据必须逻辑闭环。例如：单机累加值与全站统计值误差需 <span class="font-bold">≤10%</span>。</p>
+                    </div>
+                    
+                    <!-- Dead Value Viz -->
+                    <div class="bg-white p-4 rounded-lg shadow-sm mt-2">
+                        <h4 class="font-bold text-slate-700 mb-2 text-sm">什么是“死数”？(1小时连续4点相等)</h4>
+                        <div class="chart-container" style="height: 150px; max-height: 150px;">
+                            <canvas id="deadValueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: Indicator Inspector -->
+        <section id="indicators" class="scroll-mt-20">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-slate-900">指标校验百科</h2>
+                <p class="mt-2 text-slate-600">
+                    按文件类型分类整理的详细校验规则。点击选项卡切换，使用右侧工具测试您的数据。
+                </p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="border-b border-slate-200 mb-6 flex overflow-x-auto space-x-8">
+                <button onclick="switchTab('single')" id="tab-single" class="tab-active py-4 px-1 text-sm font-medium whitespace-nowrap">单机信息 (风/光)</button>
+                <button onclick="switchTab('meteo')" id="tab-meteo" class="tab-inactive py-4 px-1 text-sm font-medium whitespace-nowrap">气象环境 (最易扣分)</button>
+                <button onclick="switchTab('stat')" id="tab-stat" class="tab-inactive py-4 px-1 text-sm font-medium whitespace-nowrap">统计信息</button>
+                <button onclick="switchTab('predict')" id="tab-predict" class="tab-inactive py-4 px-1 text-sm font-medium whitespace-nowrap">功率预测</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Left: Rules Grid -->
+                <div class="lg:col-span-2 space-y-6" id="rules-container">
+                    <!-- Dynamic Content Loaded Here -->
+                </div>
+
+                <!-- Right: Interactive Tools Contextual to Tab -->
+                <div class="lg:col-span-1">
+                    <div id="tool-panel" class="bg-slate-800 text-white rounded-xl p-6 sticky top-24 shadow-lg">
+                        <!-- Dynamic Tool Loaded Here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Diagnostic Logic -->
+        <section id="diagnostic" class="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
+            <div class="mb-8 border-b border-slate-100 pb-4">
+                <h2 class="text-2xl font-bold text-slate-900">异常问题处理指引</h2>
+                <p class="text-slate-500 mt-1">发现告警后，请按以下流程进行排查与处理。</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Problem 1 -->
+                <div class="group relative bg-slate-50 rounded-lg p-6 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-100">
+                    <div class="absolute top-0 right-0 -mt-2 -mr-2 bg-rose-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-sm">1</div>
+                    <h3 class="text-lg font-bold text-slate-800 mb-2 group-hover:text-rose-700">死数告警</h3>
+                    <p class="text-xs font-mono bg-slate-200 inline-block px-2 py-1 rounded text-slate-600 mb-3">连续4点数值相等</p>
+                    <ul class="text-sm text-slate-600 space-y-2 list-disc list-inside">
+                        <li>检查传感器是否结冰或卡涩（特别是风速仪）。</li>
+                        <li>检查通讯管理机是否“假死”或数据冻结。</li>
+                        <li><strong>处理：</strong>重启采集设备或申请标记故障。</li>
+                    </ul>
+                </div>
+
+                <!-- Problem 2 -->
+                <div class="group relative bg-slate-50 rounded-lg p-6 hover:bg-amber-50 transition-colors border border-transparent hover:border-amber-100">
+                    <div class="absolute top-0 right-0 -mt-2 -mr-2 bg-amber-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-sm">2</div>
+                    <h3 class="text-lg font-bold text-slate-800 mb-2 group-hover:text-amber-700">辐射/风速逻辑错误</h3>
+                    <p class="text-xs font-mono bg-slate-200 inline-block px-2 py-1 rounded text-slate-600 mb-3">层级偏差 / 辐射分量不平</p>
+                    <ul class="text-sm text-slate-600 space-y-2 list-disc list-inside">
+                        <li>核对总辐射表是否被遮挡或污损。</li>
+                        <li>检查不同高度测风塔传感器读数是否倒置。</li>
+                        <li><strong>处理：</strong>清洗表头，校准参数，检查后台公式。</li>
+                    </ul>
+                </div>
+
+                <!-- Problem 3 -->
+                <div class="group relative bg-slate-50 rounded-lg p-6 hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100">
+                    <div class="absolute top-0 right-0 -mt-2 -mr-2 bg-indigo-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold shadow-sm">3</div>
+                    <h3 class="text-lg font-bold text-slate-800 mb-2 group-hover:text-indigo-700">全站功率不匹配</h3>
+                    <p class="text-xs font-mono bg-slate-200 inline-block px-2 py-1 rounded text-slate-600 mb-3">全站 ≠ ∑单机 (误差>10%)</p>
+                    <ul class="text-sm text-slate-600 space-y-2 list-disc list-inside">
+                        <li>检查是否有单机通讯中断（掉线）。</li>
+                        <li>核对升压站关口表数据采集时间是否与单机同步。</li>
+                        <li><strong>处理：</strong>排查掉线设备，检查全站统计脚本。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-slate-400 text-sm pb-8">
+            <p>基于《2025年南方区域新能源场站E文件数据合格率统计指引》生成</p>
+        </footer>
+
+    </main>
+
+    <script>
+        // --- DATA STORE ---
+        // Storing the rules as structured data
+        const ruleData = {
+            single: [
+                {
+                    title: "有功功率 (Active Power)",
+                    range: "[-0.1 × 额定, 额定容量]",
+                    deadRule: "1小时内最大值=最小值 (且>0) 判为死数",
+                    consistency: "待机/停运时，有功须在 [-0.1×额定, 0] 之间。",
+                    highlight: false
+                },
+                {
+                    title: "状态一致性 (Status)",
+                    range: "N/A",
+                    deadRule: "N/A",
+                    consistency: "机组状态（运行/待机/故障）必须与有功功率物理对应。故障时功率通常为0或负。",
+                    highlight: true
+                },
+                {
+                    title: "光伏逆变器/箱变有功",
+                    range: "08:00-18:00 非故障态 ≥ 0",
+                    deadRule: "连续4点数值相等",
+                    consistency: "夜间数据通常不参与校验，重点关注白间通讯。",
+                    highlight: false
+                }
+            ],
+            meteo: [
+                {
+                    title: "风速 (Wind Speed)",
+                    range: "[0, 55] m/s",
+                    deadRule: "连续4点相等；或6h滑动均值变化 < 0.3",
+                    consistency: "层级校验：|V1 - V2| ≥ 4 × 层级差，判定不合理。",
+                    highlight: true
+                },
+                {
+                    title: "总辐射 (Total Irradiance)",
+                    range: "[0, 1500] W/m²",
+                    deadRule: "连续4点相等；与1h均值偏差 > 800",
+                    consistency: "公式：|(直射+散射 - 总) / 总| ≤ 5%。(总辐射<50时分母取50)",
+                    highlight: true
+                },
+                {
+                    title: "环境温度 (Temperature)",
+                    range: "[-20, 60] ℃",
+                    deadRule: "2h内最大值与最小值差必须 > 0",
+                    consistency: "无特定层级校验，关注死数。",
+                    highlight: false
+                }
+            ],
+            stat: [
+                {
+                    title: "全站有功 (Station Power)",
+                    range: "[-0.1×装机, 1.1×装机]",
+                    deadRule: "N/A",
+                    consistency: "必须与“各单机有功之和”偏差 ≤ 10%。",
+                    highlight: true
+                },
+                {
+                    title: "全站可用有功",
+                    range: "[-0.1×装机, 1.1×装机]",
+                    deadRule: "N/A",
+                    consistency: "需满足附件3逻辑。限电时，理论 > 可用 > 实发。",
+                    highlight: false
+                }
+            ],
+            predict: [
+                {
+                    title: "超短期预测",
+                    range: "[0, 装机容量]",
+                    deadRule: "N/A",
+                    consistency: "上报时间必须早于考核点。非限电时准确率需达标。",
+                    highlight: true
+                }
+            ]
+        };
+
+        const toolsHTML = {
+            single: `
+                <h3 class="text-lg font-bold text-white mb-4">🔧 单机功率校验</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">额定容量 (MW)</label>
+                        <input type="number" id="calc-cap" class="w-full bg-slate-700 border-none rounded px-3 py-2 text-white" placeholder="2.5">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">当前有功 (MW)</label>
+                        <input type="number" id="calc-power" class="w-full bg-slate-700 border-none rounded px-3 py-2 text-white" placeholder="2.6">
+                    </div>
+                    <button onclick="checkPower()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded font-medium transition">一键校验</button>
+                    <div id="res-power" class="hidden mt-4 p-3 bg-slate-900 rounded border border-slate-600 text-sm"></div>
+                </div>
+            `,
+            meteo: `
+                <h3 class="text-lg font-bold text-white mb-4">☀️ 辐射平衡计算器</h3>
+                <p class="text-xs text-slate-400 mb-3">校验公式：|(直+散 - 总)/总| ≤ 5%</p>
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs text-slate-400">总辐射</label>
+                            <input type="number" id="rad-total" class="w-full bg-slate-700 rounded px-2 py-1 text-white" placeholder="800">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400">直射</label>
+                            <input type="number" id="rad-direct" class="w-full bg-slate-700 rounded px-2 py-1 text-white" placeholder="400">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400">散射</label>
+                        <input type="number" id="rad-scatter" class="w-full bg-slate-700 rounded px-2 py-1 text-white" placeholder="300">
+                    </div>
+                    <button onclick="checkRadiation()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded font-medium transition">计算偏差率</button>
+                    <div id="res-rad" class="hidden mt-4 p-3 bg-slate-900 rounded border border-slate-600 text-sm"></div>
+                </div>
+            `,
+            stat: `
+                <h3 class="text-lg font-bold text-white mb-4">📊 全站汇总校验</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">全站表计有功</label>
+                        <input type="number" id="stat-total" class="w-full bg-slate-700 border-none rounded px-3 py-2 text-white" placeholder="100">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">单机有功累加值</label>
+                        <input type="number" id="stat-sum" class="w-full bg-slate-700 border-none rounded px-3 py-2 text-white" placeholder="88">
+                    </div>
+                    <button onclick="checkStat()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded font-medium transition">校验误差 (≤10%)</button>
+                    <div id="res-stat" class="hidden mt-4 p-3 bg-slate-900 rounded border border-slate-600 text-sm"></div>
+                </div>
+            `,
+            predict: `
+                <h3 class="text-lg font-bold text-white mb-4">⏱️ 预测时效检查</h3>
+                <div class="p-3 bg-slate-700 rounded text-xs text-slate-300">
+                    此处应连接后台上送日志。请确保在每15分钟节点前完成文件生成与转发。
+                    <br><br>
+                    <strong>红线：</strong> 超过4小时未更新，考核分减半。
+                </div>
+            `
+        };
+
+        // --- CHART JS INITIALIZATION ---
+        let scoreChartInstance = null;
+        let deadValueChartInstance = null;
+
+        function initCharts() {
+            // 1. Score Simulator Chart (Doughnut)
+            const ctxScore = document.getElementById('scoreChart').getContext('2d');
+            scoreChartInstance = new Chart(ctxScore, {
+                type: 'doughnut',
+                data: {
+                    labels: ['有效得分', '损失分数'],
+                    datasets: [{
+                        data: [100, 0],
+                        backgroundColor: ['#10b981', '#cbd5e1'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+
+            // 2. Dead Value Visualization (Line)
+            const ctxDead = document.getElementById('deadValueChart').getContext('2d');
+            deadValueChartInstance = new Chart(ctxDead, {
+                type: 'line',
+                data: {
+                    labels: ['10:00', '10:15', '10:30', '10:45', '11:00', '11:15', '11:30', '11:45'],
+                    datasets: [
+                        {
+                            label: '正常波动',
+                            data: [12, 14, 13, 15, 16, 14, 18, 17],
+                            borderColor: '#10b981',
+                            tension: 0.4,
+                            pointRadius: 2
+                        },
+                        {
+                            label: '死数 (连续4点相等)',
+                            data: [5, 8, 8, 8, 8, 5, 6, 7],
+                            borderColor: '#f43f5e',
+                            borderDash: [5, 5],
+                            pointBackgroundColor: ['transparent', '#f43f5e', '#f43f5e', '#f43f5e', '#f43f5e', 'transparent', 'transparent', 'transparent'],
+                            pointRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    },
+                    scales: {
+                        y: { display: false },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- LOGIC FUNCTIONS ---
+
+        function updateScoreSim() {
+            const totalPoints = 96;
+            const late4 = parseInt(document.getElementById('input-late4').value);
+            const bad = parseInt(document.getElementById('input-bad').value);
+            const miss = parseInt(document.getElementById('input-miss').value);
+            
+            // Limit logic: sum cannot exceed 96.
+            // Simple approach: reduce 'normal' to fit
+            let used = late4 + bad + miss;
+            if (used > totalPoints) {
+                // primitive clamping for UX
+                used = totalPoints; 
+                // In a real app, we'd adjust the sliders being dragged.
+            }
+            
+            const normal = totalPoints - used;
+            document.getElementById('input-normal').value = normal;
+            document.getElementById('val-normal').innerText = normal;
+            document.getElementById('val-late4').innerText = late4;
+            document.getElementById('val-bad').innerText = bad;
+            document.getElementById('val-miss').innerText = miss;
+
+            // Calc Score
+            // Normal = 1 pt per point (normalized)
+            // Late4 = 0.5 pt
+            // Bad = 0.5 pt
+            // Miss = 0 pt
+            
+            const currentScore = (normal * 1) + (late4 * 0.5) + (bad * 0.5) + (miss * 0);
+            const maxScore = totalPoints * 1;
+            const percentage = ((currentScore / maxScore) * 100).toFixed(1);
+
+            // Update DOM
+            const display = document.getElementById('finalScoreDisplay');
+            display.innerText = percentage + '%';
+            
+            if (percentage < 60) display.classList.replace('text-emerald-600', 'text-rose-600');
+            else if (percentage < 90) {
+                display.classList.remove('text-emerald-600', 'text-rose-600');
+                display.classList.add('text-amber-500');
+            } else {
+                display.classList.remove('text-rose-600', 'text-amber-500');
+                display.classList.add('text-emerald-600');
+            }
+
+            // Update Chart
+            scoreChartInstance.data.datasets[0].data = [currentScore, maxScore - currentScore];
+            scoreChartInstance.data.datasets[0].backgroundColor = percentage < 80 ? ['#f59e0b', '#cbd5e1'] : ['#10b981', '#cbd5e1'];
+            scoreChartInstance.update();
+        }
+
+        function switchTab(tabId) {
+            // 1. Style Tabs
+            ['single', 'meteo', 'stat', 'predict'].forEach(id => {
+                const btn = document.getElementById(`tab-${id}`);
+                if (id === tabId) {
+                    btn.classList.replace('tab-inactive', 'tab-active');
+                    btn.classList.replace('text-slate-600', 'text-blue-600');
+                } else {
+                    btn.classList.replace('tab-active', 'tab-inactive');
+                    btn.classList.remove('text-blue-600');
+                }
+            });
+
+            // 2. Render Cards
+            const container = document.getElementById('rules-container');
+            container.innerHTML = ''; // Clear
+            
+            const data = ruleData[tabId];
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-lg p-6 border ${item.highlight ? 'border-l-4 border-l-blue-500 border-slate-100' : 'border-slate-100'} shadow-sm hover:shadow-md transition-shadow`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <h4 class="text-lg font-bold text-slate-800">${item.title}</h4>
+                        ${item.highlight ? '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">重点</span>' : ''}
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="bg-slate-50 p-3 rounded">
+                            <span class="block text-slate-500 text-xs mb-1">有效范围</span>
+                            <span class="font-mono text-slate-700 font-semibold">${item.range}</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded">
+                            <span class="block text-rose-500 text-xs mb-1">死数/异常判定</span>
+                            <span class="text-slate-700">${item.deadRule}</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">关联一致性校验</span>
+                        <p class="text-slate-600 text-sm mt-1">${item.consistency}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // 3. Render Tool
+            document.getElementById('tool-panel').innerHTML = toolsHTML[tabId];
+        }
+
+        // --- CALCULATOR TOOLS ---
+
+        function checkRadiation() {
+            const total = parseFloat(document.getElementById('rad-total').value);
+            const direct = parseFloat(document.getElementById('rad-direct').value);
+            const scatter = parseFloat(document.getElementById('rad-scatter').value);
+            const resBox = document.getElementById('res-rad');
+
+            if (isNaN(total) || isNaN(direct) || isNaN(scatter)) {
+                resBox.classList.remove('hidden');
+                resBox.innerHTML = "<span class='text-amber-400'>请输入完整数值</span>";
+                return;
+            }
+
+            const sum = direct + scatter;
+            // Rule: If total < 50, denom = 50. Else denom = total.
+            const denom = total < 50 ? 50 : total;
+            const diff = Math.abs((sum - total) / denom);
+            const percent = (diff * 100).toFixed(2);
+
+            resBox.classList.remove('hidden');
+            if (diff <= 0.05) {
+                resBox.innerHTML = `<span class="text-emerald-400 font-bold">✅ 校验通过</span><br>偏差率: ${percent}% (≤5%)`;
+            } else {
+                resBox.innerHTML = `<span class="text-rose-400 font-bold">❌ 校验失败</span><br>偏差率: ${percent}% (>5%)<br>计算和: ${sum} vs 总辐射: ${total}`;
+            }
+        }
+
+        function checkPower() {
+            const cap = parseFloat(document.getElementById('calc-cap').value);
+            const power = parseFloat(document.getElementById('calc-power').value);
+            const resBox = document.getElementById('res-power');
+
+            if (isNaN(cap) || isNaN(power)) {
+                resBox.classList.remove('hidden');
+                resBox.innerText = "请输入数值";
+                return;
+            }
+
+            const max = cap; // Technically usually strictly regulated, user input implies Rated
+            const min = -0.1 * cap;
+
+            resBox.classList.remove('hidden');
+            if (power >= min && power <= max) {
+                 resBox.innerHTML = `<span class="text-emerald-400 font-bold">✅ 在范围内</span><br>[${min}, ${max}]`;
+            } else {
+                 resBox.innerHTML = `<span class="text-rose-400 font-bold">❌ 越限</span><br>当前值 ${power} 超出 [${min}, ${max}]`;
+            }
+        }
+        
+        function checkStat() {
+            const total = parseFloat(document.getElementById('stat-total').value);
+            const sum = parseFloat(document.getElementById('stat-sum').value);
+            const resBox = document.getElementById('res-stat');
+            
+            if (isNaN(total) || isNaN(sum)) return;
+            
+            // Assuming total is base, difference percentage
+            const diff = Math.abs(total - sum);
+            const ratio = (diff / total) * 100;
+            
+            resBox.classList.remove('hidden');
+            if (ratio <= 10) {
+                resBox.innerHTML = `<span class="text-emerald-400 font-bold">✅ 匹配良好</span><br>误差: ${ratio.toFixed(2)}%`;
+            } else {
+                resBox.innerHTML = `<span class="text-rose-400 font-bold">❌ 偏差过大</span><br>误差: ${ratio.toFixed(2)}% (>10%)`;
+            }
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- INIT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            switchTab('single'); // Default load
+        });
+
+    </script>
+</body>
+</html>
