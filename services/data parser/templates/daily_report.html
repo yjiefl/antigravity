@@ -26,15 +26,15 @@
                 <div id="fileTriggerArea" style="cursor: pointer; padding: 0.8rem;">
                     <span style="font-size: 2.2rem;">📊</span>
                     <p id="fileDisplay" style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.5rem;">
-                        点击浏览文件 或 拖入 Excel (.xlsx) <br>
-                        <span style="font-size: 0.85rem; color: #64748b;">(说明：导入按模版制作xlsx格式文件)</span>
+                        点击浏览文件 或 拖入 Excel (.xlsx, .xls) <br>
+                        <span style="font-size: 0.85rem; color: #64748b;">(说明：导入按模版制作xlsx/xls格式文件)</span>
                     </p>
                 </div>
                 <div style="text-align: center; margin-bottom: 0.5rem;">
-                    <a href="/static/templates/daily_report_template.xlsx" download="运营日报表模版.xlsx" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; border-bottom: 1px dashed var(--primary-color); display: inline-block;">⬇️ 下载导入模版</a>
+                    <a href="/static/templates/daily_report_template.xls" download="运营日报表模版.xls" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; border-bottom: 1px dashed var(--primary-color); display: inline-block;">⬇️ 下载导入模版 (.xls)</a>
                 </div>
 
-                <input type="file" id="fileInput" accept=".xlsx" style="display: none;">
+                <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
                 
                 <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem;">
                     <button class="btn btn-secondary" id="browseBtn">📂 浏览文件</button>

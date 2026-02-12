@@ -162,18 +162,42 @@ def process_details(df, header_idx, outage_idx):
     
     if block.empty: return pd.DataFrame()
 
-    company_col = block.columns[0]
-    block['Company_Fill'] = block[company_col].ffill()
+    current_company = "Unknown"
     
     stations_df_list = []
     for _, row in block.iterrows():
-        company = row['Company_Fill']
-        station = row.iloc[1]
-        raw_company = str(row.iloc[0])
+        # Get first two columns safely
+        val0 = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else ""
+        val1 = str(row.iloc[1]).strip() if pd.notna(row.iloc[1]) else ""
         
-        if "合计" in raw_company: continue
-        if pd.isna(station): continue
+        # Skip completely empty name rows
+        if not val0 and not val1: continue
+        
+        # Logic to identify Company vs Station
+        # Case A: Two columns (Old format)
+        if val1 and val0:
+            if "合计" in val0: continue
+            current_company = val0
+            station = val1
+        # Case B: Single column hierarchy (New format)
+        else:
+            name = val0 if val0 else val1
             
+            if "合计" in name: continue
+            if "停运" in name: continue
+            
+            # Heuristic: Companies usually end with "公司" or contain it
+            # But we must be careful not to match a station name that might contain "公司" (unlikely)
+            # Also update context
+            if "公司" in name:
+                current_company = name
+                continue # Skip the company header row itself
+                
+            station = name
+            
+        # Data Extraction
+        raw_company = current_company
+        
         # Dynamic Column Mapping
         cols = block.columns
         
@@ -192,30 +216,32 @@ def process_details(df, header_idx, outage_idx):
             ac_cap_raw, dc_cap_raw = extract_capacity(row[cap_col])
         else:
              # Fallback to index 2
-             ac_cap_raw, dc_cap_raw = extract_capacity(row.iloc[2])
+             if len(row) > 2:
+                ac_cap_raw, dc_cap_raw = extract_capacity(row.iloc[2])
 
         try:
              station_data = {
-                "company": company,
+                "company": raw_company,
                 "station": station,
                 "ac_capacity": ac_cap_raw,
                 "dc_capacity": dc_cap_raw,
-                "daily_equiv_hours": get_val(["当日等效", "日等效"], clean_number(row.iloc[6])),
-                "daily_gen": get_val(["日发电", "当日发电"], clean_number(row.iloc[7])),
-                "curtailment": get_val(["限发电量", "限电量"], clean_number(row.iloc[8])),
-                "curtailment_rate": get_val(["限电率"], clean_number(row.iloc[9])),
-                "unplanned": get_val(["非计划"], clean_number(row.iloc[10])),
-                "planned": get_val(["计划损失"], clean_number(row.iloc[11])),
-                "abandoned": get_val(["弃光", "弃风"], clean_number(row.iloc[12])),
-                "availability": get_val(["场用可利用率", "可利用率"], clean_number(row.iloc[13])),
-                "annual_availability": get_val(["年度场用", "年可利用率"], clean_number(row.iloc[14])),
-                "is_distributed": "分布式" in str(company) or "分布式" in str(station)
+                "daily_equiv_hours": get_val(["当日等效", "日等效"], clean_number(row.iloc[6]) if len(row)>6 else 0),
+                "daily_gen": get_val(["日发电", "当日发电"], clean_number(row.iloc[7]) if len(row)>7 else 0),
+                "curtailment": get_val(["限发电量", "限电量"], clean_number(row.iloc[8]) if len(row)>8 else 0),
+                "curtailment_rate": get_val(["限电率"], clean_number(row.iloc[9]) if len(row)>9 else 0),
+                "unplanned": get_val(["非计划"], clean_number(row.iloc[10]) if len(row)>10 else 0),
+                "planned": get_val(["计划损失"], clean_number(row.iloc[11]) if len(row)>11 else 0),
+                "abandoned": get_val(["弃光", "弃风"], clean_number(row.iloc[12]) if len(row)>12 else 0),
+                "availability": get_val(["场用可利用率", "可利用率", "发电设备可利用率"], clean_number(row.iloc[13]) if len(row)>13 else 0),
+                "annual_availability": get_val(["年度场用", "年可利用率", "年度发电设备", "年度"], clean_number(row.iloc[14]) if len(row)>14 else 0),
+                "is_distributed": "分布式" in str(raw_company) or "分布式" in str(station)
             }
              stations_df_list.append(station_data)
         except Exception as e:
             continue
         
     return pd.DataFrame(stations_df_list)
+
 
 def process_outages(df, start_idx):
     outages = {}
