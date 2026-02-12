@@ -107,6 +107,9 @@ NAS_PORT="22222"
   - Web 服务未启动。
 - **解决方案**:
   - 执行 `pip install -r requirements.txt` 补全环境依赖。
+  - **新增 `check_env.py` 脚本，自动检查 Python 依赖和系统库（如 `libmagic`）。**
+  - **改进 `start.sh`，在启动前强制执行环境自检。**
   - 运行 `start.sh` 启动服务并验证。
   - 按照编程规范重命名 `spec.md` 和 `update.md`，并创建 `README.md`。
+
 - **当前状态**: 已恢复访问，地址 [http://127.0.0.1:5001](http://127.0.0.1:5001)。
