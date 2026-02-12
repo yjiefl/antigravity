@@ -48,12 +48,26 @@ def clean_number(val):
     return float(match.group()) if match else 0.0
 
 def load_and_preprocess(file_path):
-    df = pd.read_excel(file_path, header=None)
+    # Smart Sheet Selection
+    try:
+        xls = pd.ExcelFile(file_path)
+        sheet_names = xls.sheet_names
+        target_sheet = 0 # Default to first sheet
+        
+        # Priority search
+        for name in sheet_names:
+            if "运营日报" in name or "Daily Report" in name:
+                target_sheet = name
+                break
+                
+        df = pd.read_excel(file_path, sheet_name=target_sheet, header=None)
+    except Exception as e:
+        raise Exception(f"Excel读取失败: {str(e)}")
     
     # Locate Sections
     detail_header_idx = -1
     for i, row in df.iloc[:100].iterrows():
-        if "公司/场站名称" in str(row.values):
+        if "公司/场站名称" in str(row.values) or "场站名称" in str(row.values):
             detail_header_idx = i
             break
             
