@@ -195,8 +195,18 @@ def analyze_file(input_path, output_dir):
                  return None, "文件编码识别失败，请确保上传的是标准 CSV 或 Excel 文件"
     
         
+    # Normalize column names (handle potential whitespace)
+    df.columns = df.columns.astype(str).str.strip()
+    
+    if '厂站名' not in df.columns:
+        # UX Improvement: Detect if user uploaded a Daily Report by mistake
+        if any(keyword in str(df.columns) or keyword in str(df.values)[:500] for keyword in ['运营日报', '非计划损失', '限电率']):
+             return None, "缺关键列 '厂站名'。检测到您可能上传了【运营日报】，请切换到顶部导航栏的【运营日报审核】页面进行操作。"
+        return None, f"文件缺少关键列: '厂站名'。当前包含列: {', '.join(df.columns[:5])}..."
+
     df['厂站名'] = df['厂站名'].astype(str).str.strip()
     df = df[df['厂站名'].apply(lambda x: any(target in x for target in TARGET_STATIONS))]
+
     if df.empty: return None, "未找到目标场站数据"
 
     value_vars = [c for c in df.columns if '扣分详情' in c]
