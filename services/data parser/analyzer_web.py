@@ -169,10 +169,31 @@ def parse_deduction_text(text):
 
 
 def analyze_file(input_path, output_dir):
-    try:
-        df = pd.read_csv(input_path, encoding='utf-8')
-    except:
-        df = pd.read_csv(input_path, encoding='gb18030')
+    # Detect file type
+    # If the user uploaded an Excel file, try to read it as Excel first
+    if input_path.endswith(('.xlsx', '.xls')):
+        try:
+             df = pd.read_excel(input_path)
+        except Exception as e:
+            return None, f"Excel 文件读取失败: {str(e)}"
+    else:
+        # Try to read as CSV with encoding detection
+        encodings = ['utf-8', 'gb18030', 'gbk', 'mbcs', 'latin1']
+        df = None
+        for enc in encodings:
+            try:
+                df = pd.read_csv(input_path, encoding=enc)
+                break
+            except Exception:
+                continue
+        
+        if df is None:
+             # If all text encodings fail, maybe it is an Excel file renamed as .csv?
+             try:
+                 df = pd.read_excel(input_path)
+             except:
+                 return None, "文件编码识别失败，请确保上传的是标准 CSV 或 Excel 文件"
+    
         
     df['厂站名'] = df['厂站名'].astype(str).str.strip()
     df = df[df['厂站名'].apply(lambda x: any(target in x for target in TARGET_STATIONS))]
