@@ -14,17 +14,19 @@
   </head>
   <body class="theme-power">
     <div class="container">
+      <nav class="top-nav">
+        <a href="/power_prediction" class="btn nav-btn active">功率预测分析</a>
+        <a href="/daily_report" class="btn btn-secondary nav-btn"
+          >运营日报审核</a
+        >
+      </nav>
+
       <header>
         <h1>功率预测·合格率分析</h1>
         <p style="color: var(--text-main); font-weight: 500">
           交互式穿透查看功率预测扣分明细与原因热度
         </p>
       </header>
-
-      <nav class="top-nav">
-        <a href="/power_prediction" class="btn nav-btn active">功率预测分析</a>
-        <a href="/daily_report" class="btn btn-secondary nav-btn">运营日报审核</a>
-      </nav>
 
       <section class="upload-section">
         <div class="upload-box" id="dropZone">
@@ -38,12 +40,25 @@
                 margin-top: 0.5rem;
               "
             >
-              点击浏览文件 或 拖入 CSV <br>
-              <span style="font-size: 0.85rem; color: #64748b;">(说明：导入功率预测质量问题表)</span>
+              点击浏览文件 或 拖入 CSV <br />
+              <span style="font-size: 0.85rem; color: #64748b"
+                >(说明：导入功率预测质量问题表)</span
+              >
             </p>
           </div>
-          <div style="text-align: center; margin-bottom: 0.5rem;">
-            <a href="/static/templates/power_prediction_template.csv" download="功率预测分析模版.csv" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; border-bottom: 1px dashed var(--primary-color); display: inline-block;">⬇️ 下载导入模版</a>
+          <div style="text-align: center; margin-bottom: 0.5rem">
+            <a
+              href="/static/templates/power_prediction_template.csv"
+              download="功率预测分析模版.csv"
+              style="
+                font-size: 0.8rem;
+                color: var(--primary-color);
+                text-decoration: none;
+                border-bottom: 1px dashed var(--primary-color);
+                display: inline-block;
+              "
+              >⬇️ 下载导入模版</a
+            >
           </div>
 
           <input
@@ -353,9 +368,12 @@
       async function deleteHistory(fileId) {
         const password = prompt("请输入删除密码:");
         if (password === null) return;
-        
+
         try {
-          const res = await fetch(`/history/${fileId}?password=${encodeURIComponent(password)}`, { method: "DELETE" });
+          const res = await fetch(
+            `/history/${fileId}?password=${encodeURIComponent(password)}`,
+            { method: "DELETE" },
+          );
           const data = await res.json();
           if (data.success) {
             fetchHistory();
