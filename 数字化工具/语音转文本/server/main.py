@@ -10,10 +10,23 @@ from pydub import AudioSegment
 from openai import OpenAI
 from dotenv import load_dotenv
 from faster_whisper import WhisperModel
+import logging
+from datetime import datetime
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 app = FastAPI()
+
+# 进度存储
+progress_store = {}
 
 app.add_middleware(
     CORSMiddleware,
@@ -91,12 +104,58 @@ def local_transcribe(audio_path):
     return "\n".join(srt_output)
 
 
+@app.get("/progress/{task_id}")
+async def get_progress(task_id: str):
+    return progress_store.get(task_id, {"status": "waiting", "percent": 0})
+
+@app.get("/logs")
+async def get_logs():
+    log_path = Path(__file__).parent.parent / "backend.log"
+    if log_path.exists():
+        with open(log_path, "r") as f:
+            # 返回最后 100 行日志
+            lines = f.readlines()
+            return {"logs": "".join(lines[-100:])}
+    return {"logs": "暂无日志"}
+
+@app.post("/logs/clear")
+async def clear_logs():
+    log_path = Path(__file__).parent.parent / "backend.log"
+    if log_path.exists():
+        with open(log_path, "w") as f:
+            f.write(f"--- 日志已于 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} 清空 ---\n")
+    return {"status": "ok"}
+
+def safe_api_transcription(client, model_name, audio_path, response_format="srt", retries=3):
+    """带重试机制的 API 调用"""
+    last_error = None
+    for attempt in range(retries):
+        try:
+            with open(audio_path, "rb") as audio_file:
+                return client.audio.transcriptions.create(
+                    model=model_name, 
+                    file=audio_file, 
+                    response_format=response_format,
+                    language="zh"
+                )
+        except Exception as e:
+            last_error = e
+            logger.warning(f"API 调用失败 (第 {attempt+1} 次尝试): {str(e)}")
+            import time
+            time.sleep(2 * (attempt + 1)) # 指数退避
+    raise last_error
+
+
 @app.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(...),
     provider: str = Form("openai"), # openai, groq, local
-    api_key: str = Form(None)
+    api_key: str = Form(None),
+    task_id: str = Form(None)
 ):
+    if task_id:
+        progress_store[task_id] = {"status": "正在初始化...", "percent": 0}
+
     temp_path = f"temp_{file.filename}"
     compressed_path = f"compressed_{file.filename}.mp3"
     
@@ -106,12 +165,13 @@ async def transcribe_audio(
 
     # Set up client based on provider
     client = None
+    timeout = 60.0 # 60 seconds timeout
+    
     if provider == "openai":
-
         key = api_key or os.getenv("OPENAI_API_KEY")
         if not key:
             return JSONResponse(status_code=400, content={"error": "Missing OpenAI API Key"})
-        client = OpenAI(api_key=key)
+        client = OpenAI(api_key=key, timeout=timeout)
         model_name = "whisper-1"
     
     elif provider == "groq":
@@ -120,9 +180,24 @@ async def transcribe_audio(
             return JSONResponse(status_code=400, content={"error": "Missing Groq API Key"})
         client = OpenAI(
             api_key=key,
-            base_url="https://api.groq.com/openai/v1"
+            base_url="https://api.groq.com/openai/v1",
+            timeout=timeout
         )
-        model_name = "whisper-large-v3" # Groq often uses this ID
+        model_name = "whisper-large-v3"
+
+    elif provider == "volcengine":
+        key = api_key or os.getenv("VOLC_API_KEY")
+        if not key:
+            return JSONResponse(status_code=400, content={"error": "Missing Volcano Engine API Key"})
+        client = OpenAI(
+            api_key=key,
+            base_url="https://ark.cn-beijing.volces.com/api/v3",
+            timeout=timeout
+        )
+        # For VolcArk, the 'model' is actually the Endpoint ID
+        model_name = model or os.getenv("VOLC_ENDPOINT_ID")
+        if not model_name:
+            return JSONResponse(status_code=400, content={"error": "Missing Volcano Engine Endpoint ID (model)"})
 
     elif provider == "local":
         pass # Client setup handled in transcription logic
@@ -137,10 +212,12 @@ async def transcribe_audio(
         # Local transcription handling
         if provider == "local":
             try:
+                if task_id: progress_store[task_id] = {"status": "本地模型正在转写中...", "percent": 20}
                 # Local whisper handles large files automatically usually, but let's just feed it directly.
                 # faster-whisper handles VAD and segmentation internally.
                 print("Starting local transcription...")
                 full_srt = local_transcribe(temp_path)
+                if task_id: progress_store[task_id] = {"status": "完成!", "percent": 100}
                 return {"filename": file.filename, "srt": full_srt}
             except Exception as e:
                 # Cleanup
@@ -157,107 +234,89 @@ async def transcribe_audio(
 
         # Compression logic if too big for API
         if file_size_mb > MAX_FILE_SIZE_MB:
-            print("File > 25MB. Compressing to MP3 32k mono...")
+            logger.info("File > 25MB. Compressing to MP3 32k mono...")
+            if task_id: progress_store[task_id] = {"status": "文件较大，正在压缩以适配 API 限制...", "percent": 10}
             audio = AudioSegment.from_file(temp_path)
             audio.export(compressed_path, format="mp3", bitrate="32k", parameters=["-ac", "1"])
             comp_size = os.path.getsize(compressed_path) / (1024 * 1024)
             
             if comp_size <= MAX_FILE_SIZE_MB:
                 target_file_path = compressed_path
+            if task_id: progress_store[task_id] = {"status": "压缩完成，准备发送...", "percent": 20}
             
         current_size = os.path.getsize(target_file_path) / (1024 * 1024)
         
         if current_size <= MAX_FILE_SIZE_MB:
+             logger.info(f"File size {current_size:.2f}MB is within limit. Sending to API...")
              with open(target_file_path, "rb") as audio_file:
                 if provider == "groq":
-                    print("Groq path: Requesting verbose_json segments...")
-                    # Use with_raw_response to access headers
-                    raw_response = client.audio.transcriptions.with_raw_response.create(
-                        model=model_name, 
-                        file=audio_file, 
-                        response_format="verbose_json",
-                        language="zh"
-                    )
-                    response = raw_response.parse()
+                    logger.info("Using Groq API...")
+                    # Groq verbose_json for headers
+                    transcript = safe_api_transcription(client, model_name, target_file_path, response_format="verbose_json")
                     
-                    # Capture rate limit headers
-                    groq_headers = {
-                        "x-ratelimit-limit-requests": raw_response.headers.get("x-ratelimit-limit-requests"),
-                        "x-ratelimit-limit-tokens": raw_response.headers.get("x-ratelimit-limit-tokens"),
-                        "x-ratelimit-remaining-requests": raw_response.headers.get("x-ratelimit-remaining-requests"),
-                        "x-ratelimit-remaining-tokens": raw_response.headers.get("x-ratelimit-remaining-tokens"),
-                        "x-ratelimit-reset-requests": raw_response.headers.get("x-ratelimit-reset-requests"),
-                        "x-ratelimit-reset-tokens": raw_response.headers.get("x-ratelimit-reset-tokens"),
-                         # Groq often provides audio specific limits too
-                        "x-ratelimit-remaining-audio-seconds": raw_response.headers.get("x-ratelimit-remaining-audio-seconds", "N/A")
-                    }
-
                     # Convert object segments to SRT string
-                    transcript = ""
-                    for j, segment in enumerate(response.segments, start=1):
+                    srt_combined = ""
+                    for j, segment in enumerate(transcript.segments, start=1):
                         start = format_timestamp(segment.start)
                         end = format_timestamp(segment.end)
                         text = segment.text.strip()
-                        transcript += f"{j}\n{start} --> {end}\n{text}\n\n"
-
+                        srt_combined += f"{j}\n{start} --> {end}\n{text}\n\n"
+                    transcript = srt_combined
 
                 else:
-                    transcript = client.audio.transcriptions.create(
-                        model=model_name, 
-                        file=audio_file, 
-                        response_format="srt",
-                        language="zh"
-                    )
+                    logger.info("Using OpenAI API...")
+                    transcript = safe_api_transcription(client, model_name, target_file_path, response_format="srt")
 
                 final_srt_parts.append(transcript)
         else:
-            print("File still too large. Splitting into 10-minute chunks...")
+            logger.info(f"File size {current_size:.2f}MB > {MAX_FILE_SIZE_MB}MB. Splitting into chunks...")
+            if task_id: progress_store[task_id] = {"status": "正在加载音频文件进行切片...", "percent": 25}
+            logger.info("Loading audio with pydub (this may take a while for large files)...")
             audio = AudioSegment.from_file(temp_path)
             duration_ms = len(audio)
+            logger.info(f"Audio duration: {duration_ms / 1000 / 60:.2f} minutes")
             
-            for i in range(0, duration_ms, CHUNK_LENGTH_MS):
-                chunk = audio[i : i + CHUNK_LENGTH_MS]
-                chunk_filename = f"chunk_{i}.mp3"
+            chunk_count = (duration_ms + CHUNK_LENGTH_MS - 1) // CHUNK_LENGTH_MS
+            for i_idx, start_ms in enumerate(range(0, duration_ms, CHUNK_LENGTH_MS)):
+                current_percent = 30 + int((i_idx / chunk_count) * 60)
+                status_msg = f"正在处理分段 {i_idx + 1}/{chunk_count}..."
+                if task_id: progress_store[task_id] = {"status": status_msg, "percent": current_percent}
+                
+                logger.info(f"Processing chunk {i_idx + 1}/{chunk_count}...")
+                chunk = audio[start_ms : start_ms + CHUNK_LENGTH_MS]
+                chunk_filename = f"chunk_{start_ms}.mp3"
                 chunk.export(chunk_filename, format="mp3", bitrate="32k")
                 
-                with open(chunk_filename, "rb") as audio_file:
-                    if provider == "groq":
-                        response = client.audio.transcriptions.create(
-                            model=model_name, 
-                            file=audio_file, 
-                            response_format="verbose_json",
-                            language="zh"
-                        )
-                        chunk_srt = ""
-                        for k, segment in enumerate(response.segments, start=1):
-                            start = format_timestamp(segment.start)
-                            end = format_timestamp(segment.end)
-                            text = segment.text.strip()
-                            chunk_srt += f"{k}\n{start} --> {end}\n{text}\n\n"
+                logger.info(f"Sending chunk {i_idx + 1} to API...")
+                if provider == "groq":
+                    response = safe_api_transcription(client, model_name, chunk_filename, response_format="verbose_json")
+                    chunk_srt = ""
+                    for k, segment in enumerate(response.segments, start=1):
+                        start = format_timestamp(segment.start)
+                        end = format_timestamp(segment.end)
+                        text = segment.text.strip()
+                        chunk_srt += f"{k}\n{start} --> {end}\n{text}\n\n"
 
-                        transcript = chunk_srt
-                    else:
-                        transcript = client.audio.transcriptions.create(
-                            model=model_name, 
-                            file=audio_file, 
-                            response_format="srt",
-                            language="zh"
-                        )
+                    transcript = chunk_srt
+                else:
+                    transcript = safe_api_transcription(client, model_name, chunk_filename, response_format="srt")
 
                 
-                adjusted_srt = adjust_srt_timestamps(transcript, i)
+                adjusted_srt = adjust_srt_timestamps(transcript, start_ms)
                 final_srt_parts.append(adjusted_srt)
                 
                 if os.path.exists(chunk_filename):
                     os.remove(chunk_filename)
+                logger.info(f"Chunk {i_idx + 1} completed.")
 
         # Cleanup
         if os.path.exists(temp_path): os.remove(temp_path)
         if os.path.exists(compressed_path): os.remove(compressed_path)
-
-        if os.path.exists(compressed_path): os.remove(compressed_path)
         
-        response_data = {"filename": file.filename, "srt": str(full_srt)} # Ensure srt is string
+        full_srt = "\n".join(final_srt_parts)
+        if task_id: progress_store[task_id] = {"status": "完成!", "percent": 100}
+        
+        response_data = {"filename": file.filename, "srt": full_srt}
         if provider == "groq" and 'groq_headers' in locals():
             response_data["rate_limits"] = groq_headers
         

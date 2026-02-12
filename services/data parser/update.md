@@ -84,9 +84,7 @@ NAS_PORT="22222"
 - **完成时间**: 2026-02-11 13:45
 - **功能更新**: 已根据要求在审计逻辑中排除分布式场站的可利用率分析及 TOP 3 统计。
 
-## 待增加
-
-### 增加页面描述说明和导入档案模版
+### 增加页面描述说明和导入档案模版 ✅ 2026年2月12日 12:22
 
 功率预测分析模版：/Users/yangjie/code/antigravity/services/data parser/input/20260126 功率预测合格率.csv
 运营日报表模版：/Users/yangjie/code/antigravity/services/data parser/input/2026年02月10日运营日报表.xlsx
@@ -126,3 +124,7 @@ NAS_PORT="22222"
 - **环境自动化**:
   - **依赖自动补全**: `start.sh` 现支持缺失 Python 包及 macOS 系统库 (`libmagic`, `xlrd`) 的一键式自动检测与安装。
 - **说明更新**: 明确运营日报导入指引：“将运营日报导出的xls/xlsx文件导入”。
+
+## 待增加
+
+增加功率预测数据对比功能，勾选两次数据，对比并输出结果

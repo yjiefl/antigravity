@@ -9,11 +9,14 @@ function App() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [provider, setProvider] = useState("local");
   const [apiKey, setApiKey] = useState("");
+  const [endpointId, setEndpointId] = useState("");
 
   const [serverStatus, setServerStatus] = useState({
     openai: false,
     groq: false,
   });
+  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState("");
 
   useEffect(() => {
     fetch("http://localhost:8000/status")
@@ -38,24 +41,47 @@ function App() {
     setStatus("准备上传...");
     setUploadProgress(0);
 
+    // Generate a unique task ID for progress tracking
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("provider", provider);
-    if (apiKey) {
-      formData.append("api_key", apiKey);
-    }
+    formData.append("api_key", apiKey);
+    formData.append("model", endpointId); // Send endpointId as 'model' for VolcArk compatibility
+    formData.append("task_id", taskId);
 
     const xhr = new XMLHttpRequest();
+    let progressInterval = null;
 
-    // Track upload progress
+    // Start polling for backend progress
+    const startPolling = () => {
+      progressInterval = setInterval(() => {
+        fetch(`http://localhost:8000/progress/${taskId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.status !== "waiting") {
+              setStatus(data.status);
+              // Only update progress bar if the backend reported something meaningful
+              if (data.percent > 0) {
+                setUploadProgress(data.percent);
+              }
+            }
+          })
+          .catch((err) => console.error("Progress fetch error:", err));
+      }, 2000);
+    };
+
+    // Track upload progress (client to server)
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) {
         const percent = Math.round((e.loaded * 100) / e.total);
-        setUploadProgress(percent);
+        // During upload, keep it between 0-99 to leave room for processing progress
+        const displayPercent = Math.min(percent, 99);
+        setUploadProgress(displayPercent);
         if (percent === 100) {
-          setStatus(
-            "文件已送达服务器，正在排队/处理中... (大文件可能需要几分钟)",
-          );
+          setStatus("文件已送达服务器，正在启动处理流程...");
+          startPolling();
         } else {
           setStatus(`正在上传文件: ${percent}%`);
         }
@@ -63,11 +89,14 @@ function App() {
     });
 
     xhr.addEventListener("load", () => {
+      if (progressInterval) clearInterval(progressInterval);
+
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const data = JSON.parse(xhr.responseText);
           setSrt(data.srt);
           setStatus("转写完成!");
+          setUploadProgress(100);
 
           // Show rate limit info if available
           if (
@@ -90,9 +119,6 @@ function App() {
           const errorData = JSON.parse(xhr.responseText);
           let errMsg = errorData.error || "请求失败";
 
-          // Better error description for Rate Limits
-          // Check HTTP status 429 OR if the error message string contains "429" or "Rate limit"
-          // (Backend might return 500 for unhandled exceptions containing the upstream 429)
           if (
             xhr.status === 429 ||
             errMsg.includes("429") ||
@@ -117,6 +143,7 @@ function App() {
     });
 
     xhr.addEventListener("error", () => {
+      if (progressInterval) clearInterval(progressInterval);
       setStatus("网络请求错误");
       setLoading(false);
     });
@@ -134,12 +161,53 @@ function App() {
     element.click();
   };
 
+  const fetchLogs = () => {
+    fetch("http://localhost:8000/logs")
+      .then((res) => res.json())
+      .then((data) => {
+        setLogs(data.logs);
+        setShowLogs(true);
+      })
+      .catch((err) => alert("获取日志失败"));
+  };
+
+  const clearLogs = () => {
+    if (window.confirm("确定要清空后台日志吗？")) {
+      fetch("http://localhost:8000/logs/clear", { method: "POST" }).then(() =>
+        fetchLogs(),
+      );
+    }
+  };
+
   return (
     <div
       className="container"
       style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem" }}
     >
-      <h1>AI 语音转字幕 (SRT)</h1>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+        }}
+      >
+        <h1 style={{ margin: 0 }}>AI 语音转字幕 (SRT)</h1>
+        <button
+          onClick={fetchLogs}
+          style={{
+            padding: "8px 15px",
+            backgroundColor: "#6c757d",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "14px",
+          }}
+        >
+          查看实时日志
+        </button>
+      </div>
 
       <div
         style={{
@@ -147,7 +215,7 @@ function App() {
           border: "1px solid #ddd",
           padding: "1.5rem",
           borderRadius: "12px",
-          textAlign: "left",
+          textAlign: "center",
           backgroundColor: "#fff",
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         }}
@@ -159,6 +227,7 @@ function App() {
           style={{
             padding: "10px",
             width: "100%",
+            maxWidth: "400px",
             marginBottom: "15px",
             borderRadius: "6px",
             border: "1px solid #ccc",
@@ -166,26 +235,54 @@ function App() {
         >
           <option value="openai">OpenAI Whisper (收费，精准，$0.006/分)</option>
           <option value="groq">Groq (免费/极速，需 API Key)</option>
+          <option value="volcengine">火山引擎 (火山方舟/豆包，需 EP ID)</option>
           <option value="local">
             本地 Whisper (免费，无需联网，依赖本机 CPU/GPU)
           </option>
         </select>
 
-        {(provider === "openai" || provider === "groq") && (
-          <div style={{ marginTop: "10px" }}>
+        {(provider === "openai" ||
+          provider === "groq" ||
+          provider === "volcengine") && (
+          <div
+            style={{
+              marginTop: "10px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
             <input
               type="password"
-              placeholder={`请输入 ${provider === "openai" ? "OpenAI" : "Groq"} API Key (留空则使用服务器 .env 配置)`}
+              placeholder={`请输入 ${provider === "openai" ? "OpenAI" : provider === "groq" ? "Groq" : "火山引擎"} API Key`}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               style={{
                 padding: "10px",
                 width: "100%",
+                maxWidth: "400px",
                 borderRadius: "6px",
                 border: "1px solid #ccc",
                 boxSizing: "border-box",
               }}
             />
+            {provider === "volcengine" && (
+              <input
+                type="text"
+                placeholder="请输入 Endpoint ID (推理终端 ID)"
+                value={endpointId}
+                onChange={(e) => setEndpointId(e.target.value)}
+                style={{
+                  padding: "10px",
+                  width: "100%",
+                  maxWidth: "400px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                  boxSizing: "border-box",
+                }}
+              />
+            )}
             {provider === "groq" && serverStatus.groq && !apiKey && (
               <p
                 style={{
@@ -210,6 +307,8 @@ function App() {
               padding: "10px",
               borderRadius: "6px",
               borderLeft: "4px solid #007bff",
+              maxWidth: "600px",
+              margin: "10px auto 0",
             }}
           >
             提示：本地模式首次运行需要下载模型文件，且转写速度取决于您的电脑性能
@@ -227,6 +326,10 @@ function App() {
           borderRadius: "12px",
           backgroundColor: "#f0f7ff",
           transition: "all 0.3s ease",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
         }}
       >
         <h3 style={{ marginTop: 0 }}>2. 上传音视频文件</h3>
@@ -234,7 +337,13 @@ function App() {
           type="file"
           onChange={handleFileChange}
           accept="audio/*,video/*"
-          style={{ marginBottom: "1rem" }}
+          style={{
+            marginBottom: "1rem",
+            marginLeft: "auto",
+            marginRight: "auto",
+            display: "block",
+            cursor: "pointer",
+          }}
         />
         <p style={{ marginTop: "0.5rem", color: "#666", fontSize: "0.9em" }}>
           支持 MP3, WAV, MP4, MKV 等格式。大文件自动进行切片转写。
@@ -347,6 +456,86 @@ function App() {
               boxSizing: "border-box",
             }}
           />
+        </div>
+      )}
+
+      {/* 日志弹窗 */}
+      {showLogs && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "20px",
+              borderRadius: "12px",
+              width: "80%",
+              maxWidth: "1000px",
+              maxHeight: "80vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "15px",
+              }}
+            >
+              <h3 style={{ margin: 0 }}>后台实时日志 (最后100行)</h3>
+              <div>
+                <button
+                  onClick={clearLogs}
+                  style={{
+                    marginRight: "10px",
+                    padding: "5px 10px",
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  清空日志
+                </button>
+                <button
+                  onClick={() => setShowLogs(false)}
+                  style={{ padding: "5px 10px", cursor: "pointer" }}
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+            <pre
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                backgroundColor: "#1e1e1e",
+                color: "#d4d4d4",
+                padding: "15px",
+                borderRadius: "6px",
+                fontFamily: "monospace",
+                fontSize: "12px",
+                textAlign: "left",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {logs}
+            </pre>
+          </div>
         </div>
       )}
     </div>

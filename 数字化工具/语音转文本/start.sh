@@ -42,7 +42,7 @@ fi
 echo "正在检查后端依赖..."
 ./venv/bin/pip install -r requirements.txt > /dev/null 2>&1
 
-nohup ./venv/bin/python main.py > "$PROJECT_ROOT/backend.log" 2>&1 &
+nohup ./venv/bin/python -u main.py > "$PROJECT_ROOT/backend.log" 2>&1 &
 BACKEND_PID=$!
 echo "后端服务已启动 (PID: $BACKEND_PID)，日志见 backend.log"
 
