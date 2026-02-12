@@ -4,3 +4,5 @@ openpyxl
 fpdf2
 werkzeug
 python-magic
+reportlab
+numpy

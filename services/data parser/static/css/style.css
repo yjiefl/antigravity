@@ -11,6 +11,16 @@
     --danger: #ff4d4d;
 }
 
+body.theme-power {
+    --primary-color: #6366f1;
+    --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+}
+
+body.theme-report {
+    --primary-color: #3b82f6;
+    --primary-gradient: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -31,6 +41,7 @@ body {
 .container {
     max-width: 1400px;
     margin: 0 auto;
+    position: relative;
 }
 
 header {
@@ -45,14 +56,15 @@ header {
 }
 
 h1 {
-    font-size: 3.2rem;
+    font-size: 3.5rem;
     font-weight: 800;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.04em;
     background: var(--primary-gradient);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.8rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
 
 .upload-box {
@@ -103,6 +115,31 @@ h1 {
 .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+.nav-btn {
+    padding: 0.5rem 1.2rem;
+    font-size: 0.85rem;
+    min-width: auto;
+    opacity: 0.7;
+    border-radius: 10px;
+}
+
+.nav-btn.active {
+    background: var(--primary-gradient);
+    opacity: 1;
+    box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.3);
+}
+
+.top-nav {
+    position: absolute;
+    top: 1.5rem;
+    right: 2rem;
+    display: flex;
+    gap: 0.8rem;
+    z-index: 100;
+}
+
+/* Ensure container is relative for absolute positioning (Merged) */
 
 /* Visualization Grid */
 .viz-grid {

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+<<<<<<< HEAD:数字化工具/语音转文本/start.sh
 # 获取项目根目录的绝对路径
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
@@ -41,3 +42,55 @@ echo "前端服务已启动，日志见 web/web.log"
 echo "========================================"
 echo "服务启动过程已触发。请稍等片刻后访问 http://localhost:5173"
 echo "========================================"
+=======
+# Get the directory of the script
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# 1. Clean up existing services
+if [ -f "$DIR/stop.sh" ]; then
+    echo "Cleaning up existing services..."
+    bash "$DIR/stop.sh"
+fi
+
+# 2. Start Backend
+echo "Starting Backend..."
+cd "$DIR/server"
+if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+fi
+# Install missing deps if any
+./venv/bin/pip install -r requirements.txt
+nohup ./venv/bin/python main.py > "$DIR/backend.log" 2>&1 &
+BACKEND_PID=$!
+echo "Backend started with PID $BACKEND_PID"
+
+# 3. Start Frontend
+echo "Starting Frontend..."
+cd "$DIR/web"
+if [ ! -d "node_modules" ]; then
+    echo "Installing frontend dependencies..."
+    npm install
+fi
+nohup npm run dev > "$DIR/frontend.log" 2>&1 &
+FRONTEND_PID=$!
+echo "Frontend started with PID $FRONTEND_PID"
+
+
+
+# 4. Save PIDs
+echo "$BACKEND_PID" > "$DIR/pids.txt"
+echo "$FRONTEND_PID" >> "$DIR/pids.txt"
+
+echo "Service started!"
+echo "Backend logs: $DIR/backend.log"
+echo "Frontend logs: $DIR/frontend.log"
+
+# 5. Automatically open the browser
+URL="http://localhost:5005"
+echo "Opening $URL in browser..."
+
+sleep 2 # Give it a moment to start
+open "$URL"
+
+>>>>>>> b79d775 (feat: auto sync at 2026-02-11 17:49:21):语音转文本/start.sh

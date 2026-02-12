@@ -1,0 +1,322 @@
+[
+    {
+        "file_id": "a1602213",
+        "filename": "中能建广西公司_运营日报20260210_2026-02-11.xlsx",
+        "timestamp": "2026-02-11 15:20:25",
+        "total_new_energy": 0.0,
+        "anomaly_count": 7,
+        "pdf_filename": "daily_report_a1602213.pdf",
+        "json_filename": "daily_report_a1602213.json",
+        "anomalies": [
+            {
+                "type": "总和校验",
+                "desc": "总发电量不平衡。集中(1921.14) + 分布(10.57) + 火电(1320.00) = 3251.71 != 总表(0.00)",
+                "station": "全站"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(12.97%) 与计算值(16.01%) 偏差 > 1%。(计算过程: 限电量2.72 / (日发电量14.27 + 限电量2.72) = 16.01%)",
+                "station": "六留光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(12.97%) 与计算值(16.03%) 偏差 > 1%。(计算过程: 限电量4.53 / (日发电量23.73 + 限电量4.53) = 16.03%)",
+                "station": "弄滩/板崇光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(3.77%) 与计算值(5.67%) 偏差 > 1%。(计算过程: 限电量1.20 / (日发电量19.96 + 限电量1.20) = 5.67%)",
+                "station": "岑凡/南部光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(12.97%) 与计算值(1.05%) 偏差 > 1%。(计算过程: 限电量0.14 / (日发电量13.25 + 限电量0.14) = 1.05%)",
+                "station": "那小光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(23.04%) 与计算值(20.47%) 偏差 > 1%。(计算过程: 限电量2.46 / (日发电量9.56 + 限电量2.46) = 20.47%)",
+                "station": "坤山/那楠风电"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(36.11%) 与计算值(34.15%) 偏差 > 1%。(计算过程: 限电量2.37 / (日发电量4.57 + 限电量2.37) = 34.15%)",
+                "station": "樟木/樟木风电"
+            }
+        ],
+        "top_curtailment": [
+            {
+                "company": "贵港公司",
+                "station": "樟木/樟木风电",
+                "ac_capacity": 44.0,
+                "dc_capacity": 44.0,
+                "daily_equiv_hours": 1.04,
+                "daily_gen": 4.57,
+                "curtailment": 2.37,
+                "curtailment_rate": 36.11,
+                "unplanned": 0.0,
+                "planned": 0.0,
+                "abandoned": 2.37,
+                "availability": 100.0,
+                "annual_availability": 83.5,
+                "is_distributed": false,
+                "outage_reason": "无"
+            },
+            {
+                "company": "宁明公司",
+                "station": "坤山/那楠风电",
+                "ac_capacity": 56.38,
+                "dc_capacity": 56.38,
+                "daily_equiv_hours": 1.7,
+                "daily_gen": 9.56,
+                "curtailment": 2.46,
+                "curtailment_rate": 23.04,
+                "unplanned": 5.82,
+                "planned": 2.67,
+                "abandoned": 10.95,
+                "availability": 75.81,
+                "annual_availability": 75.81,
+                "is_distributed": false,
+                "outage_reason": "#2风机、#4风机、#5风机、06号风机故障4台，影响容量6.25MW； 共计影响容量6.25MW"
+            },
+            {
+                "company": "贵港公司",
+                "station": "榕木/覃塘南光伏",
+                "ac_capacity": 144.98,
+                "dc_capacity": 197.05,
+                "daily_equiv_hours": 0.96,
+                "daily_gen": 18.9,
+                "curtailment": 2.79,
+                "curtailment_rate": 13.58,
+                "unplanned": 0.0,
+                "planned": 0.0,
+                "abandoned": 2.79,
+                "availability": 99.99,
+                "annual_availability": 99.96,
+                "is_distributed": false,
+                "outage_reason": "组串故障1条，影响容量0.02MW/0.03MWp； 共计影响容量0.02MW/0.03MWp"
+            }
+        ],
+        "min_avail": [
+            {
+                "company": "宁明公司",
+                "station": "坤山/那楠风电",
+                "ac_capacity": 56.38,
+                "dc_capacity": 56.38,
+                "daily_equiv_hours": 1.7,
+                "daily_gen": 9.56,
+                "curtailment": 2.46,
+                "curtailment_rate": 23.04,
+                "unplanned": 5.82,
+                "planned": 2.67,
+                "abandoned": 10.95,
+                "availability": 75.81,
+                "annual_availability": 75.81,
+                "is_distributed": false,
+                "outage_reason": "#2风机、#4风机、#5风机、06号风机故障4台，影响容量6.25MW； 共计影响容量6.25MW"
+            },
+            {
+                "company": "贵港公司",
+                "station": "樟木/覃塘北光伏",
+                "ac_capacity": 337.93,
+                "dc_capacity": 473.1,
+                "daily_equiv_hours": 0.63,
+                "daily_gen": 29.75,
+                "curtailment": 0.0,
+                "curtailment_rate": 0.0,
+                "unplanned": 7.9,
+                "planned": 0.0,
+                "abandoned": 7.9,
+                "availability": 86.74,
+                "annual_availability": 87.41,
+                "is_distributed": false,
+                "outage_reason": "光伏并网逆变器故障1台，影响容量0.23MW/0.32MWp； 组串故障417条，影响容量44.91MW/63.05MWp； 共计影响容量45.14MW/63.37MWp"
+            },
+            {
+                "company": "扶绥、天等公司",
+                "station": "把荷风电",
+                "ac_capacity": 100.1,
+                "dc_capacity": 100.1,
+                "daily_equiv_hours": 4.47,
+                "daily_gen": 44.73,
+                "curtailment": 4.07,
+                "curtailment_rate": 8.38,
+                "unplanned": 0.0,
+                "planned": 1.26,
+                "abandoned": 5.33,
+                "availability": 87.7,
+                "annual_availability": 87.7,
+                "is_distributed": false,
+                "outage_reason": "#14风机故障1台，影响容量6.25MW； 共计影响容量6.25MW"
+            }
+        ],
+        "overview": {
+            "total_new_energy": 0.0,
+            "total_concentrated": 1921.14,
+            "total_distributed": 10.57,
+            "total_thermal": 1320.0,
+            "concentrated_pv": 1660.66,
+            "concentrated_wind": 260.48
+        }
+    },
+    {
+        "file_id": "9af09f3c",
+        "filename": "2026年02月10日运营日报表.xlsx",
+        "timestamp": "2026-02-11 14:40:29",
+        "total_new_energy": 324.94,
+        "anomaly_count": 7,
+        "pdf_filename": "daily_report_9af09f3c.pdf",
+        "json_filename": "daily_report_9af09f3c.json",
+        "anomalies": [
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(12.97%) 与计算值(16.01%) 偏差 > 1%。(计算过程: 限电量2.72 / (日发电量14.27 + 限电量2.72) = 16.01%)",
+                "station": "六留光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(12.97%) 与计算值(16.03%) 偏差 > 1%。(计算过程: 限电量4.53 / (日发电量23.73 + 限电量4.53) = 16.03%)",
+                "station": "弄滩/板崇光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(3.77%) 与计算值(5.67%) 偏差 > 1%。(计算过程: 限电量1.20 / (日发电量19.96 + 限电量1.20) = 5.67%)",
+                "station": "岑凡/南部光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(12.97%) 与计算值(1.05%) 偏差 > 1%。(计算过程: 限电量0.14 / (日发电量13.25 + 限电量0.14) = 1.05%)",
+                "station": "那小光伏"
+            },
+            {
+                "type": "系数异常",
+                "desc": "表显等效小时(0.97) 与计算值(0.95) 偏差 > 1%。(计算过程: 发电量13.44 * 10 / 容量141.40 = 0.95)",
+                "station": "峙书/峙书光伏"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(23.04%) 与计算值(20.47%) 偏差 > 1%。(计算过程: 限电量2.46 / (日发电量9.56 + 限电量2.46) = 20.47%)",
+                "station": "坤山/那楠风电"
+            },
+            {
+                "type": "限电率校验",
+                "desc": "表显限电率(36.11%) 与计算值(34.15%) 偏差 > 1%。(计算过程: 限电量2.37 / (日发电量4.57 + 限电量2.37) = 34.15%)",
+                "station": "樟木/樟木风电"
+            }
+        ],
+        "top_curtailment": [
+            {
+                "company": "贵港公司",
+                "station": "樟木/樟木风电",
+                "ac_capacity": 44.0,
+                "dc_capacity": 44.0,
+                "daily_equiv_hours": 1.04,
+                "daily_gen": 4.57,
+                "curtailment": 2.37,
+                "curtailment_rate": 36.11,
+                "unplanned": 0.0,
+                "planned": 0.21,
+                "abandoned": 2.58,
+                "availability": 96.71875,
+                "annual_availability": 83.34,
+                "is_distributed": false,
+                "outage_reason": "#12风机计划停运，影响容量5.5MW；\n共计影响容量5.5MW"
+            },
+            {
+                "company": "宁明公司",
+                "station": "坤山/那楠风电",
+                "ac_capacity": 56.38,
+                "dc_capacity": 56.38,
+                "daily_equiv_hours": 1.7,
+                "daily_gen": 9.56,
+                "curtailment": 2.46,
+                "curtailment_rate": 23.04,
+                "unplanned": 5.82,
+                "planned": 2.67,
+                "abandoned": 10.95,
+                "availability": 54.6,
+                "annual_availability": 75.81,
+                "is_distributed": false,
+                "outage_reason": "#2、#4、#5、#6风机故障停运，影响容量25MW；\n共计影响容量25MW"
+            },
+            {
+                "company": "贵港公司",
+                "station": "榕木/覃塘南光伏",
+                "ac_capacity": 144.98,
+                "dc_capacity": 197.05,
+                "daily_equiv_hours": 0.96,
+                "daily_gen": 18.9,
+                "curtailment": 2.79,
+                "curtailment_rate": 13.58,
+                "unplanned": 0.0,
+                "planned": 0.0,
+                "abandoned": 2.79,
+                "availability": 99.9933333333333,
+                "annual_availability": 99.96,
+                "is_distributed": false,
+                "outage_reason": "组串支路故障1条，影响容量0.02MW/0.03MWp；\n共计影响容量0.02MW/0.03MWp"
+            }
+        ],
+        "min_avail": [
+            {
+                "company": "宁明公司",
+                "station": "坤山/那楠风电",
+                "ac_capacity": 56.38,
+                "dc_capacity": 56.38,
+                "daily_equiv_hours": 1.7,
+                "daily_gen": 9.56,
+                "curtailment": 2.46,
+                "curtailment_rate": 23.04,
+                "unplanned": 5.82,
+                "planned": 2.67,
+                "abandoned": 10.95,
+                "availability": 54.6,
+                "annual_availability": 75.81,
+                "is_distributed": false,
+                "outage_reason": "#2、#4、#5、#6风机故障停运，影响容量25MW；\n共计影响容量25MW"
+            },
+            {
+                "company": "贵港公司",
+                "station": "樟木/覃塘北光伏",
+                "ac_capacity": 337.93,
+                "dc_capacity": 473.1,
+                "daily_equiv_hours": 0.63,
+                "daily_gen": 29.75,
+                "curtailment": 0.0,
+                "curtailment_rate": 0.0,
+                "unplanned": 7.9,
+                "planned": 0.0,
+                "abandoned": 7.9,
+                "availability": 87.1935271428571,
+                "annual_availability": 87.41,
+                "is_distributed": false,
+                "outage_reason": "组串支路故障244条，影响容量2.63MW3.86MWp；\n逆变器故障1台，影响容量0.23MW/0.32MWp；\n逆变器被民工人为拉停173台，影响容量42.28MW/59.19MWp\n共计影响容量45.14MW/63.37MWp"
+            },
+            {
+                "company": "贵港公司",
+                "station": "樟木/樟木风电",
+                "ac_capacity": 44.0,
+                "dc_capacity": 44.0,
+                "daily_equiv_hours": 1.04,
+                "daily_gen": 4.57,
+                "curtailment": 2.37,
+                "curtailment_rate": 36.11,
+                "unplanned": 0.0,
+                "planned": 0.21,
+                "abandoned": 2.58,
+                "availability": 96.71875,
+                "annual_availability": 83.34,
+                "is_distributed": false,
+                "outage_reason": "#12风机计划停运，影响容量5.5MW；\n共计影响容量5.5MW"
+            }
+        ],
+        "overview": {
+            "total_new_energy": 324.94,
+            "total_concentrated": 314.37,
+            "total_distributed": 10.57,
+            "total_thermal": 0.0,
+            "concentrated_pv": 226.88,
+            "concentrated_wind": 87.49
+        }
+    }
+]

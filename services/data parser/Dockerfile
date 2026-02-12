@@ -21,7 +21,7 @@ COPY . .
 RUN mkdir -p uploads output
 
 # 暴露 Flask 端口
-EXPOSE 5000
+EXPOSE 5001
 
 # 启动命令
 CMD ["python", "app.py"]

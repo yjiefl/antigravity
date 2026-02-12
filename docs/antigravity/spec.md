@@ -14,7 +14,7 @@ Download, translate, and organize the official Antigravity documentation for loc
 
 - Source: `https://antigravity.google/docs/`
 - Target: Markdown (Chinese Simplified)
-- Tools: Browser Crawler, LLM Translation
+- Tools: Browser Crawler, LLM Translation, git_sync.sh (Repo synchronization)
 
 ## Directory Structure
 

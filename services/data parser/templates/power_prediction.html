@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>新能源功率预测可视化工作站</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  </head>
+  <body class="theme-power">
+    <div class="container">
+      <header>
+        <h1>功率预测·合格率分析</h1>
+        <p style="color: var(--text-main); font-weight: 500">
+          交互式穿透查看功率预测扣分明细与原因热度
+        </p>
+      </header>
+
+      <nav class="top-nav">
+        <a href="/power_prediction" class="btn nav-btn active">功率预测分析</a>
+        <a href="/daily_report" class="btn btn-secondary nav-btn">运营日报审核</a>
+      </nav>
+
+      <section class="upload-section">
+        <div class="upload-box" id="dropZone">
+          <div id="fileTriggerArea" style="cursor: pointer; padding: 0.8rem">
+            <span style="font-size: 2.2rem">🧬</span>
+            <p
+              id="fileDisplay"
+              style="
+                color: var(--text-muted);
+                font-size: 0.95rem;
+                margin-top: 0.5rem;
+              "
+            >
+              点击浏览文件 或 拖入 CSV <br>
+              <span style="font-size: 0.85rem; color: #64748b;">(说明：导入功率预测质量问题表)</span>
+            </p>
+          </div>
+          <div style="text-align: center; margin-bottom: 0.5rem;">
+            <a href="/static/templates/power_prediction_template.csv" download="功率预测分析模版.csv" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; border-bottom: 1px dashed var(--primary-color); display: inline-block;">⬇️ 下载导入模版</a>
+          </div>
+
+          <input
+            type="file"
+            id="fileInput"
+            accept=".csv"
+            style="display: none"
+          />
+
+          <div
+            style="
+              display: flex;
+              justify-content: center;
+              gap: 1.5rem;
+              margin-top: 1rem;
+            "
+          >
+            <button class="btn btn-secondary" id="browseBtn">
+              📂 浏览文件
+            </button>
+            <button class="btn" id="analyzeBtn">🚀 运行深度分析</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="loading-spinner" id="loader">
+        <div class="spinner"></div>
+        <p
+          style="
+            margin-top: 1rem;
+            color: var(--primary-color);
+            font-weight: 600;
+          "
+        >
+          深度矩阵分析中，请稍候...
+        </p>
+      </div>
+
+      <section
+        class="viz-grid"
+        id="historySection"
+        style="margin-top: 1rem; margin-bottom: 2rem; display: block !important"
+      >
+        <div
+          class="card wide-card"
+          style="padding: 1.5rem; border: 1px dashed var(--glass-border)"
+        >
+          <div
+            class="card-title"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+              padding-bottom: 0.8rem;
+              margin-bottom: 1rem;
+            "
+          >
+            <span style="font-size: 1.1rem">📂 分析历史记录 (云端同步)</span>
+            <span
+              id="historyCount"
+              style="
+                font-size: 0.85rem;
+                color: var(--primary-color);
+                font-weight: 600;
+              "
+              >检测中...</span
+            >
+          </div>
+          <div
+            id="historyList"
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 1rem;
+              max-height: 400px;
+              overflow-y: auto;
+              padding-right: 0.5rem;
+            "
+          >
+            <!-- 历史记录列表 -->
+          </div>
+        </div>
+      </section>
+
+      <section class="viz-grid" id="dashboard">
+        <div class="summary-cards wide-card">
+          <div class="card">
+            <div class="card-title">累计扣分总额</div>
+            <div class="card-value" style="color: #ff4d4d" id="totalDeduction">
+              0.00
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">异常记录总数</div>
+            <div class="card-value" id="totalCases">0</div>
+          </div>
+          <div class="card">
+            <div class="card-title">主要责任单位</div>
+            <div
+              class="card-value"
+              style="font-size: 1.2rem; color: var(--primary-color)"
+              id="topOffender"
+            >
+              -
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">场站扣分热度 (点击柱条查看明细)</div>
+          <div class="chart-container">
+            <canvas id="stationChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">原因频率分布 (点击扇区查看明细)</div>
+          <div class="chart-container">
+            <canvas id="problemChart"></canvas>
+          </div>
+        </div>
+
+        <div
+          class="card wide-card"
+          id="drillDownCard"
+          style="
+            display: none;
+            animation: slideUp 0.5s ease;
+            border-top: 2px solid var(--primary-color);
+          "
+        >
+          <div
+            class="card-title"
+            id="drillDownTitle"
+            style="color: #fff; font-size: 1.2rem; margin-bottom: 1.5rem"
+          >
+            钻取结果溯源
+          </div>
+          <div class="detail-table-wrapper">
+            <table id="detailsTable">
+              <thead>
+                <tr>
+                  <th>厂站名</th>
+                  <th>日期</th>
+                  <th>时刻</th>
+                  <th>考核项</th>
+                  <th>扣分值</th>
+                  <th>具体原因</th>
+                </tr>
+              </thead>
+              <tbody id="detailsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div
+          class="wide-card"
+          style="
+            text-align: center;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+          "
+        >
+          <button class="btn" style="background: #0ea5e9" id="snapshotBtn">
+            📸 网页视觉快照 (PNG)
+          </button>
+          <button class="btn" style="background: #8b5cf6" id="offlineBtn">
+            🌐 离线交互看板 (HTML)
+          </button>
+          <div
+            style="
+              width: 100%;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.05);
+              margin: 0.5rem 0;
+            "
+          ></div>
+          <a
+            href="#"
+            class="btn btn-secondary"
+            id="xlsxBtn"
+            style="padding: 0.8rem 1.5rem; font-size: 1rem"
+            >📊 Excel 矩阵</a
+          >
+          <a
+            href="#"
+            class="btn btn-secondary"
+            id="pdfBtn"
+            style="padding: 0.8rem 1.5rem; font-size: 1rem"
+            >📄 PDF 报告汇总</a
+          >
+        </div>
+      </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <script>
+      Chart.register(ChartDataLabels);
+
+      const dropZone = document.getElementById("dropZone");
+      const fileTriggerArea = document.getElementById("fileTriggerArea");
+      const browseBtn = document.getElementById("browseBtn");
+      const fileInput = document.getElementById("fileInput");
+      const analyzeBtn = document.getElementById("analyzeBtn");
+      const dashboard = document.getElementById("dashboard");
+      const loader = document.getElementById("loader");
+      const detailsBody = document.getElementById("detailsBody");
+      const drillDownCard = document.getElementById("drillDownCard");
+      const drillDownTitle = document.getElementById("drillDownTitle");
+
+      let stationChart, problemChart;
+      let allDetails = [];
+
+      const triggerFile = () => fileInput.click();
+      fileTriggerArea.onclick = triggerFile;
+      browseBtn.onclick = triggerFile;
+
+      fileInput.onchange = () => {
+        if (fileInput.files.length) {
+          document.getElementById("fileDisplay").innerText =
+            `已就绪: ${fileInput.files[0].name}`;
+          document.getElementById("fileDisplay").style.color = "#10b981";
+        }
+      };
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.style.background = "rgba(99, 102, 241, 0.1)";
+      });
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.style.background = "var(--glass-bg)";
+      });
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.style.background = "var(--glass-bg)";
+        if (e.dataTransfer.files.length) {
+          fileInput.files = e.dataTransfer.files;
+          fileInput.dispatchEvent(new Event("change"));
+        }
+      });
+
+      async function fetchHistory() {
+        try {
+          const res = await fetch("/history");
+          const history = await res.json();
+          renderHistory(history);
+        } catch (err) {
+          console.error("Failed to fetch history");
+        }
+      }
+
+      function renderHistory(history) {
+        const list = document.getElementById("historyList");
+        document.getElementById("historyCount").innerText =
+          `共 ${history.length} 条记录`;
+
+        if (history.length === 0) {
+          list.innerHTML =
+            '<p style="color: #94a3b8; text-align: center; padding: 1rem;">暂无历史记录</p>';
+          return;
+        }
+
+        list.innerHTML = history
+          .map(
+            (item) => `
+                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #fff; margin-bottom: 0.2rem; font-size: 0.95rem;">${item.filename}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.8rem;">
+                            <span>📅 ${item.timestamp}</span>
+                            <span>🔥 扣分: <b style="color: #ff4d4d">${item.total_deduction}</b></span>
+                            <span>📊 记录: ${item.total_cases}</span>
+                        </div>
+                        <div style="margin-top: 0.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <a href="/download/original/${item.filename}" class="history-download" style="color: #94a3b8; text-decoration: none; font-size: 0.72rem; display: flex; align-items: center; gap: 4px;">
+                                ⚪ 下载原始 CSV
+                            </a>
+                            <a href="/download/${item.xlsx_filename}" class="history-download" style="color: #10b981; text-decoration: none; font-size: 0.72rem; display: flex; align-items: center; gap: 4px;">
+                                🟢 Excel 矩阵
+                            </a>
+                            <a href="/download/${item.pdf_filename}" class="history-download" style="color: #6366f1; text-decoration: none; font-size: 0.72rem; display: flex; align-items: center; gap: 4px;">
+                                🔵 PDF 报告
+                            </a>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.6rem; align-self: center;">
+                        <button class="btn btn-secondary" onclick='loadRecord(${JSON.stringify(item).replace(/'/g, "&apos;")})' style="padding: 0.35rem 0.8rem; font-size: 0.75rem;">📂 调出看板</button>
+                        <button class="btn" onclick="deleteHistory('${item.file_id}')" style="padding: 0.35rem 0.8rem; font-size: 0.75rem; background: rgba(255,77,77,0.1); color: #ff4d4d; border-color: rgba(255,77,77,0.2)">🗑️ 删除</button>
+                    </div>
+                </div>
+            `,
+          )
+          .join("");
+      }
+
+      function loadRecord(item) {
+        allDetails = item.raw_details;
+        renderDashboard(item);
+        dashboard.scrollIntoView({ behavior: "smooth" });
+      }
+
+      async function deleteHistory(fileId) {
+        const password = prompt("请输入删除密码:");
+        if (password === null) return;
+        
+        try {
+          const res = await fetch(`/history/${fileId}?password=${encodeURIComponent(password)}`, { method: "DELETE" });
+          const data = await res.json();
+          if (data.success) {
+            fetchHistory();
+          } else {
+            alert(data.error || "删除失败");
+          }
+        } catch (err) {
+          alert("网络错误");
+        }
+      }
+
+      // 初始加载历史
+      fetchHistory();
+
+      analyzeBtn.onclick = async () => {
+        if (!fileInput.files.length) {
+          alert("请先选择文件");
+          return;
+        }
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        loader.style.display = "block";
+        dashboard.style.display = "none";
+        drillDownCard.style.display = "none";
+
+        try {
+          const res = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.success) {
+            allDetails = data.raw_details;
+            renderDashboard(data);
+            fetchHistory(); // 分析完刷新历史
+          } else alert("分析中断: " + data.error);
+        } catch (err) {
+          alert("网络超时");
+        } finally {
+          loader.style.display = "none";
+        }
+      };
+
+      // 看板快照 (PNG)
+      document.getElementById("snapshotBtn").onclick = async () => {
+        const btn = document.getElementById("snapshotBtn");
+        const originalText = btn.innerText;
+        btn.innerText = "📷 正在捕获...";
+
+        try {
+          // 确保下钻卡片如果是打开的也一起截进去
+          const canvas = await html2canvas(dashboard, {
+            backgroundColor: "#0b0e14",
+            scale: 2,
+            useCORS: true,
+            logging: false,
+          });
+          const link = document.createElement("a");
+          link.download = `分析看板视觉快照_${new Date().getTime()}.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        } catch (err) {
+          alert("截图失败");
+        } finally {
+          btn.innerText = originalText;
+        }
+      };
+
+      // 离线交互看板导出 (HTML)
+      document.getElementById("offlineBtn").onclick = () => {
+        if (!allDetails.length) return;
+
+        const currentData = {
+          total_deduction: document.getElementById("totalDeduction").innerText,
+          total_cases: document.getElementById("totalCases").innerText,
+          top_stations: lastRenderedData.top_stations,
+          top_items: lastRenderedData.top_items,
+          raw_details: allDetails,
+        };
+
+        const offlineTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>离线分析看板 - ${new Date().toLocaleDateString()}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"><\/script>
+    <style>
+        ${document.querySelector('link[rel="stylesheet"]').href ? '@import url("' + document.querySelector('link[rel="stylesheet"]').href + '");' : ""}
+        body { background: #0b0e14; padding: 2rem; color: #fff; font-family: 'Outfit', sans-serif; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .viz-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+        .summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        .card { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card-title { font-size: 0.9rem; color: #e2e8f0; font-weight: 700; margin-bottom: 0.8rem; }
+        .card-value { font-size: 2.4rem; font-weight: 800; }
+        .chart-container { height: 400px; position: relative; }
+        .wide-card { grid-column: span 2; }
+        .detail-table-wrapper { margin-top: 1.5rem; max-height: 600px; overflow-y: auto; background: rgba(15, 23, 42, 0.4); border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { position: sticky; top: 0; background: #1e293b; padding: 1.2rem 1rem; text-align: left; color: #6366f1; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; vertical-align: top; word-wrap: break-word; }
+        .offline-notice { background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="offline-notice">这是一个离线生成的交互式报告，您可以自由点击图表进行钻取分析。</div>
+        <div class="viz-grid" style="display: grid;">
+            <div class="summary-cards wide-card">
+                <div class="card">
+                    <div class="card-title">累计扣分总额</div>
+                    <div class="card-value" style="color: #ff4d4d;">${currentData.total_deduction}</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">异常记录总数</div>
+                    <div class="card-value">${currentData.total_cases}</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">主要责任单位</div>
+                    <div id="offlineOffender"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">场站扣分热度 (点击查看明细)</div>
+                <div class="chart-container"><canvas id="stationChart"></canvas></div>
+            </div>
+            <div class="card">
+                <div class="card-title">原因分布 (点击查看明细)</div>
+                <div class="chart-container"><canvas id="problemChart"></canvas></div>
+            </div>
+            <div class="card wide-card" id="drillDownCard" style="display: none; border-top: 2px solid #6366f1; margin-top:1rem;">
+                <div class="card-title" id="drillDownTitle" style="color: #fff; font-size: 1.1rem; margin-bottom: 1rem;"></div>
+                <div class="detail-table-wrapper">
+                    <table>
+                        <thead><tr><th>厂站名</th><th>日期</th><th>时刻</th><th>考核项</th><th>扣分值</th><th>原因</th></tr></thead>
+                        <tbody id="detailsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const data = ${JSON.stringify(currentData)};
+        const allDetails = data.raw_details;
+        Chart.register(ChartDataLabels);
+
+        // 渲染责任单位
+        document.getElementById('offlineOffender').innerHTML = data.top_stations.slice(0, 3).map(s => \`
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.95rem;">\${s.name}</span>
+                <b style="color: #ff4d4d;">-\${s.value}</b>
+            </div>
+        \`).join('');
+
+        const ctx1 = document.getElementById('stationChart').getContext('2d');
+        const sc = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: data.top_stations.map(s => s.name),
+                datasets: [{ data: data.top_stations.map(s => s.value), backgroundColor: 'rgba(99, 102, 241, 0.8)' }]
+            },
+            options: { 
+                indexAxis: 'y', maintainAspectRatio: false, 
+                plugins: { legend: {display: false}, datalabels: {color: '#fff', font: {weight: 'bold'}} },
+                scales: { x: {ticks: {color:'#fff'}}, y: {ticks: {color:'#fff'}} },
+                onClick: (e, el) => { if(el.length) showDrillDown('station', sc.data.labels[el[0].index]); }
+            }
+        });
+
+        const ctx2 = document.getElementById('problemChart').getContext('2d');
+        const pc = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: data.top_items.map(p => p.name),
+                datasets: [{ data: data.top_items.map(p => p.value), backgroundColor: ['#6366f1','#a855f7','#f43f5e','#fbbf24','#10b981','#3b82f6','#ec4899','#f59e0b','#06b6d4'] }]
+            },
+            options: { 
+                maintainAspectRatio: false, 
+                plugins: { legend: { labels: {color:'#fff'}, position:'right' }, datalabels:{display:false} },
+                onClick: (e, el) => { if(el.length) showDrillDown('item', pc.data.labels[el[0].index]); }
+            }
+        });
+
+        function showDrillDown(type, value) {
+            const card = document.getElementById('drillDownCard');
+            card.style.display = 'block';
+            const filtered = allDetails.filter(d => (type === 'station' ? d.厂站名 : d.考核项) === value);
+            const total = filtered.reduce((s, d) => s + parseFloat(d.扣分值), 0).toFixed(2);
+            document.getElementById('drillDownTitle').innerHTML = \`溯源: \${value} (累计 -\${total})\`;
+            document.getElementById('detailsBody').innerHTML = filtered.map(d => \`
+                <tr>
+                    <td>\${d.厂站名}</td><td>\${d.日期}</td><td>\${d.时刻}</td>
+                    <td style="color:#fbbf24">\${d.考核项}</td>
+                    <td style="color:#ff4d4d; font-weight:800;">-\${d.扣分值}</td>
+                    <td style="color:#cbd5e1; font-size:0.8rem;">\${d.具体原因}</td>
+                </tr>
+            \`).join('');
+            card.scrollIntoView({behavior: 'smooth'});
+        }
+    <\/script>
+</body>
+</html>`;
+
+        const blob = new Blob([offlineTemplate], { type: "text/html" });
+        const link = document.createElement("a");
+        link.download = `分析交互看板_${new Date().getTime()}.html`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+      };
+
+      let lastRenderedData = null; // 记录最近一次渲染数据
+
+      function renderDashboard(data) {
+        lastRenderedData = data;
+        document.getElementById("totalDeduction").innerText =
+          data.total_deduction;
+        document.getElementById("totalCases").innerText = data.total_cases;
+
+        // 渲染前3名责任单位
+        const topOffendersList = data.top_stations.slice(0, 3);
+        const offenderHtml = topOffendersList
+          .map(
+            (s) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.95rem; font-weight: 500;">${s.name}</span>
+                    <b style="color: var(--danger); font-size: 1rem;">-${s.value}</b>
+                </div>
+            `,
+          )
+          .join("");
+        document.getElementById("topOffender").innerHTML = offenderHtml || "-";
+
+        document.getElementById("xlsxBtn").href =
+          `/download/${data.xlsx_filename}`;
+
+        document.getElementById("pdfBtn").href =
+          `/download/${data.pdf_filename}`;
+        dashboard.style.display = "grid";
+
+        const ctx1 = document.getElementById("stationChart").getContext("2d");
+        if (stationChart) stationChart.destroy();
+        stationChart = new Chart(ctx1, {
+          type: "bar",
+          data: {
+            labels: data.top_stations.map((s) => s.name),
+            datasets: [
+              {
+                label: "累计扣分",
+                data: data.top_stations.map((s) => s.value),
+                backgroundColor: "rgba(99, 102, 241, 0.8)",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: "y",
+            plugins: {
+              legend: { display: false },
+              datalabels: {
+                color: "#fff",
+                anchor: "end",
+                align: "right",
+                font: { weight: "bold", size: 11 },
+              },
+            },
+            scales: {
+              x: { ticks: { color: "#cbd5e1" } },
+              y: {
+                ticks: { color: "#fff", font: { size: 12, weight: "bold" } },
+              },
+            },
+            onClick: (event, elements) => {
+              if (elements.length > 0)
+                showDrillDown(
+                  "station",
+                  stationChart.data.labels[elements[0].index],
+                );
+            },
+          },
+        });
+
+        const ctx2 = document.getElementById("problemChart").getContext("2d");
+        if (problemChart) problemChart.destroy();
+        problemChart = new Chart(ctx2, {
+          type: "doughnut",
+          data: {
+            labels: data.top_items.map((p) => p.name),
+            datasets: [
+              {
+                data: data.top_items.map((p) => p.value),
+                backgroundColor: [
+                  "#6366f1",
+                  "#a855f7",
+                  "#f43f5e",
+                  "#fbbf24",
+                  "#10b981",
+                  "#3b82f6",
+                  "#ec4899",
+                  "#f59e0b",
+                  "#06b6d4",
+                ],
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "right",
+                labels: {
+                  color: "#ffffff",
+                  font: { size: 12, weight: "600" },
+                  padding: 15,
+                  boxWidth: 12,
+                },
+              },
+              datalabels: { display: false },
+            },
+            onClick: (event, elements) => {
+              if (elements.length > 0)
+                showDrillDown(
+                  "item",
+                  problemChart.data.labels[elements[0].index],
+                );
+            },
+          },
+        });
+      }
+
+      function showDrillDown(type, value) {
+        drillDownCard.style.display = "block";
+        const searchVal = value.toString().trim();
+        const filtered = allDetails.filter(
+          (d) =>
+            (type === "station" ? d.厂站名 : d.考核项).toString().trim() ===
+            searchVal,
+        );
+
+        const currentTotal = filtered
+          .reduce((sum, d) => sum + parseFloat(d.扣分val || d.扣分值), 0)
+          .toFixed(2);
+
+        // 构建分类小计 HTML (如果穿透的是场站)
+        let breakdownHtml = "";
+        if (type === "station") {
+          const groups = filtered.reduce((acc, d) => {
+            const cat = d.考核项;
+            acc[cat] = (acc[cat] || 0) + parseFloat(d.扣分值);
+            return acc;
+          }, {});
+
+          breakdownHtml =
+            '<div style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.8rem;">';
+          for (const [cat, val] of Object.entries(groups)) {
+            breakdownHtml += `
+                        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem;">
+                            <span style="color: #94a3b8;">${cat}:</span> 
+                            <b style="color: var(--primary-color); margin-left: 4px;">-${val.toFixed(2)}</b>
+                        </div>`;
+          }
+          breakdownHtml += "</div>";
+        }
+
+        drillDownCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        drillDownTitle.innerHTML = `
+                <div style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.3rem;">钻取结果溯源：<b style="color: var(--primary-color)">${value}</b></span>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 2px;">当前选中项累计扣分</div>
+                            <div style="color: #ff4d4d; font-size: 1.5rem; font-weight: 800;">${currentTotal}</div>
+                        </div>
+                    </div>
+                    ${breakdownHtml}
+                </div>
+            `;
+
+        if (filtered.length === 0) {
+          detailsBody.innerHTML =
+            '<tr><td colspan="6" style="text-align: center; padding: 3rem;">未找到相关明细</td></tr>';
+        } else {
+          detailsBody.innerHTML = filtered
+            .map(
+              (d) => `
+                    <tr style="font-size: 0.85rem;">
+                        <td style="color: #fff; font-weight: 600;">${d.厂站名}</td>
+                        <td style="color: #fff;">${d.日期}</td>
+                        <td style="color: #fff; font-family: monospace;">${d.时刻}</td>
+                        <td><span style="color: var(--warning); font-weight: 600;">${d.考核项}</span></td>
+                        <td style="color: var(--danger); font-weight: 800; font-size: 0.95rem;">-${d.扣分值}</td>
+                        <td style="color: #f1f5f9; line-height: 1.5; font-size: 0.82rem;">${d.具体原因}</td>
+                    </tr>
+                `,
+            )
+            .join("");
+        }
+      }
+    </script>
+  </body>
+</html>

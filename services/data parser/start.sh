@@ -16,9 +16,9 @@ nohup python3 app.py > server.log 2>&1 &
 sleep 2
 
 echo "服务已启动！正在自动打开网页..."
-echo "访问地址: http://127.0.0.1:5000"
+echo "访问地址: http://127.0.0.1:5001"
 
 # 在 macOS 上自动打开默认浏览器
-open "http://127.0.0.1:5000"
+open "http://127.0.0.1:5001"
 
 echo "日志文件: $DIR/server.log"

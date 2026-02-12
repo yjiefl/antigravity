@@ -4,5 +4,4 @@ python-multipart
 openai
 pydub
 python-dotenv
-shutil
-os
+faster-whisper

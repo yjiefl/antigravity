@@ -185,6 +185,53 @@ run_local_overwrite() {
     fi
 }
 
+# 以远程数据为准强制覆盖本地 (Remote Overwrite Local)
+run_remote_overwrite() {
+    BRANCH=$(git branch --show-current)
+    echo "${YELLOW}正在获取远程最新状态...${NC}"
+    git fetch origin "$BRANCH" 2>/dev/null
+
+    echo "${RED}！！！警告：此操作将彻底丢弃所有本地未提交的修改，并将本地工作区重置为远程仓库 ($BRANCH) 的状态！！！${NC}"
+    
+    while true; do
+        echo -n "请确认操作: [y]继续, [n]取消, [v]查看差异详情: "
+        read -r confirm
+        case "$confirm" in
+            [Vv]) 
+                # 这里我们需要对比的是 HEAD vs origin/$BRANCH (即如果我们不做操作，本地相对于远程是什么状态)
+                # run_compare 默认是对比 origin/$BRANCH..HEAD
+                run_compare 
+                ;;
+            [Yy]) break ;;
+            [Nn]) echo "操作已取消。"; return ;;
+            *) echo "无效输入，请输入 y, n 或 v" ;;
+        esac
+    done
+
+    echo "${CYAN}=== 开始以远程为主同步 (重置本地) ===${NC}"
+    
+    # 1. 强制重置
+    if git reset --hard origin/"$BRANCH"; then
+        echo "   ${GREEN}本地已重置为 origin/$BRANCH 状态。${NC}"
+        log_to_file "Reset local to origin/$BRANCH."
+    else
+        echo "${RED}错误: 重置失败！${NC}"
+        log_to_file "Reset to origin/$BRANCH failed."
+        return 1
+    fi
+
+    # 2. 清理未追踪文件和文件夹
+    echo "   ${YELLOW}正在清理多余的本地文件 (git clean -fd)...${NC}"
+    if git clean -fd; then
+        echo "   ${GREEN}清理成功。${NC}"
+        log_to_file "Cleaned untracked files."
+    else
+        echo "${YELLOW}警告: 部分文件无法清理。${NC}"
+    fi
+
+    echo "${GREEN}同步完成！本地已完全匹配远程仓库。${NC}"
+}
+
 # 创建 Release
 run_release() {
     echo "${CYAN}>>> 创建新版本 (Release)${NC}"
@@ -214,9 +261,10 @@ show_menu() {
     echo "3. ${MAGENTA}发布版本${NC} (Create Tag & Push)"
     echo "4. ${YELLOW}以本地为准同步${NC} (Overwrite Remote! Skip Pull)"
     echo "5. ${RED}强制推送${NC} (仅 Push --force)"
+    echo "6. ${BLUE}以远程为准同步${NC} (Overwrite Local! Reset & Clean)"
     echo "0. 退出"
     echo "-----------------------------------------"
-    echo -n "请选择 [0-5]: "
+    echo -n "请选择 [0-6]: "
     read choice
     
     case $choice in
@@ -225,6 +273,7 @@ show_menu() {
         3) run_release ;;
         4) run_local_overwrite ;;
         5) run_sync true ;;
+        6) run_remote_overwrite ;;
         0) exit 0 ;;
         *) echo "无效选择" ;;
     esac
@@ -235,6 +284,7 @@ if [ $# -gt 0 ]; then
         -s|--status) run_status ;;
         -p|--push|--sync) run_sync false ;;
         -o|--overwrite) run_local_overwrite ;;
+        -r|--remote-overwrite) run_remote_overwrite ;;
         -f|--force) run_sync true ;;
         *) run_sync false ;;
     esac

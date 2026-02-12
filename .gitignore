@@ -37,3 +37,6 @@ node_modules/
 
 # --- Docker 相关 ---
 .docker/
+
+# --- Environment Variables ---
+.env
