@@ -48,18 +48,22 @@ fi
 # 或许直接复用 ssh 连接管道传输文件更稳妥？ (cat script | ssh host "cat > /tmp/script")
 
 # 解析 Host (取最后一个参数)
-# 这是一个简化的假设，用户输入的最后一个部分通常是 destinations
 eval "SSH_ARGS=($SSH_CMD_INPUT)"
-REMOTE_TARGET="${SSH_ARGS[-1]}"
+# 兼容 bash 3.2 (macOS default) split handling
+len=${#SSH_ARGS[@]}
 
-# 提取非 host 参数 (例如 -p 2222, -i key.pem)
-# 移除第一个 'ssh' (如果存在) 和最后一个 element
-SSH_OPTS=""
-if [[ "${SSH_ARGS[0]}" == "ssh" ]]; then
-    unset 'SSH_ARGS[0]'
+if [ $len -gt 0 ]; then
+    last_idx=$((len - 1))
+    REMOTE_TARGET="${SSH_ARGS[$last_idx]}"
+    
+    # 提取选项显示用
+    if [ $len -gt 1 ]; then
+        unset "SSH_ARGS[$last_idx]"
+        SSH_OPTS="${SSH_ARGS[@]}"
+    fi
+else
+    REMOTE_TARGET="Unknown"
 fi
-unset 'SSH_ARGS[${#SSH_ARGS[@]}-1]'
-SSH_OPTS="${SSH_ARGS[@]}"
 
 echo -e "${GREEN}[*] 目标主机: $REMOTE_TARGET (选项: ${SSH_OPTS:-默认})${NC}"
 

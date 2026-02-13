@@ -5,7 +5,7 @@
 # 描述: Linux 安全审计脚本 (支持 Ubuntu/CentOS/Debian/Alinux)
 # 功能: 安全检查、报告生成、交互式修复
 # 作者: AntiGravity
-# 版本: 1.2.0
+# 版本: 1.2.1
 # 日期: 2026-02-13
 # ==============================================================================
 
@@ -60,8 +60,6 @@ init_audit() {
 
 # 3. 记录结果
 # 参数: $1=检查项ID(用于修复映射), $2=显示名称, $3=状态, $4=风险等级, $5=建议
-# 3. 记录结果
-# 参数: $1=检查项ID(用于修复映射), $2=显示名称, $3=状态, $4=风险等级, $5=建议
 log_result() {
     local id="$1"
     local item="$2"
@@ -86,7 +84,126 @@ log_result() {
     fi
 }
 
-# (省略中间审计函数...)
+# ---------------------- 审计功能模块 ----------------------
+
+# [FS-01] 账号安全
+audit_account() {
+    echo "正在审计账号安全..."
+    
+    # Root 锁定
+    local root_status=$(passwd -S root 2>/dev/null | awk '{print $2}')
+    # CentOS passwd -S 格式不同 (通常是 LK 或 PS), Ubuntu 是 L/NP/P
+    if [[ "$OS_TYPE" == "centos" ]] || [[ "$OS_TYPE" == "rhel" ]] || [[ "$OS_TYPE" == "alinux" ]]; then
+        # CentOS: LK=Locked, PS=Password Set, NP=No Password
+        if [[ "$root_status" == "LK" ]]; then root_status="L"; fi
+    fi
+
+    if [[ "$root_status" == "L" ]] || [[ "$root_status" == "NP" ]]; then
+        log_result "ROOT_LOCK" "Root 账户锁定" "已锁定" "Low" "-"
+    else
+        log_result "ROOT_LOCK" "Root 账户锁定" "未锁定" "High" "锁定 Root，使用 sudo"
+    fi
+
+    # 空口令
+    local empty_pw=$(awk -F: '($2 == "") {print $1}' /etc/shadow)
+    if [[ -z "$empty_pw" ]]; then
+        log_result "EMPTY_PW" "空口令用户" "无" "Low" "-"
+    else
+        log_result "EMPTY_PW" "空口令用户" "发现: $empty_pw" "High" "设置密码或锁定"
+    fi
+
+    # Uid 0
+    local uid0=$(awk -F: '($3 == 0) {print $1}' /etc/passwd)
+    if [[ "$uid0" == "root" ]]; then
+        log_result "UID0_CHECK" "UID 0 用户检查" "无异常" "Low" "-"
+    else
+        log_result "UID0_CHECK" "UID 0 用户检查" "异常: $uid0" "High" "核查非 Root 的 UID 0 用户"
+    fi
+    
+    # PAM Faillock
+    local pam_file="/etc/pam.d/common-auth"
+    if [[ "$OS_TYPE" == "centos" ]] || [[ "$OS_TYPE" == "rhel" ]] || [[ "$OS_TYPE" == "alinux" ]]; then
+        pam_file="/etc/pam.d/system-auth"
+    fi
+    
+    if grep -E "pam_faillock.so|pam_tally2.so" "$pam_file" >/dev/null 2>&1; then
+        log_result "PAM_LOCK" "登录失败锁定" "已配置" "Low" "-"
+    else
+        log_result "PAM_LOCK" "登录失败锁定" "未配置" "Medium" "配置 pam_faillock/tally2"
+    fi
+}
+
+# [NET-01] 网络安全
+audit_network() {
+    echo "正在审计网络安全..."
+    
+    # 防火墙 (适配 UFW 和 firewalld)
+    local fw_status="未运行"
+    local fw_risk="High"
+    
+    if command -v ufw >/dev/null 2>&1; then
+        local u_stat=$(ufw status | grep "Status" | awk '{print $2}')
+        if [[ "$u_stat" == "active" ]]; then fw_status="UFW 激活"; fw_risk="Low"; fi
+    elif command -v firewall-cmd >/dev/null 2>&1; then
+        local f_stat=$(systemctl is-active firewalld)
+        if [[ "$f_stat" == "active" ]]; then fw_status="Firewalld 激活"; fw_risk="Low"; fi
+    fi
+    
+    log_result "FIREWALL" "防火墙状态" "$fw_status" "$fw_risk" "启用防火墙 (UFW/Firewalld)"
+
+    # SSH 配置
+    local sshd_conf="/etc/ssh/sshd_config"
+    if [ -f "$sshd_conf" ]; then
+        # Root Login
+        local prl=$(grep "^PermitRootLogin" $sshd_conf | awk '{print $2}')
+        if [[ "$prl" == "no" ]] || [[ "$prl" == "prohibit-password" ]]; then
+            log_result "SSH_ROOT" "SSH Root 登录" "$prl" "Low" "-"
+        else
+            log_result "SSH_ROOT" "SSH Root 登录" "${prl:-yes}" "Medium" "设置为 no 或 prohibit-password"
+        fi
+        
+        # MaxAuthTries
+        local mat=$(grep "^MaxAuthTries" $sshd_conf | awk '{print $2}')
+        if [[ -n "$mat" ]] && [[ "$mat" -le 4 ]]; then
+            log_result "SSH_TRIES" "SSH 重试次数" "$mat" "Low" "-"
+        else
+            log_result "SSH_TRIES" "SSH 重试次数" "${mat:-默认}" "Medium" "设置 MaxAuthTries <= 4"
+        fi
+    else
+        log_result "SSH_CONF" "SSH 配置文件" "未找到" "Medium" "检查配置位置"
+    fi
+}
+
+# [SYS-01] 系统配置
+audit_system() {
+    echo "正在审计系统配置..."
+    
+    # IP Forward
+    local ipf=$(sysctl net.ipv4.ip_forward 2>/dev/null | awk '{print $3}')
+    if [[ "$ipf" == "0" ]]; then
+        log_result "IP_FWD" "IP 转发" "关闭" "Low" "-"
+    else
+        log_result "IP_FWD" "IP 转发" "开启" "Medium" "非路由需关闭"
+    fi
+    
+    # Rsyslog
+    if systemctl is-active --quiet rsyslog; then
+        log_result "RSYSLOG" "Rsyslog 服务" "运行中" "Low" "-"
+    else
+        log_result "RSYSLOG" "Rsyslog 服务" "未运行" "Medium" "启用 rsyslog"
+    fi
+}
+
+# [FS-02] 文件权限
+audit_files() {
+    echo "正在审计文件权限..."
+    local shadow_perm=$(stat -c "%a" /etc/shadow 2>/dev/null)
+    if [[ "$shadow_perm" -le 640 ]]; then # 000, 400, 600, 640 are ok for root:shadow (ubuntu) or root:root
+         log_result "PERM_SHADOW" "/etc/shadow 权限" "$shadow_perm" "Low" "-"
+    else
+         log_result "PERM_SHADOW" "/etc/shadow 权限" "$shadow_perm" "High" "设置为 640/600/400"
+    fi
+}
 
 # ---------------------- 修复功能模块 ----------------------
 
@@ -168,8 +285,7 @@ interactive_fix() {
     declare -A risk_map
     declare -A desc_map
     
-    # 去重显示（虽然 ID 可能有重复如果审计多次，但这里假设一次审计）
-    # 使用关联数组去重
+    # 去重显示
     for line in "${fail_lines[@]}"; do
         local id="${line%%|*}"
         local desc="${line#*|}"
@@ -211,75 +327,6 @@ interactive_fix() {
 
 # ---------------------- 报告生成 ----------------------
 
-gen_report() {
-    echo "# Linux 安全审计报告" > "$REPORT_FILE"
-    echo "系统信息: $OS_TYPE $OS_VERSION ($(uname -r))" >> "$REPORT_FILE"
-    echo "生成时间: $(date)" >> "$REPORT_FILE"
-    echo "" >> "$REPORT_FILE"
-    
-    echo "## 🔴 需关注的风险 (Risks)" >> "$REPORT_FILE"
-    if [ -s "$TMP_FAIL" ]; then
-        echo "| 检查项 | 状态 | 等级 | 建议 |" >> "$REPORT_FILE"
-        echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
-        cat "$TMP_FAIL" >> "$REPORT_FILE"
-    else
-        echo "未发现高/中危风险。" >> "$REPORT_FILE"
-    fi
-    echo "" >> "$REPORT_FILE"
-
-    echo "## 🟢 已通过 (Passed)" >> "$REPORT_FILE"
-    if [ -s "$TMP_PASS" ]; then
-        echo "| 检查项 | 状态 | 等级 | 建议 |" >> "$REPORT_FILE"
-        echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
-        cat "$TMP_PASS" >> "$REPORT_FILE"
-    fi
-    
-    # 清理
-    rm -f "$TMP_FAIL" "$TMP_PASS" "$TMP_INFO" "$TMP_FAIL_IDS"
-}
-
-# ---------------------- 主逻辑 ----------------------
-
-# CLI 参数解析
-if [[ "$1" == "--fix" ]]; then
-    MODE="fix"
-fi
-
-detect_os
-check_root
-init_audit
-
-# 执行审计 (先生成问题表)
-audit_account
-audit_network
-audit_system
-audit_files
-
-# 报告生成 (注意: 报告生成如果很快完成，我们可以在修复前给用户看报告，或者先修复再生成)
-# 根据用户需求：先审计 -> 形成问题表 -> 用户选择修复 -> (隐含:修复完结束)
-# 我们先生成审计报告，然后如果有 --fix 参数，则进入修复菜单。
-# 此时不应删除中间文件，gen_report 需要调整
-
-# 修正 gen_report，使其在 fix 模式下不删除文件，或我们手动控制清理
-# 为了简单，我们在 main 最后统一清理
-
-main() {
-    echo -e "${GREEN}[*] 正在执行系统审计...${NC}"
-    audit_account
-    audit_network
-    audit_system
-    audit_files
-    
-    # 先生成一份报告（作为审计结果）
-    # 但 gen_report 会删除临时文件，所以我们要修改 gen_report 或者先备份
-    # 更好的做法：gen_report 不删除文件。
-    # 我们用一个专门的 clean_up 函数。
-    
-    # 暂时重定义 gen_report 的清理逻辑：仅在此处调用时不清理
-    # 由于 bash 函数重定义麻烦，我们在 gen_report 结尾注释掉 rm，在 main 显式 rm
-}
-
-# 重新定义 gen_report 不包含 rm
 gen_report_no_clean() {
     echo "# Linux 安全审计报告" > "$REPORT_FILE"
     echo "系统信息: $OS_TYPE $OS_VERSION ($(uname -r))" >> "$REPORT_FILE"
@@ -308,7 +355,13 @@ cleanup() {
     rm -f "$TMP_FAIL" "$TMP_PASS" "$TMP_INFO" "$TMP_FAIL_IDS"
 }
 
-# 执行流
+# ---------------------- 主逻辑 ----------------------
+
+# CLI 参数解析
+if [[ "$1" == "--fix" ]]; then
+    MODE="fix"
+fi
+
 detect_os
 check_root
 init_audit
