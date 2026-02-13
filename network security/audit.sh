@@ -134,6 +134,7 @@ audit_account() {
 }
 
 # [NET-01] 网络安全
+# [NET-01] 网络安全
 audit_network() {
     echo "正在审计网络安全..."
     
@@ -162,6 +163,14 @@ audit_network() {
             log_result "SSH_ROOT" "SSH Root 登录" "${prl:-yes}" "Medium" "设置为 no 或 prohibit-password"
         fi
         
+        # Password Authentication
+        local pass_auth=$(grep "^PasswordAuthentication" $sshd_conf | awk '{print $2}')
+        if [[ "$pass_auth" == "no" ]]; then
+            log_result "SSH_PASS" "SSH 密码认证" "禁止" "Low" "-"
+        else
+            log_result "SSH_PASS" "SSH 密码认证" "${pass_auth:-默认}" "Medium" "建议使用密钥，关闭密码认证"
+        fi
+
         # MaxAuthTries
         local mat=$(grep "^MaxAuthTries" $sshd_conf | awk '{print $2}')
         if [[ -n "$mat" ]] && [[ "$mat" -le 4 ]]; then
@@ -172,6 +181,12 @@ audit_network() {
     else
         log_result "SSH_CONF" "SSH 配置文件" "未找到" "Medium" "检查配置位置"
     fi
+    
+    # 监听端口
+    local func_ls=""
+    if command -v ss >/dev/null; then func_ls="ss -tuln"; else func_ls="netstat -tuln"; fi
+    local listen_ports=$($func_ls | grep LISTEN | awk '{print $5}' | cut -d: -f2 | sort -u | tr '\n' ' ')
+    log_result "PORTS" "监听端口" "$listen_ports" "Info" "人工确认业务端口"
 }
 
 # [SYS-01] 系统配置
@@ -186,23 +201,77 @@ audit_system() {
         log_result "IP_FWD" "IP 转发" "开启" "Medium" "非路由需关闭"
     fi
     
+    # ICMP Redirects
+    local icmp_red=$(sysctl net.ipv4.conf.all.accept_redirects 2>/dev/null | awk '{print $3}')
+    if [[ "$icmp_red" == "0" ]]; then
+        log_result "ICMP_RED" "ICMP 重定向" "禁止" "Low" "-"
+    else
+        log_result "ICMP_RED" "ICMP 重定向" "允许" "Medium" "建议禁止接受重定向"
+    fi
+    
     # Rsyslog
     if systemctl is-active --quiet rsyslog; then
         log_result "RSYSLOG" "Rsyslog 服务" "运行中" "Low" "-"
     else
         log_result "RSYSLOG" "Rsyslog 服务" "未运行" "Medium" "启用 rsyslog"
     fi
+    
+    # Auditd
+    if systemctl is-active --quiet auditd; then
+        log_result "AUDITD" "Auditd 服务" "运行中" "Low" "-"
+    else
+        log_result "AUDITD" "Auditd 服务" "未运行" "Medium" "建议安装并启用 auditd"
+    fi
+    
+    # Logrotate
+    if [ -f "/etc/logrotate.conf" ]; then
+        log_result "LOGROTATE" "Logrotate" "配置存在" "Low" "-"
+    else
+        log_result "LOGROTATE" "Logrotate" "缺失" "High" "配置日志轮转"
+    fi
 }
 
 # [FS-02] 文件权限
 audit_files() {
     echo "正在审计文件权限..."
+    
     local shadow_perm=$(stat -c "%a" /etc/shadow 2>/dev/null)
-    if [[ "$shadow_perm" -le 640 ]]; then # 000, 400, 600, 640 are ok for root:shadow (ubuntu) or root:root
+    if [[ "$shadow_perm" -le 640 ]]; then
          log_result "PERM_SHADOW" "/etc/shadow 权限" "$shadow_perm" "Low" "-"
     else
          log_result "PERM_SHADOW" "/etc/shadow 权限" "$shadow_perm" "High" "设置为 640/600/400"
     fi
+    
+    local passwd_perm=$(stat -c "%a" /etc/passwd 2>/dev/null)
+    if [[ "$passwd_perm" == "644" ]]; then
+        log_result "PERM_PASSWD" "/etc/passwd 权限" "644" "Low" "-"
+    else
+        log_result "PERM_PASSWD" "/etc/passwd 权限" "$passwd_perm" "Medium" "建议 644"
+    fi
+    
+    # Sudoers NOPASSWD check
+    if grep -r "NOPASSWD" /etc/sudoers /etc/sudoers.d/ > /dev/null 2>&1; then
+        log_result "SUDO_NOPASS" "Sudo NOPASSWD" "存在" "Medium" "建议移除免密 sudo"
+    else
+        log_result "SUDO_NOPASS" "Sudo NOPASSWD" "无" "Low" "-"
+    fi
+}
+
+# [HOST-01] 主机信息
+audit_host_info() {
+    echo "正在收集主机信息..."
+    local kernel=$(uname -r)
+    log_result "INFO_KERNEL" "内核版本" "$kernel" "Info" "-"
+    
+    local uptime=$(uptime -p)
+    log_result "INFO_UPTIME" "运行时间" "$uptime" "Info" "-"
+    
+    local cpu=$(grep -c processor /proc/cpuinfo)
+    local mem=$(free -h | grep Mem | awk '{print $2}')
+    log_result "INFO_SPEC" "规格" "${cpu}核 / ${mem}内存" "Info" "-"
+    
+    local disk=$(df -h / | tail -1 | awk '{print $5}')
+    log_result "INFO_DISK" "根分区使用率" "$disk" "Info" ">80% 需关注"
 }
 
 # ---------------------- 修复功能模块 ----------------------
@@ -241,6 +310,12 @@ do_fix() {
         systemctl restart sshd
         echo "已设置 PermitRootLogin prohibit-password"
         ;;
+    "SSH_PASS")
+        sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+        grep -q "^PasswordAuthentication" /etc/ssh/sshd_config || echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+        systemctl restart sshd
+        echo "已关闭 SSH 密码认证 (请确保已配置密钥!)"
+        ;;
     "SSH_TRIES")
         sed -i 's/^MaxAuthTries.*/MaxAuthTries 4/' /etc/ssh/sshd_config
         grep -q "^MaxAuthTries" /etc/ssh/sshd_config || echo "MaxAuthTries 4" >> /etc/ssh/sshd_config
@@ -252,16 +327,33 @@ do_fix() {
         sed -i 's/^net.ipv4.ip_forward.*/net.ipv4.ip_forward = 0/' /etc/sysctl.conf
         echo "已关闭 IP 转发"
         ;;
+    "ICMP_RED")
+        sysctl -w net.ipv4.conf.all.accept_redirects=0
+        sed -i 's/^net.ipv4.conf.all.accept_redirects.*/net.ipv4.conf.all.accept_redirects = 0/' /etc/sysctl.conf
+        echo "已禁止 ICMP 重定向"
+        ;;
     "RSYSLOG")
         systemctl enable --now rsyslog
         echo "已启动 Rsyslog"
+        ;;
+    "AUDITD")
+        if [[ "$OS_TYPE" == "ubuntu" ]] || [[ "$OS_TYPE" == "debian" ]]; then
+            apt-get install -y auditd && systemctl enable --now auditd
+        elif [[ "$OS_TYPE" == "centos" ]] || [[ "$OS_TYPE" == "alinux" ]]; then
+            yum install -y audit && systemctl enable --now auditd
+        fi
+        echo "已尝试安装/启动 Auditd"
         ;;
     "PERM_SHADOW")
         chmod 640 /etc/shadow
         echo "已执行 chmod 640 /etc/shadow"
         ;;
+    "PERM_PASSWD")
+        chmod 644 /etc/passwd
+        echo "已执行 chmod 644 /etc/passwd"
+        ;;
     *)
-        echo -e "${RED}[!] 未配置该项的自动修复逻辑${NC}"
+        echo -e "${RED}[!] 未配置该项的自动修复逻辑或需人工干预${NC}"
         ;;
     esac
 }
@@ -349,6 +441,51 @@ gen_report_no_clean() {
         echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
         cat "$TMP_PASS" >> "$REPORT_FILE"
     fi
+    
+    echo "" >> "$REPORT_FILE"
+    echo "## ℹ️ 主机信息 (Host Info)" >> "$REPORT_FILE"
+    if [ -s "$TMP_INFO" ]; then
+        echo "| 信息项 | 内容 | 备注 |" >> "$REPORT_FILE"
+        echo "| --- | --- | --- |" >> "$REPORT_FILE"
+        cat "$TMP_INFO" >> "$REPORT_FILE" # Assuming log_result formats correctly for 3 columns or update log_result
+    fi
+}
+# Note: log_result uses 4 columns. For Info, 'Risk' is 'Info'. It fits the table structure above if header matches.
+# Let's adjust gen_report_no_clean to match log_result structure (4 cols) or just dump it.
+# log_result outputs: | item | status | risk | recommendation |
+# So Info table should also have 4 columns.
+
+# 修正 gen_report_no_clean 的 Info 部分
+gen_report_no_clean() {
+    echo "# Linux 安全审计报告" > "$REPORT_FILE"
+    echo "系统信息: $OS_TYPE $OS_VERSION ($(uname -r))" >> "$REPORT_FILE"
+    echo "生成时间: $(date)" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    
+    echo "## 🔴 需关注的风险 (Risks)" >> "$REPORT_FILE"
+    if [ -s "$TMP_FAIL" ]; then
+        echo "| 检查项 | 状态 | 等级 | 建议 |" >> "$REPORT_FILE"
+        echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
+        cat "$TMP_FAIL" >> "$REPORT_FILE"
+    else
+        echo "未发现高/中危风险。" >> "$REPORT_FILE"
+    fi
+    echo "" >> "$REPORT_FILE"
+
+    echo "## 🟢 已通过 (Passed)" >> "$REPORT_FILE"
+    if [ -s "$TMP_PASS" ]; then
+        echo "| 检查项 | 状态 | 等级 | 建议 |" >> "$REPORT_FILE"
+        echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
+        cat "$TMP_PASS" >> "$REPORT_FILE"
+    fi
+    
+    echo "" >> "$REPORT_FILE"
+    echo "## ℹ️ 主机信息 (Host Info)" >> "$REPORT_FILE"
+    if [ -s "$TMP_INFO" ]; then
+        echo "| 项 | 内容 | 级别 | 备注 |" >> "$REPORT_FILE"
+        echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
+         cat "$TMP_INFO" >> "$REPORT_FILE"
+    fi
 }
 
 cleanup() {
@@ -371,6 +508,7 @@ audit_account
 audit_network
 audit_system
 audit_files
+audit_host_info
 
 gen_report_no_clean
 echo -e "${GREEN}[+] 审计完成。报告已生成于: $REPORT_FILE${NC}"
