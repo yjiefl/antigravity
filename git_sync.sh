@@ -109,34 +109,38 @@ run_status() {
     
     # 3. 后续操作提示
     if [ "$AHEAD" -gt 0 ] || [ "$BEHIND" -gt 0 ] || [ "$MODIFIED_COUNT" -gt 0 ]; then
-         echo "\n${CYAN}>>> 输入 'd' 可查看详细差异，回车返回主菜单${NC}"
-         read -r -t 8 -n 1 opt
-         if [[ "$opt" == "d" ]]; then
-             echo "" # 换行
-             run_compare
+         echo -e "\n${CYAN}>>> 输入 'd' 可查看详细差异，回车返回主菜单${NC}"
+         # zsh 使用 -k 1，bash 使用 -n 1。当前脚本 shebang 是 zsh。
+         if read -t 8 -k 1 opt; then
+             if [[ "$opt" == "d" ]]; then
+                 echo "" # 换行
+                 run_compare
+             elif [[ "$opt" != $'\n' ]]; then
+                 echo "" # 处理非回车的其他按键导致的换行问题
+             fi
          fi
     fi
     # 如果仅有本地修改且上面没选d，额外给个直观提示
     if [ "$MODIFIED_COUNT" -gt 0 ] && [ "$AHEAD" -eq 0 ] && [ "$BEHIND" -eq 0 ]; then
-        echo "${CYAN}>>> 提示: 您有未提交的本地修改，请选择 [1] 自动同步。${NC}"
+        echo -e "${CYAN}>>> 提示: 您有未提交的本地修改，请选择 [1] 自动同步。${NC}"
     fi
 }
 
 # 对比本地与远程的差异
 run_compare() {
     BRANCH=$(git branch --show-current)
-    echo "${CYAN}=== 差异对比: 本地(含未提交) vs 远程(origin/$BRANCH) ===${NC}"
+    echo -e "${CYAN}=== 差异对比: 本地(含未提交) vs 远程(origin/$BRANCH) ===${NC}"
     
     # 获取差异统计
-    echo "${YELLOW}1. 文件变动统计 (对比远程):${NC}"
+    echo -e "${YELLOW}1. 文件变动统计 (对比远程):${NC}"
     git diff --stat "origin/$BRANCH"
     
-    echo "\n${YELLOW}2. 具体文件状态 (A:新增, M:修改, D:删除):${NC}"
+    echo -e "\n${YELLOW}2. 具体文件状态 (A:新增, M:修改, D:删除):${NC}"
     git diff --name-status "origin/$BRANCH"
     
-    echo "\n${YELLOW}是否查看详细代码差异? (y/n):${NC} "
-    read -r show_detail
-    if [[ "$show_detail" =~ ^[Yy]$ ]]; then
+    echo -e "\n${YELLOW}是否查看详细代码差异? (y/n):${NC} "
+    if read -k 1 show_detail && [[ "$show_detail" =~ ^[Yy]$ ]]; then
+        echo "" # 换行
         git diff "origin/$BRANCH"
     fi
 }
@@ -256,30 +260,33 @@ run_release() {
 # 菜单
 # -----------------------------------------------------------------------------
 show_menu() {
-    echo "${CYAN}=========================================${NC}"
-    echo "${CYAN}     Antigravity Git Sync (Lite)         ${NC}"
-    echo "${CYAN}=========================================${NC}"
-    echo "1. ${GREEN}快速同步${NC} (Add + Commit + Pull + Push)"
-    echo "2. ${BLUE}查看状态${NC}"
-    echo "3. ${MAGENTA}发布版本${NC} (Create Tag & Push)"
-    echo "4. ${YELLOW}以本地为准同步${NC} (Overwrite Remote! Skip Pull)"
-    echo "5. ${RED}强制推送${NC} (仅 Push --force)"
-    echo "6. ${BLUE}以远程为准同步${NC} (Overwrite Local! Reset & Clean)"
-    echo "0. 退出"
-    echo "-----------------------------------------"
-    echo -n "请选择 [0-6]: "
-    read choice
-    
-    case $choice in
-        1) run_sync false ;;
-        2) run_status ;;
-        3) run_release ;;
-        4) run_local_overwrite ;;
-        5) run_sync true ;;
-        6) run_remote_overwrite ;;
-        0) exit 0 ;;
-        *) echo "无效选择" ;;
-    esac
+    while true; do
+        echo "${CYAN}=========================================${NC}"
+        echo "${CYAN}     Antigravity Git Sync (Lite)         ${NC}"
+        echo "${CYAN}=========================================${NC}"
+        echo "1. ${GREEN}快速同步${NC} (Add + Commit + Pull + Push)"
+        echo "2. ${BLUE}查看状态${NC}"
+        echo "3. ${MAGENTA}发布版本${NC} (Create Tag & Push)"
+        echo "4. ${YELLOW}以本地为准同步${NC} (Overwrite Remote! Skip Pull)"
+        echo "5. ${RED}强制推送${NC} (仅 Push --force)"
+        echo "6. ${BLUE}以远程为准同步${NC} (Overwrite Local! Reset & Clean)"
+        echo "0. 退出"
+        echo "-----------------------------------------"
+        echo -n "请选择 [0-6]: "
+        read choice
+        
+        case $choice in
+            1) run_sync false ;;
+            2) run_status ;;
+            3) run_release ;;
+            4) run_local_overwrite ;;
+            5) run_sync true ;;
+            6) run_remote_overwrite ;;
+            0) exit 0 ;;
+            *) echo "无效选择" ;;
+        esac
+        echo "" # 循环前换行
+    done
 }
 
 if [ $# -gt 0 ]; then
