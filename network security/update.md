@@ -17,4 +17,6 @@
 
 ### 待完善
 
-输出到：/Users/yangjie/code/antigravity/network security/output，文件名带日期时间戳
+Root 账户锁定,未锁定 (P),High,建议锁定 Root 账户，使用 sudo
+SSH Root 登录,允许 (yes),Medium,建议设置为 no 或 prohibit-password
+SSH 密码认证,允许或未配置 (yes),Medium,建议使用密钥对并关闭密码认证
