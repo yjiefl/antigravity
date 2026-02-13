@@ -156,6 +156,14 @@ audit_account() {
   else
      log_result "Sudo NOPASSWD 配置" "未发现" "Low" "符合要求"
   fi
+
+  # 1.5 检查登录失败锁定策略 (PAM faillock)
+  if grep -E "pam_faillock.so" /etc/pam.d/common-auth > /dev/null 2>&1; then
+      local deny_val=$(grep "deny=" /etc/pam.d/common-auth | sed -n 's/.*deny=\([0-9]*\).*/\1/p' | head -n 1)
+      log_result "登录失败锁定策略" "已配置 (deny=${deny_val:-默认})" "Low" "符合要求"
+  else
+      log_result "登录失败锁定策略" "未配置" "Medium" "建议配置 pam_faillock 以防止暴力破解"
+  fi
 }
 
 # ==============================================================================
@@ -199,7 +207,15 @@ audit_network() {
       log_result "SSH 密码认证" "允许或未配置 ($pass_auth)" "Medium" "建议使用密钥对并关闭密码认证"
   fi
   
-  # 2.4 检查监听端口
+  # 2.4 检查 SSH 最大认证尝试次数 (MaxAuthTries)
+  local max_tries=$(grep "^MaxAuthTries" $sshd_config 2>/dev/null | awk '{print $2}')
+  if [[ -n "$max_tries" ]] && [[ "$max_tries" -le 4 ]]; then
+      log_result "SSH 最大尝试次数" "$max_tries" "Low" "符合要求 (<=4)"
+  else
+      log_result "SSH 最大尝试次数" "${max_tries:-默认(6)}" "Medium" "建议设置为 4 或更小"
+  fi
+
+  # 2.5 检查监听端口
   local listen_ports=$(ss -tuln | grep LISTEN | awk '{print $5}' | cut -d: -f2 | sort -u | tr '\n' ' ')
   log_result "监听端口" "端口: $listen_ports" "Info" "请人工确认为必需业务端口"
 }

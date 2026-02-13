@@ -13,10 +13,11 @@
     - 既然是阿里云，通常禁用 root 密码登录，使用 SSH Key。
     - 空口令用户检查 (`/etc/shadow`)
     - Sudo 权限检查 (NOPASSWD 风险)
+    - **登录失败锁定策略** (PAM `faillock`)
 2. **网络安全**:
     - 监听端口扫描 (`ss -tuljn`)
     - UFW 防火墙状态检查
-    - SSH 配置检查 (`PermitRootLogin`, `PasswordAuthentication`, `Protocol`)
+    - SSH 配置检查 (`PermitRootLogin`, `PasswordAuthentication`, `Protocol`, `MaxAuthTries`)
 3. **文件系统权限**:
     - 敏感文件 (`/etc/passwd`, `/etc/shadow`, `/etc/group`, `/etc/gshadow`) 权限检查
     - 全局可写文件粘滞位 (Sticky bit) 检查
