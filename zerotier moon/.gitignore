@@ -1,0 +1,4 @@
+output/
+*.moon
+moon.json
+.DS_Store
