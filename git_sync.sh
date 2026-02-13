@@ -108,33 +108,36 @@ run_status() {
     echo "同步状态: 领先: ${GREEN}$AHEAD${NC} 提交 | 落后: ${RED}$BEHIND${NC} 提交"
     
     # 3. 后续操作提示
-    if [ "$AHEAD" -gt 0 ] || [ "$BEHIND" -gt 0 ]; then
+    if [ "$AHEAD" -gt 0 ] || [ "$BEHIND" -gt 0 ] || [ "$MODIFIED_COUNT" -gt 0 ]; then
          echo "\n${CYAN}>>> 输入 'd' 可查看详细差异，回车返回主菜单${NC}"
          read -r -t 8 -n 1 opt
          if [[ "$opt" == "d" ]]; then
+             echo "" # 换行
              run_compare
          fi
-    elif [ "$MODIFIED_COUNT" -gt 0 ]; then
-        echo "\n${CYAN}>>> 提示: 本地文件已修改但尚未提交。请选择 [1] 自动提交并同步。${NC}"
+    fi
+    # 如果仅有本地修改且上面没选d，额外给个直观提示
+    if [ "$MODIFIED_COUNT" -gt 0 ] && [ "$AHEAD" -eq 0 ] && [ "$BEHIND" -eq 0 ]; then
+        echo "${CYAN}>>> 提示: 您有未提交的本地修改，请选择 [1] 自动同步。${NC}"
     fi
 }
 
 # 对比本地与远程的差异
 run_compare() {
     BRANCH=$(git branch --show-current)
-    echo "${CYAN}=== 差异对比: 本地(HEAD) vs 远程(origin/$BRANCH) ===${NC}"
+    echo "${CYAN}=== 差异对比: 本地(含未提交) vs 远程(origin/$BRANCH) ===${NC}"
     
     # 获取差异统计
-    echo "${YELLOW}1. 文件变动统计:${NC}"
-    git diff --stat "origin/$BRANCH"..HEAD
+    echo "${YELLOW}1. 文件变动统计 (对比远程):${NC}"
+    git diff --stat "origin/$BRANCH"
     
     echo "\n${YELLOW}2. 具体文件状态 (A:新增, M:修改, D:删除):${NC}"
-    git diff --name-status "origin/$BRANCH"..HEAD
+    git diff --name-status "origin/$BRANCH"
     
     echo "\n${YELLOW}是否查看详细代码差异? (y/n):${NC} "
     read -r show_detail
     if [[ "$show_detail" =~ ^[Yy]$ ]]; then
-        git diff "origin/$BRANCH"..HEAD
+        git diff "origin/$BRANCH"
     fi
 }
 
