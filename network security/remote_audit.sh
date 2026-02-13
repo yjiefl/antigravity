@@ -67,9 +67,23 @@ fi
 
 echo -e "${GREEN}[*] 目标主机: $REMOTE_TARGET (选项: ${SSH_OPTS:-默认})${NC}"
 
-# 3. 将脚本传输到远端 (使用 ssh 管道传输，兼容性更好，无需构造 scp 命令)
+# 3. 选择操作模式
+echo -e "\n请选择操作模式:"
+echo -e "  [1] 安全审计 (仅生成报告)"
+echo -e "  [2] 处理风险项目 (交互式修复)"
+echo -en "${GREEN}请输入编号 [1]: ${NC}"
+read -r MODE_CHOICE
+
+EXTRA_FLAGS=""
+if [[ "$MODE_CHOICE" == "2" ]]; then
+    EXTRA_FLAGS="--fix"
+    echo -e "${YELLOW}[!] 将以交互式修复模式运行${NC}"
+else
+    echo -e "[*] 将以审计模式运行"
+fi
+
+# 4. 将脚本传输到远端 (使用 ssh 管道传输，兼容性更好，无需构造 scp 命令)
 echo -e "[*] 正在传输审计脚本到远端..."
-# cat $LOCAL_AUDIT_SCRIPT | ssh $SSH_OPTS $REMOTE_TARGET "cat > $REMOTE_TMP_SCRIPT"
 # 使用 eval 执行用户输入的 ssh 命令结构
 eval "$SSH_CMD_INPUT \"cat > $REMOTE_TMP_SCRIPT\" < \"$LOCAL_AUDIT_SCRIPT\""
 
@@ -78,10 +92,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 4. 在远端执行脚本
-echo -e "[*] 正在远端执行审计 (需要 sudo 权限)..."
+# 5. 在远端执行脚本
+echo -e "[*] 正在远端执行操作 (需要 sudo 权限)..."
 # 增加权限并执行
-CMD_EXEC="chmod +x $REMOTE_TMP_SCRIPT && sudo $REMOTE_TMP_SCRIPT && rm $REMOTE_TMP_SCRIPT"
+CMD_EXEC="chmod +x $REMOTE_TMP_SCRIPT && sudo $REMOTE_TMP_SCRIPT $EXTRA_FLAGS && rm $REMOTE_TMP_SCRIPT"
 eval "$SSH_CMD_INPUT -t \"$CMD_EXEC\""
 
 # 5. 取回报告
