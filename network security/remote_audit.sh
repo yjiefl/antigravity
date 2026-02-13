@@ -11,7 +11,10 @@
 # 配置
 REMOTE_TMP_SCRIPT="/tmp/audit_worker.sh"
 LOCAL_AUDIT_SCRIPT="./audit.sh"
-REPORT_NAME="security_audit_report.md"
+REPORT_NAME="security_audit_report.md" # 远端约定的临时文件名
+OUTPUT_DIR="./output"
+TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+FINAL_REPORT_NAME="security_audit_report_${TIMESTAMP}.md"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -79,22 +82,22 @@ eval "$SSH_CMD_INPUT -t \"$CMD_EXEC\""
 
 # 5. 取回报告
 echo -e "[*] 正在取回审计报告..."
-rm -f "./$REPORT_NAME"
+mkdir -p "$OUTPUT_DIR"
 
 # 从远端读取报告内容写入本地 (避免 SCP 参数解析问题)
 # 尝试从当前目录或 /root/ 或 /tmp/ 读取
 READ_CMD="if [ -f ./$REPORT_NAME ]; then cat ./$REPORT_NAME; elif [ -f /root/$REPORT_NAME ]; then sudo cat /root/$REPORT_NAME; else cat /tmp/$REPORT_NAME 2>/dev/null; fi"
 
 # 抓取输出
-eval "$SSH_CMD_INPUT \"$READ_CMD\"" > "./$REPORT_NAME"
+eval "$SSH_CMD_INPUT \"$READ_CMD\"" > "$OUTPUT_DIR/$FINAL_REPORT_NAME"
 
 # 检查文件大小判断是否成功
-if [ -s "./$REPORT_NAME" ]; then
-    echo -e "${GREEN}[+] 审计完成！报告已保存至本地: ./${REPORT_NAME}${NC}"
+if [ -s "$OUTPUT_DIR/$FINAL_REPORT_NAME" ]; then
+    echo -e "${GREEN}[+] 审计完成！报告已保存至本地: $OUTPUT_DIR/$FINAL_REPORT_NAME${NC}"
     # 清理远端报告
     CLEAN_CMD="rm -f ./$REPORT_NAME /tmp/$REPORT_NAME; sudo rm -f /root/$REPORT_NAME 2>/dev/null"
     eval "$SSH_CMD_INPUT \"$CLEAN_CMD\""
 else
     echo -e "${RED}[!] 警告: 未能取回报告，或报告为空。请检查远端执行日志。${NC}"
-    rm -f "./$REPORT_NAME"
+    rm -f "$OUTPUT_DIR/$FINAL_REPORT_NAME"
 fi
