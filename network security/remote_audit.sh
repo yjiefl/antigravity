@@ -42,6 +42,7 @@ ssh -t "$REMOTE_ALIAS" "chmod +x $REMOTE_TMP_SCRIPT && sudo $REMOTE_TMP_SCRIPT &
 
 # 4. 取回报告
 echo -e "[*] 正在取回审计报告..."
+rm -f "./$REPORT_NAME" # 先删除本地可能存在的旧报告（防止权限冲突）
 scp "${REMOTE_ALIAS}:./$REPORT_NAME" "./$REPORT_NAME"
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}[+] 审计完成！报告已保存至本地: ./${REPORT_NAME}${NC}"
