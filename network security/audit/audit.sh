@@ -5,8 +5,8 @@
 # 描述: Linux 安全审计脚本 (支持 Ubuntu/CentOS/Debian/Alinux)
 # 功能: 安全检查、报告生成、交互式修复
 # 作者: AntiGravity
-# 版本: 1.3.0
-# 日期: 2026-02-14
+# 版本: 1.2.1
+# 日期: 2026-02-13
 # ==============================================================================
 
 # ---------------------- 基础配置 ----------------------
@@ -15,7 +15,6 @@ TMP_FAIL="/tmp/audit_fail.tmp"
 TMP_PASS="/tmp/audit_pass.tmp"
 TMP_INFO="/tmp/audit_info.tmp"
 TMP_FAIL_IDS="/tmp/audit_fail_ids.txt" # 用于存储失败项的ID以供修复使用
-TMP_FIX_LOG="/tmp/audit_fix.log"       # 用于记录修复操作
 
 # 颜色
 RED='\033[0;31m'
@@ -57,7 +56,6 @@ init_audit() {
     > "$TMP_PASS"
     > "$TMP_INFO"
     > "$TMP_FAIL_IDS"
-    # 注意：TMP_FIX_LOG 不在此处清空，因为它需要在重审计时保留
 }
 
 # 3. 记录结果
@@ -84,19 +82,6 @@ log_result() {
     else
         echo "$row" >> "$TMP_INFO"
     fi
-}
-
-# 4. 服务重启辅助函数
-restart_service() {
-    local svc="$1"
-    # Ubuntu/Debian 经常使用 ssh 而非 sshd
-    if [[ "$svc" == "sshd" ]]; then
-        if systemctl list-unit-files | grep -q "^ssh.service"; then
-            systemctl restart ssh
-            return
-        fi
-    fi
-    systemctl restart "$svc" 2>/dev/null || echo -e "${RED}[!] 无法重启服务 $svc${NC}"
 }
 
 # ---------------------- 审计功能模块 ----------------------
@@ -148,6 +133,7 @@ audit_account() {
     fi
 }
 
+# [NET-01] 网络安全
 # [NET-01] 网络安全
 audit_network() {
     echo "正在审计网络安全..."
@@ -288,31 +274,19 @@ audit_host_info() {
     log_result "INFO_DISK" "根分区使用率" "$disk" "Info" ">80% 需关注"
 }
 
-# 包装所有审计函数
-run_all_audits() {
-    audit_account
-    audit_network
-    audit_system
-    audit_files
-    audit_host_info
-}
-
 # ---------------------- 修复功能模块 ----------------------
 
-# 修复单项并记录日志
 do_fix() {
     local fix_id="$1"
     echo -e "${YELLOW}[FIX] 正在修复项目: $fix_id ...${NC}"
-    local action=""
     
     case "$fix_id" in
     "ROOT_LOCK")
         passwd -l root
-        action="执行 passwd -l root"
+        echo "已执行: passwd -l root"
         ;;
     "PAM_LOCK")
         echo -e "${RED}[!] PAM 配置较为复杂，建议手动修改。${NC}"
-        return
         ;;
     "FIREWALL")
         if [[ "$OS_TYPE" == "ubuntu" ]] || [[ "$OS_TYPE" == "debian" ]]; then
@@ -322,45 +296,45 @@ do_fix() {
             else
                 apt-get install -y ufw && ufw allow ssh && ufw --force enable
             fi
-            action="启用 UFW (允许 SSH)"
+            echo "已启用 UFW"
         elif [[ "$OS_TYPE" == "centos" ]] || [[ "$OS_TYPE" == "alinux" ]]; then
             systemctl enable --now firewalld
             firewall-cmd --permanent --add-service=ssh
             firewall-cmd --reload
-            action="启用 Firewalld"
+            echo "已启用 Firewalld"
         fi
         ;;
     "SSH_ROOT")
         sed -i 's/^PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
         grep -q "^PermitRootLogin" /etc/ssh/sshd_config || echo "PermitRootLogin prohibit-password" >> /etc/ssh/sshd_config
-        restart_service sshd
-        action="设置 PermitRootLogin prohibit-password"
+        systemctl restart sshd
+        echo "已设置 PermitRootLogin prohibit-password"
         ;;
     "SSH_PASS")
         sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
         grep -q "^PasswordAuthentication" /etc/ssh/sshd_config || echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
-        restart_service sshd
-        action="关闭 SSH 密码认证"
+        systemctl restart sshd
+        echo "已关闭 SSH 密码认证 (请确保已配置密钥!)"
         ;;
     "SSH_TRIES")
         sed -i 's/^MaxAuthTries.*/MaxAuthTries 4/' /etc/ssh/sshd_config
         grep -q "^MaxAuthTries" /etc/ssh/sshd_config || echo "MaxAuthTries 4" >> /etc/ssh/sshd_config
-        restart_service sshd
-        action="设置 MaxAuthTries 4"
+        systemctl restart sshd
+        echo "已设置 MaxAuthTries 4"
         ;;
     "IP_FWD")
         sysctl -w net.ipv4.ip_forward=0
         sed -i 's/^net.ipv4.ip_forward.*/net.ipv4.ip_forward = 0/' /etc/sysctl.conf
-        action="关闭 IP 转发"
+        echo "已关闭 IP 转发"
         ;;
     "ICMP_RED")
         sysctl -w net.ipv4.conf.all.accept_redirects=0
         sed -i 's/^net.ipv4.conf.all.accept_redirects.*/net.ipv4.conf.all.accept_redirects = 0/' /etc/sysctl.conf
-        action="禁止 ICMP 重定向"
+        echo "已禁止 ICMP 重定向"
         ;;
     "RSYSLOG")
         systemctl enable --now rsyslog
-        action="启动 Rsyslog"
+        echo "已启动 Rsyslog"
         ;;
     "AUDITD")
         if [[ "$OS_TYPE" == "ubuntu" ]] || [[ "$OS_TYPE" == "debian" ]]; then
@@ -368,24 +342,20 @@ do_fix() {
         elif [[ "$OS_TYPE" == "centos" ]] || [[ "$OS_TYPE" == "alinux" ]]; then
             yum install -y audit && systemctl enable --now auditd
         fi
-        action="安装/启动 Auditd"
+        echo "已尝试安装/启动 Auditd"
         ;;
     "PERM_SHADOW")
         chmod 640 /etc/shadow
-        action="执行 chmod 640 /etc/shadow"
+        echo "已执行 chmod 640 /etc/shadow"
         ;;
     "PERM_PASSWD")
         chmod 644 /etc/passwd
-        action="执行 chmod 644 /etc/passwd"
+        echo "已执行 chmod 644 /etc/passwd"
         ;;
     *)
         echo -e "${RED}[!] 未配置该项的自动修复逻辑或需人工干预${NC}"
-        return
         ;;
     esac
-    
-    echo "已完成: $action"
-    echo "| $fix_id | 已修复 | $action |" >> "$TMP_FIX_LOG"
 }
 
 interactive_fix() {
@@ -461,7 +431,7 @@ gen_report_no_clean() {
         echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
         cat "$TMP_FAIL" >> "$REPORT_FILE"
     else
-        echo "未发现高/中危风险 (或已修复)。" >> "$REPORT_FILE"
+        echo "未发现高/中危风险。" >> "$REPORT_FILE"
     fi
     echo "" >> "$REPORT_FILE"
 
@@ -475,14 +445,51 @@ gen_report_no_clean() {
     echo "" >> "$REPORT_FILE"
     echo "## ℹ️ 主机信息 (Host Info)" >> "$REPORT_FILE"
     if [ -s "$TMP_INFO" ]; then
-        echo "| 信息项 | 内容 | 级别 | 备注 |" >> "$REPORT_FILE"
+        echo "| 信息项 | 内容 | 备注 |" >> "$REPORT_FILE"
+        echo "| --- | --- | --- |" >> "$REPORT_FILE"
+        cat "$TMP_INFO" >> "$REPORT_FILE" # Assuming log_result formats correctly for 3 columns or update log_result
+    fi
+}
+# Note: log_result uses 4 columns. For Info, 'Risk' is 'Info'. It fits the table structure above if header matches.
+# Let's adjust gen_report_no_clean to match log_result structure (4 cols) or just dump it.
+# log_result outputs: | item | status | risk | recommendation |
+# So Info table should also have 4 columns.
+
+# 修正 gen_report_no_clean 的 Info 部分
+gen_report_no_clean() {
+    echo "# Linux 安全审计报告" > "$REPORT_FILE"
+    echo "系统信息: $OS_TYPE $OS_VERSION ($(uname -r))" >> "$REPORT_FILE"
+    echo "生成时间: $(date)" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+    
+    echo "## 🔴 需关注的风险 (Risks)" >> "$REPORT_FILE"
+    if [ -s "$TMP_FAIL" ]; then
+        echo "| 检查项 | 状态 | 等级 | 建议 |" >> "$REPORT_FILE"
         echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
-        cat "$TMP_INFO" >> "$REPORT_FILE"
+        cat "$TMP_FAIL" >> "$REPORT_FILE"
+    else
+        echo "未发现高/中危风险。" >> "$REPORT_FILE"
+    fi
+    echo "" >> "$REPORT_FILE"
+
+    echo "## 🟢 已通过 (Passed)" >> "$REPORT_FILE"
+    if [ -s "$TMP_PASS" ]; then
+        echo "| 检查项 | 状态 | 等级 | 建议 |" >> "$REPORT_FILE"
+        echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
+        cat "$TMP_PASS" >> "$REPORT_FILE"
+    fi
+    
+    echo "" >> "$REPORT_FILE"
+    echo "## ℹ️ 主机信息 (Host Info)" >> "$REPORT_FILE"
+    if [ -s "$TMP_INFO" ]; then
+        echo "| 项 | 内容 | 级别 | 备注 |" >> "$REPORT_FILE"
+        echo "| --- | --- | --- | --- |" >> "$REPORT_FILE"
+         cat "$TMP_INFO" >> "$REPORT_FILE"
     fi
 }
 
 cleanup() {
-    rm -f "$TMP_FAIL" "$TMP_PASS" "$TMP_INFO" "$TMP_FAIL_IDS" "$TMP_FIX_LOG"
+    rm -f "$TMP_FAIL" "$TMP_PASS" "$TMP_INFO" "$TMP_FAIL_IDS"
 }
 
 # ---------------------- 主逻辑 ----------------------
@@ -494,35 +501,20 @@ fi
 
 detect_os
 check_root
+init_audit
 
 echo -e "${GREEN}[*] 正在执行安全审计...${NC}"
-> "$TMP_FIX_LOG" # Init logs
-init_audit
-run_all_audits
+audit_account
+audit_network
+audit_system
+audit_files
+audit_host_info
 
-# 修复模式
+gen_report_no_clean
+echo -e "${GREEN}[+] 审计完成。报告已生成于: $REPORT_FILE${NC}"
+
 if [[ "$MODE" == "fix" ]]; then
     interactive_fix
-    
-    # 如果执行了修复（Fix Log 不为空），则重新审计
-    if [ -s "$TMP_FIX_LOG" ]; then
-        echo -e "\n${YELLOW}[*] 检测到已执行修复，正在重新审计以更新报告状态...${NC}"
-        init_audit # 清空旧的 pass/fail
-        run_all_audits # 重新生成
-    fi
 fi
 
-# 生成最终报告
-gen_report_no_clean
-
-# 如果有修复记录，追加到报告末尾
-if [ -s "$TMP_FIX_LOG" ]; then
-    echo "" >> "$REPORT_FILE"
-    echo "## 🛠️ 修复日志 (Remediation Log)" >> "$REPORT_FILE"
-    echo "| 修复项ID | 结果 | 操作详情 |" >> "$REPORT_FILE"
-    echo "| --- | --- | --- |" >> "$REPORT_FILE"
-    cat "$TMP_FIX_LOG" >> "$REPORT_FILE"
-fi
-
-echo -e "${GREEN}[+] 审计完成。报告已生成于: $REPORT_FILE${NC}"
 cleanup
