@@ -20,7 +20,10 @@
     * 创建 `moons.d` 目录。
     * 部署 `.moon` 文件。
     * 重启 ZeroTier 服务。
-5. **结果回传与归档**：
+5. **Planet (ztncui) 部署**：
+    * 下载并安装 ztncui (Debian/Ubuntu)。
+    * 配置环境 (`.env`) 与服务启动。
+6. **结果回传与归档**：
     * 将生成的 `.moon` 文件下载到本地 `output/` 目录。
     * 目录命名包含时间戳，如 `output/20231027_103055_<moon_id>/`。
     * 输出客户端加入 Moon 的命令提示。
@@ -48,19 +51,28 @@ sequenceDiagram
     Local->>User: 确认公网 IP (默认从 SSH 主机名提取)
     User->>Local: 确认或输入 IP
     
-    Local->>Remote: 检查/安装 ZeroTier
-    Remote-->>Local: 安装完成
-    
-    Local->>Remote: 生成 moon.json (initmoon)
-    Local->>Remote: 修改 moon.json (添加 stableEndpoints)
-    Local->>Remote: 生成 .moon 文件 (genmoon)
-    Remote-->>Local: 生成成功，返回 Moon ID
-    
-    Local->>Remote: 移动 .moon 到 moons.d
-    Local->>Remote: 重启 zerotier-one
-    
-    Local->>Local: 创建 output/<timestamp> 目录
-    Local->>Remote: SCP 下载 .moon 文件
+    Local->>User: 选择模式 (1: Moon, 2: Planet)
+    User->>Local: 输入选择
+
+    alt 模式: Moon
+        Local->>Remote: 检查/安装 ZeroTier
+        Remote-->>Local: 安装完成
+        
+        Local->>Remote: 生成 moon.json (initmoon)
+        Local->>Remote: 修改 moon.json (添加 stableEndpoints)
+        Local->>Remote: 生成 .moon 文件 (genmoon)
+        Remote-->>Local: 生成成功，返回 Moon ID
+        
+        Local->>Remote: 移动 .moon 到 moons.d
+        Local->>Remote: 重启 zerotier-one
+        
+        Local->>Local: 创建 output/<timestamp> 目录
+        Local->>Remote: SCP 下载 .moon 文件
+    else 模式: Planet (ztncui)
+        Local->>Remote: 下载/安装 ztncui (Debian/Ubuntu)
+        Local->>Remote: 配置 .env (Token, Port)
+        Local->>Remote: 启动 ztncui 服务
+    end
     
     Local->>User: 显示完成信息 & 客户端加入命令
 ```

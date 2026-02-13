@@ -4,11 +4,19 @@
 
 ## 功能
 
+### 1. Moon 部署模式
+
 * 自动检测并安装 ZeroTier。
 * 配置 Moon 定义文件 (`moon.json`)。
 * 生成签名 `.moon` 文件并部署。
 * 将生成的 Moon 文件下载到本地备份。
 * 提供客户端加入 Moon 的命令。
+
+### 2. Planet (ztncui) 部署模式
+
+* 自动化部署 ZeroTier Web 控制器 (ztncui)。
+* 支持 HTTP/HTTPS 访问配置。
+* 自动集成 ZeroTier 认证 Token。
 
 ## 使用方法
 
@@ -20,12 +28,15 @@
     ./deploy_moon.sh
     ```
 
-3. 根据提示输入 SSH 连接地址（例如 `root@192.168.1.100`）和公网 IP。
+3. 根据提示输入 SSH 连接地址（例如 `root@192.168.1.100`）。
+4. 选择部署模式：输入 `1` (Moon) 或 `2` (Planet)。
 
 ## 输出
 
-脚本运行完成后，生成的 `.moon` 文件将保存在 `output/YYYYMMDD_HHMMSS_<MoonID>/` 目录下。
+* **Moon**: 生成的 `.moon` 文件将保存在 `output/YYYYMMDD_HHMMSS_<MoonID>/` 目录下。
+* **Planet**: 部署完成后会输出 Web 控制台访问地址及默认凭据。
 
 ## 注意事项
 
-* 请确保云服务器的安全组/通过防火墙放行 **UDP 9993** 端口。
+* **Moon**: 请确保云服务器放行 **UDP 9993** 端口。
+* **Planet**: 请确保云服务器放行 **TCP 3443** (HTTPS) 端口。

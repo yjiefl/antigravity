@@ -2,7 +2,7 @@
 
 ## 安装方法参考
 
-### 安装命令
+### linux安装zerotier命令
 
 curl -s <https://install.zerotier.com> | sudo bash
 
@@ -29,6 +29,18 @@ zerotier-cli orbit 334bf08301
 删除moon
 cd /var/lib/zerotier-one/moons.d/
 sudo rm 334bf08301.moon # 请确保这里的 ID 是您要删除的 Moon ID
+
+### Planet服务器搭建
+
+curl -O <https://s3-us-west-1.amazonaws.com/key-networks/deb/ztncui/1/x86_64/ztncui_0.8.14_amd64.deb>
+dpkg -i ztncui_0.8.14_amd64.deb
+sh -c "echo ZT_TOKEN=`sudo cat /var/lib/zerotier-one/authtoken.secret` > /opt/key-networks/ztncui/.env"
+sh -c "echo HTTP_ALL_INTERFACES=yes >> /opt/key-networks/ztncui/.env"
+sh -c "echo NODE_ENV=production >> /opt/key-networks/ztncui/.env"
+chmod 400 /opt/key-networks/ztncui/.env
+chown ztncui:ztncui /opt/key-networks/ztncui/.env
+systemctl enable ztncui
+systemctl restart ztncui
 
 #### 创建完成信息
 
