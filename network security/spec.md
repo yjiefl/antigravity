@@ -26,6 +26,7 @@
 5. **日志管理**:
     - Logrotate 配置检查
     - Auditd 服务状态检查
+6. **全面主机信息检查** (系统、硬件、磁盘、网络)
 
 ### 2.2 输出规范
 
@@ -53,6 +54,7 @@ graph TD
     F --> G[文件权限审计 File Perm Audit]
     G --> H[系统配置审计 System Config Audit]
     H --> I[日志管理审计 Log Audit]
-    I --> J[生成最终报告 Generate Report]
+    I --> L[主机信息检查 Host Info Check]
+    L --> J[生成最终报告 Generate Report]
     J --> K[结束 End]
 ```

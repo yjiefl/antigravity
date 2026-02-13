@@ -232,6 +232,51 @@ audit_system_logs() {
 }
 
 # ==============================================================================
+# 5. 全面主机信息检查 (Comprehensive Host Information Check)
+# ==============================================================================
+audit_host_info() {
+  echo "开始全面主机信息检查..."
+
+  # 5.1 系统版本与内核 (System Version & Kernel)
+  local os_version=$(grep "PRETTY_NAME" /etc/os-release | cut -d'"' -f2)
+  local kernel_version=$(uname -r)
+  log_result "系统版本 (OS Version)" "$os_version" "Info" "验证是否为最新 LTS (Verify if latest LTS)"
+  log_result "内核版本 (Kernel Version)" "$kernel_version" "Info" "定期更新内核以修复漏洞 (Update kernel regularly)"
+
+  # 5.2 CPU 信息 (CPU Information)
+  local cpu_model=$(grep "model name" /proc/cpuinfo | head -n 1 | cut -d: -f2 | xargs)
+  local cpu_cores=$(grep -c "processor" /proc/cpuinfo)
+  log_result "CPU 规格 (CPU spec)" "$cpu_model ($cpu_cores 核/cores)" "Info" "-"
+
+  # 5.3 内存信息 (Memory Information)
+  local mem_total=$(free -h | grep "Mem" | awk '{print $2}')
+  local mem_free=$(free -h | grep "Mem" | awk '{print $7}')
+  log_result "内存总量/可用 (Memory Total/Available)" "$mem_total / $mem_free" "Info" "-"
+
+  # 5.4 磁盘使用情况 (Disk Usage)
+  local root_disk_usage=$(df -h / | tail -n 1 | awk '{print $5}')
+  log_result "根分区使用率 (Root Partition Usage)" "$root_disk_usage" "Info" "超过 80% 请关注 (Monitor if > 80%)"
+
+  # 5.5 网络配置 (Network Config)
+  local ip_addrs=$(ip -4 addr show scope global | grep inet | awk '{print $2}' | tr '\n' ' ')
+  local dns_servers=$(grep "^nameserver" /etc/resolv.conf | awk '{print $2}' | tr '\n' ' ')
+  log_result "IP 地址 (IP Addresses)" "$ip_addrs" "Info" "-"
+  log_result "DNS 服务器 (DNS Servers)" "$dns_servers" "Info" "-"
+
+  # 5.6 系统启动时间 (Uptime)
+  local uptime_info=$(uptime -p)
+  log_result "系统运行时间 (Uptime)" "$uptime_info" "Info" "-"
+
+  # 5.7 软件包统计 (Package Statistics)
+  if command -v dpkg >/dev/null 2>&1; then
+      local pkg_count=$(dpkg -l | grep -c "^ii")
+      local updates=$(apt-get -s upgrade 2>/dev/null | grep -P '^\d+ upgraded' || echo "Unknown")
+      log_result "已安装包数量 (Installed Packages)" "$pkg_count" "Info" "-"
+      log_result "待更新包数量 (Pending Updates)" "$updates" "Medium" "建议及时运行 apt upgrade (Run apt upgrade)"
+  fi
+}
+
+# ==============================================================================
 # 主逻辑 (Main Logic)
 # ==============================================================================
 main() {
@@ -240,6 +285,7 @@ main() {
   audit_network
   audit_filesystem
   audit_system_logs
+  audit_host_info
   
   echo "" >> "$REPORT_FILE"
   echo "审计完成。报告已生成于 $REPORT_FILE"
