@@ -85,84 +85,156 @@ CHOICE=${CHOICE:-1}
 
 # --- MODE 1: MOON DEPLOYMENT ---
 if [ "$CHOICE" == "1" ]; then
-    echo ""
-    echo "--- 正在开始 Moon 部署流程 ---"
-    
-    echo "请输入 Moon 服务器的公网 IP 地址 (用于其它节点连接)。"
-    if [ -n "$DETECTED_IP" ]; then
-        read -p "公网 IP [$DETECTED_IP]: " PUBLIC_IP
-        PUBLIC_IP=${PUBLIC_IP:-$DETECTED_IP}
-    else
-        read -p "公网 IP: " PUBLIC_IP
-    fi
+    while true; do
+        echo ""
+        echo "=========================================="
+        echo "       ZeroTier Moon 管理菜单"
+        echo "=========================================="
+        echo "1) 安装 / 重置 Moon (覆盖安装)"
+        echo "2) 查看当前 Moon 状态"
+        echo "3) 修改 Moon 监听 IP (Endpoints)"
+        echo "4) 移除 Moon 角色 (卸载 Moon)"
+        echo "0) 退出"
+        echo "=========================================="
+        read -p "请选择操作 [1]: " MOON_IO
+        MOON_IO=${MOON_IO:-1}
 
-    if [ -z "$PUBLIC_IP" ]; then
-        error "公网 IP 必须填写。"
-    fi
+        # Sub-Function: Deploy/Update Moon
+        deploy_update_moon() {
+           local NEW_IPs="$1"
+           
+           # Generate moon.json from identity.public
+           # We keep valid moon.json in /var/lib/zerotier-one/moon.json for future edits
+           log "正在生成 Moon 配置..."
+           
+           # 1. Init Moon
+           run_remote "cd /var/lib/zerotier-one && sudo zerotier-idtool initmoon identity.public > moon.json"
+           
+           # 2. Update Endpoints
+           # Format IPs for JSON: "ip/port","ip/port"
+           # If user provided multiple IPs separated by space/comma, format them.
+           # Input: "1.1.1.1/9993 2.2.2.2/9993" -> Output: "1.1.1.1/9993","2.2.2.2/9993"
+           
+           # Replace spaces/commas with ","
+           local JSON_IPS=$(echo "$NEW_IPs" | sed 's/[, ]\+/", "/g')
+           JSON_IPS="\"$JSON_IPS\""
+           
+           log "应用 IP 配置: $JSON_IPS"
+           run_remote "sudo sed -i 's|\"stableEndpoints\": \[\]|\"stableEndpoints\": [$JSON_IPS]|g' /var/lib/zerotier-one/moon.json"
+           
+           # 3. Gen Moon
+           log "签署并在本地生成 .moon 文件..."
+           run_remote "cd /var/lib/zerotier-one && sudo zerotier-idtool genmoon moon.json"
+           
+           # 4. Install
+           MOON_FILE=$(run_remote "ls /var/lib/zerotier-one/*.moon | head -n 1 | xargs basename")
+           MOON_ID=$(echo "$MOON_FILE" | sed 's/\.moon//' | sed 's/^000000//')
+           
+           run_remote "sudo mkdir -p /var/lib/zerotier-one/moons.d"
+           run_remote "sudo cp /var/lib/zerotier-one/$MOON_FILE /var/lib/zerotier-one/moons.d/"
+           
+           log "重启 ZeroTier 服务..."
+           run_remote "sudo systemctl restart zerotier-one"
 
-    read -p "Moon 端口 [$DEFAULT_PORT]: " MOON_PORT
-    MOON_PORT=${MOON_PORT:-$DEFAULT_PORT}
+           # 5. Download
+           log "保存副本到本地 output..."
+           local LOCAL_DIR="$OUTPUT_BASE_DIR/${TIMESTAMP}_${MOON_ID}"
+           mkdir -p "$LOCAL_DIR"
+           ssh -o StrictHostKeyChecking=no $SSH_CMD "cat /var/lib/zerotier-one/$MOON_FILE" > "$LOCAL_DIR/$MOON_FILE"
+           
+           echo "Moon ID: $MOON_ID"
+           echo "客户端加入命令: zerotier-cli orbit $MOON_ID $MOON_ID"
+        }
 
-    log "公网配置: $PUBLIC_IP/$MOON_PORT"
-    log "初始化 Moon 配置..."
-
-    # Generate moon.json template
-    REMOTE_WORK_DIR="/tmp/zerotier_moon_$TIMESTAMP"
-    run_remote "mkdir -p $REMOTE_WORK_DIR"
-
-    log "读取身份信息并生成配置模板..."
-    run_remote "sudo zerotier-idtool initmoon /var/lib/zerotier-one/identity.public > $REMOTE_WORK_DIR/moon.json" || error "无法生成 moon.json (Permission denied? Check identity.public)"
-
-    log "配置 stableEndpoints..."
-    STABLE_ENDPOINT="$PUBLIC_IP/$MOON_PORT"
-
-    # Modify moon.json
-    run_remote "sed -i 's|\"stableEndpoints\": \[\]|\"stableEndpoints\": [\"$STABLE_ENDPOINT\"]|g' $REMOTE_WORK_DIR/moon.json" || error "修改 moon.json 失败"
-
-    log "生成签名 Moon 文件 (.moon)..."
-    run_remote "cd $REMOTE_WORK_DIR && zerotier-idtool genmoon moon.json" || error "生成 .moon 文件失败"
-
-    # Find the generated .moon file name
-    MOON_FILE_NAME=$(run_remote "ls $REMOTE_WORK_DIR/*.moon | xargs basename")
-    MOON_ID=$(echo "$MOON_FILE_NAME" | sed 's/\.moon//' | sed 's/^000000//')
-
-    if [ -z "$MOON_FILE_NAME" ]; then
-        error "找不到生成的 .moon 文件。"
-    fi
-
-    log "生成成功: $MOON_FILE_NAME (Moon ID: $MOON_ID)"
-
-    log "在服务器上部署 Moon..."
-    MOONS_D_DIR="/var/lib/zerotier-one/moons.d"
-    run_remote "sudo mkdir -p $MOONS_D_DIR"
-    run_remote "sudo cp $REMOTE_WORK_DIR/$MOON_FILE_NAME $MOONS_D_DIR/"
-    log "重启 ZeroTier 服务..."
-    run_remote "sudo systemctl restart zerotier-one" || warn "重启服务失败"
-
-    # Download and Archive
-    LOCAL_OUTPUT_DIR="$OUTPUT_BASE_DIR/${TIMESTAMP}_${MOON_ID}"
-    mkdir -p "$LOCAL_OUTPUT_DIR"
-
-    log "下载 Moon 文件到本地备份..."
-    ssh -o StrictHostKeyChecking=no $SSH_CMD "cat $REMOTE_WORK_DIR/$MOON_FILE_NAME" > "$LOCAL_OUTPUT_DIR/$MOON_FILE_NAME"
-
-    if [ -s "$LOCAL_OUTPUT_DIR/$MOON_FILE_NAME" ]; then
-        log "文件已保存至: $LOCAL_OUTPUT_DIR/$MOON_FILE_NAME"
-    else
-        error "下载文件失败 (文件为空)。"
-    fi
-
-    # Cleanup Remote
-    run_remote "rm -rf $REMOTE_WORK_DIR"
-
-    echo ""
-    echo "=================================================="
-    echo "          Moon 部署完成！"
-    echo "=================================================="
-    echo "Moon ID: $MOON_ID"
-    echo "文件位置: $LOCAL_OUTPUT_DIR/$MOON_FILE_NAME"
-    echo "客户端加入: zerotier-cli orbit $MOON_ID $MOON_ID"
-    echo "=================================================="
+        case "$MOON_IO" in
+            1)
+                echo "请输入 Moon 服务器的公网 IP 地址 (可输入多个，用空格分隔)。"
+                if [ -n "$DETECTED_IP" ]; then
+                    read -p "公网 IP [$DETECTED_IP]: " PUBLIC_IP
+                    PUBLIC_IP=${PUBLIC_IP:-$DETECTED_IP}
+                else
+                    read -p "公网 IP: " PUBLIC_IP
+                fi
+                if [ -z "$PUBLIC_IP" ]; then error "IP 不能为空"; fi
+                
+                # Check for port
+                if [[ "$PUBLIC_IP" != *"/"* ]]; then
+                    read -p "端口 [$DEFAULT_PORT]: " M_PORT
+                    M_PORT=${M_PORT:-$DEFAULT_PORT}
+                    # Add port to IPs if missing
+                    # Handle multiple IPs
+                    FINAL_IPS=""
+                    for ip in $PUBLIC_IP; do
+                        if [[ "$ip" != *"/"* ]]; then
+                            FINAL_IPS="$FINAL_IPS $ip/$M_PORT"
+                        else
+                            FINAL_IPS="$FINAL_IPS $ip"
+                        fi
+                    done
+                    PUBLIC_IP="$FINAL_IPS"
+                fi
+                
+                deploy_update_moon "$PUBLIC_IP"
+                break 
+                ;;
+            2)
+                echo "--- 当前 Moon 状态 ---"
+                log "获取 Moon 信息..."
+                # Check if moon.json exists
+                if run_remote "[ -f /var/lib/zerotier-one/moon.json ]"; then
+                     run_remote "cat /var/lib/zerotier-one/moon.json | grep -A 5 \"stableEndpoints\""
+                     run_remote "zerotier-cli info"
+                else
+                     echo "未检测到 Moon 配置文件 (moon.json)。此节点可能不是 Moon 或者是旧版本。"
+                fi
+                echo ""
+                read -p "按回车键返回菜单..."
+                ;;
+            3)
+                echo "--- 修改 Moon 监听 IP ---"
+                # Check current
+                 if ! run_remote "[ -f /var/lib/zerotier-one/moon.json ]"; then
+                     warn "未找到现有配置，请先执行安装(1)。"
+                     continue
+                 fi
+                 
+                 echo "当前 IP 配置:"
+                 run_remote "grep \"stableEndpoints\" /var/lib/zerotier-one/moon.json"
+                 
+                 echo ""
+                 echo "请输入新的 IP 列表 (覆盖旧配置)。格式: IP/PORT (例如: 1.2.3.4/9993)"
+                 read -p "新 IP 列表: " NEW_LIST
+                 
+                 if [ -z "$NEW_LIST" ]; then
+                    warn "输入为空，取消操作。"
+                 else
+                    # Process IPs to ensure format
+                    # Simple pass-through if user knows what they are doing, or add default port
+                    deploy_update_moon "$NEW_LIST"
+                    break
+                 fi
+                ;;
+            4)
+                 read -p "警告: 确定要移除 Moon 角色吗? 客户端将无法通过此 Moon 加速。 [y/N]: " CONFIRM
+                 if [[ "$CONFIRM" == "y" || "$CONFIRM" == "Y" ]]; then
+                     log "正在移除 Moon 配置..."
+                     run_remote "sudo rm -f /var/lib/zerotier-one/moon.json"
+                     run_remote "sudo rm -f /var/lib/zerotier-one/moons.d/*.moon"
+                     run_remote "sudo systemctl restart zerotier-one"
+                     log "Moon 角色已移除。"
+                 else
+                     log "操作取消。"
+                 fi
+                 read -p "按回车键返回菜单..."
+                 ;;
+            0)
+                exit 0
+                ;;
+            *)
+                echo "无效选项"
+                ;;
+        esac
+    done
 
 # --- MODE 2: PLANET (ZTNCUI) DEPLOYMENT ---
 elif [ "$CHOICE" == "2" ]; then
