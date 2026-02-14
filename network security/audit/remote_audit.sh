@@ -10,7 +10,9 @@
 
 # 配置
 REMOTE_TMP_SCRIPT="/tmp/audit_worker.sh"
-LOCAL_AUDIT_SCRIPT="./audit.sh"
+# 获取脚本所在目录，确保无论从哪里执行都能找到同级目录下的 audit.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_AUDIT_SCRIPT="$SCRIPT_DIR/audit.sh"
 REPORT_NAME="security_audit_report.md" # 远端约定的临时文件名
 OUTPUT_DIR="./output"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
@@ -101,6 +103,15 @@ eval "$SSH_CMD_INPUT -t \"$CMD_EXEC\""
 # 5. 取回报告
 echo -e "[*] 正在取回审计报告..."
 mkdir -p "$OUTPUT_DIR"
+mkdir -p "./log"  # 确保日志目录存在
+LOG_FILE="./log/audit_exec_${TIMESTAMP}.log"
+
+# 记录开始信息
+{
+    echo "=== 审计任务开始: $TIMESTAMP ==="
+    echo "目标主机: $REMOTE_TARGET"
+    echo "操作模式: $MODE_CHOICE"
+} >> "$LOG_FILE"
 
 # 从远端读取报告内容写入本地 (避免 SCP 参数解析问题)
 # 尝试从当前目录或 /root/ 或 /tmp/ 读取
@@ -111,11 +122,24 @@ eval "$SSH_CMD_INPUT \"$READ_CMD\"" > "$OUTPUT_DIR/$FINAL_REPORT_NAME"
 
 # 检查文件大小判断是否成功
 if [ -s "$OUTPUT_DIR/$FINAL_REPORT_NAME" ]; then
-    echo -e "${GREEN}[+] 审计完成！报告已保存至本地: $OUTPUT_DIR/$FINAL_REPORT_NAME${NC}"
+    MSG="[+] 审计完成！报告已保存至本地: $OUTPUT_DIR/$FINAL_REPORT_NAME"
+    echo -e "${GREEN}${MSG}${NC}"
+    echo "$MSG" >> "$LOG_FILE"
+    
+    # 记录报告摘要到日志
+    echo "--- 报告摘要 ---" >> "$LOG_FILE"
+    grep -E "^##|需关注|已通过|Risk" "$OUTPUT_DIR/$FINAL_REPORT_NAME" | head -n 20 >> "$LOG_FILE"
+    echo "----------------" >> "$LOG_FILE"
+    
     # 清理远端报告
     CLEAN_CMD="rm -f ./$REPORT_NAME /tmp/$REPORT_NAME; sudo rm -f /root/$REPORT_NAME 2>/dev/null"
     eval "$SSH_CMD_INPUT \"$CLEAN_CMD\""
 else
-    echo -e "${RED}[!] 警告: 未能取回报告，或报告为空。请检查远端执行日志。${NC}"
+    MSG="[!] 警告: 未能取回报告，或报告为空。请检查远端执行日志。"
+    echo -e "${RED}${MSG}${NC}"
+    echo "$MSG" >> "$LOG_FILE"
     rm -f "$OUTPUT_DIR/$FINAL_REPORT_NAME"
 fi
+
+echo "=== 审计任务结束 ===" >> "$LOG_FILE"
+echo -e "${GREEN}[*] 执行日志已保存至: $LOG_FILE${NC}"

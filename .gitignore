@@ -40,3 +40,8 @@ node_modules/
 
 # --- Environment Variables ---
 .env
+
+# --- ZeroTier Moon Project ---
+zerotier moon/output/
+zerotier moon/*.moon
+zerotier moon/moon.json
