@@ -1233,11 +1233,20 @@
         // If specific keys for MWh exist, this might miss them if they are not in the map.
         // Fallback: If MWh view and no items found via map, maybe try to match fuzzy?
         // Let's stick to map for now.
-        const targetItems = Object.entries(itemGroupMap)
+        let targetItems = Object.entries(itemGroupMap)
           .filter(
             ([item, group]) => group === groupName || groupName === "全部",
           )
           .map(([item]) => item);
+
+        // Avoid double counting: If both "Total/Sum" items and sub-items exist, prioritize sub-items
+        if (groupName !== "全部") {
+            const totals = targetItems.filter(item => /总考核|总计|合计|小计/.test(item));
+            const subs = targetItems.filter(item => !/总考核|总计|合计|小计/.test(item));
+            if (subs.length > 0 && totals.length > 0) {
+                targetItems = subs; 
+            }
+        }
 
         if (targetItems.length === 0 && groupName !== "全部") {
           // If no items found in map, maybe this group doesn't have cost items?
@@ -1695,6 +1704,14 @@
             }
           });
         }
+        
+        // Avoid double counting in station detail pie chart
+        const totalItems = asmItems.filter(i => /总考核|总计|合计|小计/.test(i.name));
+        const subItems = asmItems.filter(i => !/总考核|总计|合计|小计/.test(i.name));
+        if (subItems.length > 0 && totalItems.length > 0) {
+            asmItems = subItems;
+        }
+
         asmItems.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
 
         // Assign Colors

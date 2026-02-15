@@ -480,37 +480,62 @@ def analyze_excel(filepath, output_path, period=None, station=None):
             'full': df_sorted_loss.to_dict('records')
         }
         
-    # 2. 考核动因分析 (Grouped breakdown)
+    # 2. 考核动因分析 (Grouped breakdown based on updated taxonomy)
     groups = {
-        '技术指导与管理': ['技术指导', '运行管理', '调度', '报表', '计划', '检修', '安全', '规程', '纪律', '自动化', '继电保护', '远动', '安稳'],
-        '功率预测': ['功率预测', '变化率', '预测', '波动'],
-        'AGC/AVC': ['AGC', 'AVC', '自动发电', '自动电压', '偏差', '频率', '母线电压'],
+        '技术指导与管理': [
+            '一次调频和自动发电控制', '继电保护与安自装置', '励磁系统和PSS装置', 
+            '通信设备装置', '自动化装置', '电力监控系统', '并网检测与仿真', 
+            '电气设备', '水库调度运行', '低(零)电压穿越', '动态无功装置', 
+            '风光AGC', '风光AVC', '风光母线', '网络安全', '信息报送',
+            '技术指导', '运行管理'
+        ],
+        '发电计划': ['发电计划'],
         '一次调频': ['一次调频'],
-        '并网运行': ['非计划', '停运', '脱网', '非停', '振动'],
-        '数据质量': ['数据', '传输', '通信', '合格率']
+        '母线电压': ['母线电压'],
+        '非停': ['非停'],
+        '调峰': ['调峰'],
+        '燃料管理': ['燃料管理'],
+        '黑启动': ['黑启动'],
+        '水电振动区': ['水电振动区'],
+        'AVC': ['AVC'],
+        '功率预测': ['功率预测', '预测上报率', '预测准确率'],
+        '有功功率变化率': ['有功功率变化率', '变化率'],
+        '脱网': ['脱网'],
+        '数据质量': ['数据质量', '数据合格率', '质量', '传输', '通信', '合格率'],
+        '安全管理': ['安全管理'],
+        '调度管理': ['调度管理'],
+        '检修管理': ['检修管理'],
+        '其他': ['其他']
     }
 
     if not df_assessment_cost.empty:
         exclude_cols = ['结算序号', '电厂类型', '电厂名称', 'Station', '日期', '日期（文本）', '考核费用合计', '上网电量', 'Date', '名称', '年月', '免考情况', '合计']
         numeric_cols_cost = [c for c in df_assessment_cost.columns if c not in exclude_cols and not str(c).startswith('Unnamed')]
         
-        # Calculate raw totals (Cost based for dashboard pie chart)
+        # Calculate raw totals
         raw_totals = df_assessment_cost[numeric_cols_cost].sum()
         
-        # Group totals
-        grouped_totals = {}
+        # Group totals (with logic to avoid double counting Total vs Sub-items)
+        items_by_group = {} 
         for item, val in raw_totals.items():
             if val == 0: continue
             found_group = False
             for group_name, keywords in groups.items():
                 if any(k in str(item) for k in keywords):
-                    grouped_totals[group_name] = grouped_totals.get(group_name, 0) + val
+                    items_by_group.setdefault(group_name, []).append((item, val))
                     found_group = True
                     break
             if not found_group:
-                grouped_totals['其他'] = grouped_totals.get('其他', 0) + val
+                items_by_group.setdefault('其他', []).append((item, val))
                 
-        # Filter negative values and sort
+        grouped_totals = {}
+        for g_name, items in items_by_group.items():
+            # If both "Total/Sum" columns and sub-items exist, prioritize sub-items to avoid double counting
+            subs = [v for k, v in items if not any(x in str(k) for x in ['总考核', '总计', '合计', '小计'])]
+            totals = [v for k, v in items if any(x in str(k) for x in ['总考核', '总计', '合计', '小计'])]
+            grouped_totals[g_name] = sum(subs) if subs else sum(totals)
+                
+        # Filter zero values and sort
         analysis_results['assessment_composition'] = {k: v for k, v in grouped_totals.items() if v != 0}
 
     # Build a consolidated item-to-group map for frontend drill-down (Cost & Mwh)
