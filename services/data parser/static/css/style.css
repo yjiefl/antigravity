@@ -21,6 +21,11 @@ body.theme-report {
   --primary-gradient: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
 }
 
+body.theme-rules {
+  --primary-color: #f97316;
+  --primary-gradient: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -89,7 +94,7 @@ h1 {
 }
 
 .upload-box:hover {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: var(--primary-color);
   background: rgba(30, 41, 59, 0.9);
   transform: translateY(-4px);
   box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
@@ -111,7 +116,7 @@ h1 {
 
 .btn:hover {
   transform: scale(1.03) translateY(-2px);
-  box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.6);
+  box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.6);
 }
 
 .btn-secondary {
@@ -135,77 +140,77 @@ h1 {
 .nav-btn.active {
   background: var(--primary-gradient);
   opacity: 1;
-  box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.3);
 }
 
 /* New Header Layout */
 .app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 0;
-    margin-bottom: 2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Optional divider */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* Optional divider */
 }
 
 .branding {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .branding h1 {
-    font-size: 1.8rem; /* Smaller title as requested */
-    margin-bottom: 0.2rem;
-    background: var(--primary-gradient);
-    -webkit-background-clip: text2; /* Standard property is background-clip */
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  font-size: 1.8rem; /* Smaller title as requested */
+  margin-bottom: 0.2rem;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text2; /* Standard property is background-clip */
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .branding p {
-    font-size: 0.85rem;
-    margin: 0;
-    color: var(--text-muted);
-    font-weight: 500;
+  font-size: 0.85rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 /* Nav on the right */
 .top-nav {
-    display: flex;
-    gap: 0.8rem;
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: none;
-    backdrop-filter: none;
-    width: auto;
+  display: flex;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  width: auto;
 }
 
 @media (max-width: 768px) {
-    .app-header {
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        text-align: center;
-    }
-    
-    .branding {
-        align-items: center;
-    }
-    
-    .top-nav {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .nav-btn {
-        width: auto;
-        padding: 0.5rem 1rem;
-    }
+  .app-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .branding {
+    align-items: center;
+  }
+
+  .top-nav {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .nav-btn {
+    width: auto;
+    padding: 0.5rem 1rem;
+  }
 }
 
 /* Ensure container is relative for absolute positioning (Merged) */
@@ -251,7 +256,7 @@ h1 {
 
 .chart-container {
   position: relative;
-  height: 400px;
+  height: 600px;
 }
 
 .wide-card {
@@ -344,4 +349,24 @@ tr:hover {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Custom Scrollbar Premium Style */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
 }

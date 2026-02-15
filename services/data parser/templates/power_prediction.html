@@ -16,13 +16,14 @@
     <div class="container">
       <header class="app-header">
         <div class="branding">
-           <h1>功率预测·合格率分析</h1>
-           <p>交互式穿透查看功率预测扣分明细与原因热度</p>
+          <h1>功率预测·合格率分析</h1>
+          <p>交互式穿透查看功率预测扣分明细与原因热度</p>
         </div>
-        
+
         <nav class="top-nav">
           <a href="/power_prediction" class="btn nav-btn active">功率预测分析</a>
           <a href="/daily_report" class="btn btn-secondary nav-btn">运营日报审核</a>
+          <a href="/two_rules" class="btn btn-secondary nav-btn">两个细则分析</a>
         </nav>
       </header>
 
@@ -65,6 +66,31 @@
             accept=".csv"
             style="display: none"
           />
+
+          <!-- 公司筛选选项 -->
+          <div style="margin-top: 1rem; text-align: center">
+            <label
+              style="
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.9rem;
+                color: #cbd5e1;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="checkbox"
+                id="filterCompany"
+                style="
+                  width: 16px;
+                  height: 16px;
+                  accent-color: var(--primary-color);
+                "
+              />
+              <span style="user-select: none">仅分析中能建广西公司场站</span>
+            </label>
+          </div>
 
           <div
             style="
@@ -115,7 +141,12 @@
               margin-bottom: 1rem;
             "
           >
-            <span style="font-size: 1.1rem">📂 分析历史记录 (云端同步)</span>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span style="font-size: 1.1rem">📂 分析历史记录 (云端同步)</span>
+                <button id="startCompareBtn" class="btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; background: var(--primary-color); display: none;" onclick="runComparison()">
+                    ⚖️ 对比所选 (0/2)
+                </button>
+            </div>
             <span
               id="historyCount"
               style="
@@ -166,14 +197,14 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card wide-card">
           <div class="card-title">场站扣分热度 (点击柱条查看明细)</div>
           <div class="chart-container">
             <canvas id="stationChart"></canvas>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card wide-card">
           <div class="card-title">原因频率分布 (点击扇区查看明细)</div>
           <div class="chart-container">
             <canvas id="problemChart"></canvas>
@@ -224,9 +255,7 @@
             flex-wrap: wrap;
           "
         >
-          <button class="btn" style="background: #0ea5e9" id="snapshotBtn">
-            📸 网页视觉快照 (PNG)
-          </button>
+
           <button class="btn" style="background: #8b5cf6" id="offlineBtn">
             🌐 离线交互看板 (HTML)
           </button>
@@ -254,7 +283,65 @@
           >
         </div>
       </section>
+
+      <!-- 对比分析看板 -->
+      <section class="viz-grid" id="compareDashboard" style="display: none; border-top: 2px solid var(--primary-color); padding-top: 2rem;">
+        <div class="summary-cards wide-card">
+           <div class="card" style="grid-column: span 1;">
+              <div class="card-title">对比基准 (旧)</div>
+              <div id="compareMetaOld" style="font-size: 0.9rem; font-weight: 600;"></div>
+              <div id="compareTimeOld" style="font-size: 0.75rem; color: var(--text-muted);"></div>
+           </div>
+           <div class="card" style="grid-column: span 1;">
+              <div class="card-title">对比对象 (新)</div>
+              <div id="compareMetaNew" style="font-size: 0.9rem; font-weight: 600;"></div>
+              <div id="compareTimeNew" style="font-size: 0.75rem; color: var(--text-muted);"></div>
+           </div>
+           <div class="card" style="grid-column: span 1; text-align: center;">
+              <div class="card-title">扣分变化差异</div>
+              <div id="compareDiffScore" style="font-size: 2.4rem; font-weight: 800;"></div>
+              <div id="compareDiffLabel" style="font-size: 1rem; font-weight: 600;"></div>
+           </div>
+        </div>
+
+        <div class="card wide-card">
+          <div class="card-title">扣分波动趋势（按场站/考核项，点击查看穿透）</div>
+          <div class="chart-container">
+            <canvas id="compareChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card wide-card">
+           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+              <div class="card-title" style="margin: 0;">场站对比波动榜单</div>
+              <div style="display: flex; gap: 0.8rem;">
+                 <a href="#" id="compareXlsxBtn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; color: #10b981;">🟢 导出 Excel 对比</a>
+                 <a href="#" id="comparePdfBtn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; color: #6366f1;">🔵 导出 PDF 报告</a>
+              </div>
+           </div>
+           <div id="compareListContent"></div>
+        </div>
+        <div class="card wide-card" id="compareDrillDownCard" style="display: none; border-top: 2px solid var(--primary-color); background: rgba(15, 23, 41, 0.6);">
+           <div class="card-title" id="compareDrillTitle" style="color: var(--primary-color);">穿透明细解析</div>
+           <div class="detail-table-wrapper">
+              <table id="compareDetailsTable">
+                 <thead>
+                    <tr>
+                       <th style="width: 15%;">指标 / 关联单位</th>
+                       <th style="width: 10%; text-align: right;">旧记录状况</th>
+                       <th style="width: 10%; text-align: right;">新记录状况</th>
+                       <th style="width: 12%; text-align: right;">差异波动</th>
+                       <th style="width: 53%;">全周期具体原因追踪</th>
+                    </tr>
+                 </thead>
+                 <tbody id="compareDetailsBody"></tbody>
+              </table>
+           </div>
+        </div>
+      </section>
     </div>
+
+
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
@@ -272,8 +359,9 @@
       const drillDownCard = document.getElementById("drillDownCard");
       const drillDownTitle = document.getElementById("drillDownTitle");
 
-      let stationChart, problemChart;
+      let stationChart, problemChart, compareChart;
       let allDetails = [];
+      let lastComparisonData = null; // Store comparison results for drill-down
 
       const triggerFile = () => fileInput.click();
       fileTriggerArea.onclick = triggerFile;
@@ -327,7 +415,10 @@
         list.innerHTML = history
           .map(
             (item) => `
-                <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                <div class="history-item" style="display: flex; align-items: center; background: rgba(255,255,255,0.03); padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="margin-right: 1rem;">
+                        <input type="checkbox" class="history-checkbox" value="${item.file_id}" onchange="handleSelection(this)" style="width: 18px; height: 18px; accent-color: var(--primary-color); cursor: pointer;">
+                    </div>
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: #fff; margin-bottom: 0.2rem; font-size: 0.95rem;">${item.filename}</div>
                         <div style="font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.8rem;">
@@ -393,6 +484,10 @@
         }
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
+        formData.append(
+          "filter_ceec",
+          document.getElementById("filterCompany").checked,
+        );
         loader.style.display = "block";
         dashboard.style.display = "none";
         drillDownCard.style.display = "none";
@@ -415,30 +510,7 @@
         }
       };
 
-      // 看板快照 (PNG)
-      document.getElementById("snapshotBtn").onclick = async () => {
-        const btn = document.getElementById("snapshotBtn");
-        const originalText = btn.innerText;
-        btn.innerText = "📷 正在捕获...";
 
-        try {
-          // 确保下钻卡片如果是打开的也一起截进去
-          const canvas = await html2canvas(dashboard, {
-            backgroundColor: "#0b0e14",
-            scale: 2,
-            useCORS: true,
-            logging: false,
-          });
-          const link = document.createElement("a");
-          link.download = `分析看板视觉快照_${new Date().getTime()}.png`;
-          link.href = canvas.toDataURL("image/png");
-          link.click();
-        } catch (err) {
-          alert("截图失败");
-        } finally {
-          btn.innerText = originalText;
-        }
-      };
 
       // 离线交互看板导出 (HTML)
       document.getElementById("offlineBtn").onclick = () => {
@@ -553,7 +625,7 @@
             },
             options: { 
                 maintainAspectRatio: false, 
-                plugins: { legend: { labels: {color:'#fff'}, position:'right' }, datalabels:{display:false} },
+                plugins: { legend: { labels: {color:'#fff'}, position:'right', align: 'start' }, datalabels:{display:false} },
                 onClick: (e, el) => { if(el.length) showDrillDown('item', pc.data.labels[el[0].index]); }
             }
         });
@@ -687,6 +759,7 @@
             plugins: {
               legend: {
                 position: "right",
+                align: "start",
                 labels: {
                   color: "#ffffff",
                   font: { size: 12, weight: "600" },
@@ -774,6 +847,248 @@
             )
             .join("");
         }
+      }
+
+      // Comparison Logic
+      let selectedIds = [];
+
+      function handleSelection(checkbox) {
+          if (checkbox.checked) {
+              if (selectedIds.length >= 2) {
+                  checkbox.checked = false;
+                  alert("最多只能选择 2 条记录进行对比");
+                  return;
+              }
+              selectedIds.push(checkbox.value);
+          } else {
+              selectedIds = selectedIds.filter(id => id !== checkbox.value);
+          }
+          
+          const btn = document.getElementById("startCompareBtn");
+          if (selectedIds.length === 2) {
+              btn.style.display = "block";
+              btn.innerText = `⚖️ 开始对比 (${selectedIds.length}/2)`;
+          } else {
+              btn.style.display = "none";
+          }
+      }
+
+      async function runComparison() {
+          if (selectedIds.length !== 2) return;
+          
+          const btn = document.getElementById("startCompareBtn");
+          btn.innerText = "⏳ 正在交叉计算...";
+          
+          try {
+              const res = await fetch(`/compare?id1=${selectedIds[0]}&id2=${selectedIds[1]}`);
+              const json = await res.json();
+              
+              if (json.success) {
+                  lastComparisonData = json.data;
+                  renderComparison(json.data);
+                  
+                  // Show compare dashboard, hide single dashboard
+                  document.getElementById("dashboard").style.display = "none";
+                  document.getElementById("compareDashboard").style.display = "grid";
+                  document.getElementById("compareDashboard").scrollIntoView({ behavior: "smooth" });
+                  
+                  // Setup Export Links
+                  document.getElementById("compareXlsxBtn").href = `/compare/export/excel?id1=${selectedIds[0]}&id2=${selectedIds[1]}`;
+                  document.getElementById("comparePdfBtn").href = `/compare/export/pdf?id1=${selectedIds[0]}&id2=${selectedIds[1]}`;
+              } else {
+                  alert("对比失败: " + json.error);
+              }
+          } catch (err) {
+              alert("网络错误");
+          } finally {
+              btn.innerText = `⚖️ 开始对比 (2/2)`;
+          }
+      }
+
+      function renderComparison(data) {
+          const meta = data.meta;
+          const diffScore = meta.total_deduction_diff;
+          const diffColor = diffScore < 0 ? "#10b981" : (diffScore > 0 ? "#ff4d4d" : "#94a3b8");
+          const diffIcon = diffScore < 0 ? "📉 情况有所改善" : (diffScore > 0 ? "📈 情况正在恶化" : "➖ 持平");
+          
+          // Fill Meta
+          document.getElementById('compareMetaOld').innerText = meta.filename_old;
+          document.getElementById('compareTimeOld').innerText = meta.timestamp_old;
+          document.getElementById('compareMetaNew').innerText = meta.filename_new;
+          document.getElementById('compareTimeNew').innerText = meta.timestamp_new;
+          
+          const scoreEl = document.getElementById('compareDiffScore');
+          scoreEl.innerText = (diffScore > 0 ? '+' : '') + diffScore;
+          scoreEl.style.color = diffColor;
+          
+          const labelEl = document.getElementById('compareDiffLabel');
+          labelEl.innerText = diffIcon;
+          labelEl.style.color = diffColor;
+
+          // Render List Tables
+          const listHtml = `
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                  <div>
+                      <h4 style="margin-bottom: 1rem; color: #94a3b8; font-size: 0.85rem;">场站波动排行 (点击行穿透)</h4>
+                      ${renderDiffTable(data.station_diffs, '场站')}
+                  </div>
+                  <div>
+                      <h4 style="margin-bottom: 1rem; color: #94a3b8; font-size: 0.85rem;">指标趋势变动 (点击行穿透)</h4>
+                      ${renderDiffTable(data.item_diffs, '考核项')}
+                  </div>
+              </div>
+          `;
+          document.getElementById('compareListContent').innerHTML = listHtml;
+          document.getElementById('compareDrillDownCard').style.display = 'none';
+          
+          // Render Compare Chart
+          setTimeout(() => {
+              const ctx = document.getElementById('compareChart').getContext('2d');
+              if (compareChart) compareChart.destroy();
+              
+              // Sort by absolute diff and get top 15
+              const topChanges = [...data.station_diffs]
+                  .sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff))
+                  .slice(0, 15);
+              
+              compareChart = new Chart(ctx, {
+                  type: 'bar',
+                  data: {
+                      labels: topChanges.map(c => c.name),
+                      datasets: [{
+                          label: '得分变动 (-为改善, +为恶化)',
+                          data: topChanges.map(c => c.diff),
+                          backgroundColor: topChanges.map(c => c.diff > 0 ? 'rgba(255, 77, 77, 0.7)' : 'rgba(16, 185, 129, 0.7)'),
+                          borderColor: topChanges.map(c => c.diff > 0 ? '#ff4d4d' : '#10b981'),
+                          borderWidth: 1
+                      }]
+                  },
+                  options: {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { 
+                        legend: { display: false },
+                        tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)' }
+                      },
+                      scales: {
+                          y: { 
+                            ticks: { color: '#94a3b8' }, 
+                            grid: { color: 'rgba(255,255,255,0.05)' } 
+                          },
+                          x: { 
+                            ticks: { color: '#cbd5e1', font: { size: 10 } },
+                            grid: { display: false }
+                          }
+                      },
+                      onClick: (e, el) => {
+                          if (el.length) {
+                              const idx = el[0].index;
+                              showCompareDrillDown('station', topChanges[idx].name);
+                          }
+                      }
+                  }
+              });
+          }, 100);
+      }
+
+      function renderDiffTable(diffs, label) {
+          if (!diffs || diffs.length === 0) return '<p style="color:#64748b; text-align:center;">此维度无明显数据变化</p>';
+          
+          return `
+              <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                      <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #94a3b8; font-size: 0.85rem;">
+                          <th style="padding: 10px; text-align: left;">${label}</th>
+                          <th style="padding: 10px; text-align: right;">旧值</th>
+                          <th style="padding: 10px; text-align: right;">新值</th>
+                          <th style="padding: 10px; text-align: right;">变化量</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      ${diffs.map(d => {
+                          const color = d.diff > 0 ? '#ff4d4d' : (d.diff < 0 ? '#10b981' : '#94a3b8');
+                          const sign = d.diff > 0 ? '+' : '';
+                          const rowColor = d.diff > 0 ? 'rgba(255,77,77,0.05)' : (d.diff < 0 ? 'rgba(16,185,129,0.05)' : 'transparent');
+                          return `
+                              <tr onclick="showCompareDrillDown('${label === '场站' ? 'station' : 'item'}', '${d.name}')" 
+                                  style="border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: background 0.2s; background: ${rowColor};"
+                                  onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                                  onmouseout="this.style.background='${rowColor}'">
+                                  <td style="padding: 10px;">${d.name} <span style="font-size: 0.7rem; color: var(--primary-color);">🔍</span></td>
+                                  <td style="padding: 10px; text-align: right; color: #64748b;">${d.val_old}</td>
+                                  <td style="padding: 10px; text-align: right; font-weight: 600;">${d.val_new}</td>
+                                  <td style="padding: 10px; text-align: right; color: ${color}; font-weight: 800;">${sign}${d.diff}</td>
+                              </tr>
+                          `;
+                      }).join('')}
+                  </tbody>
+              </table>
+          `;
+      }
+
+      function showCompareDrillDown(type, value) {
+          if (!lastComparisonData) return;
+          
+          const card = document.getElementById('compareDrillDownCard');
+          const body = document.getElementById('compareDetailsBody');
+          const title = document.getElementById('compareDrillTitle');
+          
+          card.style.display = 'block';
+          title.innerText = `穿透分析: ${value}`;
+          
+          // Filter granular cross-diffs
+          const relatedDiffs = lastComparisonData.station_item_diffs.filter(d => 
+              (type === 'station' ? d.station : d.item) === value
+          );
+          
+          // Sort by impact (absolute diff)
+          relatedDiffs.sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+          body.innerHTML = relatedDiffs.map(d => {
+              const color = d.diff > 0 ? '#ff4d4d' : (d.diff < 0 ? '#10b981' : '#94a3b8');
+              const sign = d.diff > 0 ? '+' : '';
+              const targetLabel = type === 'station' ? d.item : d.station;
+              
+              // Try to find raw reasons if any
+              const getReasons = (raw) => {
+                  return raw.filter(r => r.厂站名 === d.station && r.考核项 === d.item)
+                            .map(r => `• ${r.具体原因 || r.原因}`)
+                            .slice(0, 2).join('<br>') || '-';
+              };
+              
+              const reasonsOld = getReasons(lastComparisonData.raw_old);
+              const reasonsNew = getReasons(lastComparisonData.raw_new);
+
+              return `
+                <tr>
+                    <td><b style="color:#fff">${targetLabel}</b></td>
+                    <td style="font-size: 0.9rem; color: #94a3b8; text-align: right;">${d.val_old}</td>
+                    <td style="font-size: 0.9rem; color: #fff; text-align: right; font-weight: 600;">${d.val_new}</td>
+                    <td style="text-align: right; color: ${color}; font-weight: 800;">
+                        ${sign}${d.diff}
+                        <div style="font-size: 0.7rem; font-weight: 400; margin-top: 4px;">
+                            ${d.diff > 0 ? '⚠️ 情况转差' : (d.diff < 0 ? '✅ 明显改善' : '无变化')}
+                        </div>
+                    </td>
+                    <td style="font-size: 0.82rem; line-height: 1.6; padding: 0.8rem;">
+                        <div style="background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 3px solid #64748b;">
+                            <div style="color: #94a3b8; font-size: 0.7rem; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                                <span style="background: #475569; color: #fff; padding: 1px 4px; border-radius: 3px;">旧</span> 历史溯源状况
+                            </div>
+                            <div style="color: #94a3b8;">${reasonsOld}</div>
+                        </div>
+                        <div style="background: rgba(99, 102, 241, 0.05); padding: 0.6rem; border-radius: 8px; border-left: 3px solid var(--primary-color);">
+                            <div style="color: var(--primary-color); font-size: 0.7rem; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                                <span style="background: var(--primary-color); color: #fff; padding: 1px 4px; border-radius: 3px;">新</span> 当前跟进状况
+                            </div>
+                            <div style="color: #cbd5e1;">${reasonsNew}</div>
+                        </div>
+                    </td>
+                </tr>
+              `;
+          }).join('');
+          
+          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     </script>
   </body>

@@ -11,6 +11,14 @@ TARGET_STATIONS = [
     '樟木光伏电站', '榕木光伏电站', '樟木风电场', '驮堪光伏电站', '把荷风电场', '武安风电场'
 ]
 
+# 中能建广西公司场站列表 (用户及更新记录提供)
+CEEC_GX_STATIONS = [
+    '派岸光伏电站', '浦峙光伏电站', '寨安光伏电站', '樟木光伏电站', '强胜光伏电站', 
+    '守旗光伏电站', '弄滩光伏电站', '康宁光伏电站', '峙书光伏电站', '榕木光伏电站', 
+    '驮堪光伏电站', '岑凡光伏电站', '坤山风电场', '把荷风电场', '武安风电场',
+    '樟木风电场'
+]
+
 class BetterPDF(FPDF):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -135,12 +143,12 @@ def parse_deduction_text(text):
     if pd.isna(text) or not str(text).strip(): return None
     text = str(text)
     
-    # 1. 尝试更灵活的正则匹配 (支持全角/半角冒号，支持嵌套格式)
-    item_match = re.search(r'考核条件[:：]\s*([^，,（\s；;]+)', text)
+    # 1. 尝试更灵活的正则匹配 (更准确地识别考核条件，避免在空格或括号处过早截断)
+    item_match = re.search(r'考核条件[:：]\s*(.*?(?=\s*(?:得分|总分|原因|[，,；;]|（总分)|$))', text)
     score_match = re.search(r'得分[:：]\s*([\d.]+)', text)
     total_match = re.search(r'总分[:：]?\s*\(?([\d.]+)\)?', text)
     
-    item_val = item_match.group(1).strip() if item_match else None
+    item_val = item_match.group(1).strip().rstrip('，,：:') if item_match else None
     score_val = float(score_match.group(1)) if score_match else 0.0
     total_val = float(total_match.group(1)) if total_match else 0.0
     
@@ -168,7 +176,7 @@ def parse_deduction_text(text):
     return {'考核项': item_val, '扣分值': deduction, '原因': reason_clean}
 
 
-def analyze_file(input_path, output_dir):
+def analyze_file(input_path, output_dir, filter_ceec=False):
     # Detect file type
     # If the user uploaded an Excel file, try to read it as Excel first
     if input_path.endswith(('.xlsx', '.xls')):
@@ -205,7 +213,20 @@ def analyze_file(input_path, output_dir):
         return None, f"文件缺少关键列: '厂站名'。当前包含列: {', '.join(df.columns[:5])}..."
 
     df['厂站名'] = df['厂站名'].astype(str).str.strip()
-    df = df[df['厂站名'].apply(lambda x: any(target in x for target in TARGET_STATIONS))]
+    
+    # Check if this is the "GX" format (contains 'GID', '省份')
+    is_gx_cols = 'GID' in df.columns and '省份' in df.columns
+    is_xlsx = input_path.lower().endswith(('.xlsx', '.xls'))
+    
+    if filter_ceec:
+        # User requested filtering for CEEC stations only (applies to both formats)
+        df = df[df['厂站名'].apply(lambda x: any(target in x for target in CEEC_GX_STATIONS))]
+    elif is_gx_cols:
+        # New comprehensive format (detected by columns) without filter -> Use all stations
+        pass
+    else:
+        # Legacy formats without GX columns -> Use strict whitelist (TARGET_STATIONS)
+        df = df[df['厂站名'].apply(lambda x: any(target in x for target in TARGET_STATIONS))]
 
     if df.empty: return None, "未找到目标场站数据"
 

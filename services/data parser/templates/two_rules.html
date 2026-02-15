@@ -482,26 +482,26 @@
         <div class="viz-grid" id="chartsGrid" style="display: none">
           <!-- 经营损益排行 -->
           <div class="card wide-card chart-card">
-            <div class="card-title">场站经营损益分布 (TOP 10)</div>
+            <div class="card-title" id="profitChartTitle">场站经营损益分布 (TOP 10)</div>
             <div id="profitChart" class="chart-container"></div>
           </div>
 
           <!-- 考核项构成 -->
           <div class="card chart-card">
-            <div class="card-title">考核动因项占比分析</div>
+            <div class="card-title" id="compositionChartTitle">考核动因项占比分析</div>
             <div id="compositionChart" class="chart-container"></div>
           </div>
 
           <!-- 补偿项构成 -->
           <div class="card chart-card">
-            <div class="card-title">辅助服务补偿构成分析</div>
+            <div class="card-title" id="compChartTitle">辅助服务补偿构成分析</div>
             <div id="compChart" class="chart-container"></div>
           </div>
 
 
           <!-- 免考与申诉 -->
           <div class="card wide-card chart-card">
-            <div class="card-title">免考与申诉增益分析</div>
+            <div class="card-title" id="exemptionChartTitle">免考与申诉增益分析</div>
             <div
               class="grid-3"
               style="
@@ -515,13 +515,15 @@
                 <h4
                   style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1rem"
                 >
-                  功率预测/数据合格率免考增益 (TOP 10)
+                  场站免考增益排名 (全部)
                 </h4>
-                <div
-                  id="exemptionChart"
-                  class="chart-container"
-                  style="height: 300px"
-                ></div>
+                <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+                    <div
+                      id="exemptionChart"
+                      class="chart-container"
+                      style="height: 300px"
+                    ></div>
+                </div>
               </div>
               <!-- Appeal placeholder or future chart -->
               <div
@@ -544,6 +546,46 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- 月度趋势分析 (新增) -->
+        <div class="card wide-card chart-card" id="trendCard" style="display: none; margin-top: 1.5rem;">
+          <div class="card-title">月度趋势指标波动分析</div>
+          
+          <div style="display: flex; gap: 1.5rem; margin: 1rem 0; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 12px; flex-wrap: wrap; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span style="color: #94a3b8; font-size: 0.9rem">起始:</span>
+              <select id="trendStartPeriod" style="background: #1e293b; color: #fff; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.85rem;" onchange="updateTrends()">
+                <option value="all">最早</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span style="color: #94a3b8; font-size: 0.9rem">结束:</span>
+              <select id="trendEndPeriod" style="background: #1e293b; color: #fff; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.85rem;" onchange="updateTrends()">
+                <option value="all">最晚</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span style="color: #94a3b8; font-size: 0.9rem">年度:</span>
+              <select id="trendYear" style="background: #1e293b; color: #fff; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.85rem;" onchange="updateTrends()">
+                <option value="all">全部</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span style="color: #94a3b8; font-size: 0.9rem">场站:</span>
+              <select id="trendStation" style="background: #1e293b; color: #fff; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.85rem;" onchange="updateTrends()">
+                <option value="all">全部场站对比</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem">
+              <span style="color: #94a3b8; font-size: 0.9rem">指标:</span>
+              <select id="trendIndicator" style="background: #1e293b; color: #fff; border: 1px solid #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.85rem;" onchange="updateTrends()">
+                <option value="overview">总体损益概览</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="trendChart" class="chart-container" style="height: 400px"></div>
         </div>
       </div>
     </div>
@@ -745,6 +787,24 @@
            document.getElementById("exemptionRankingList").innerHTML = '<div style="color: #64748b; text-align: center; padding: 2rem;">暂无免考数据</div>';
         }
 
+        // Update Chart Titles with Period/Station Info
+        const periodLabel = data.selected_period === 'all' ? '全部周期' : data.selected_period;
+        const stationLabel = data.selected_station === 'all' ? '全部场站' : data.selected_station;
+        const infoSpan = `<span style="margin-left: 1rem; color: #94a3b8; font-size: 0.9rem; font-weight: normal;">${periodLabel} · ${stationLabel}</span>`;
+
+        const asmTotal = Object.values(data.assessment_composition || {}).reduce((a, b) => a + b, 0).toFixed(2);
+        const compTotal = Object.values(data.comp_composition || {}).reduce((a, b) => a + b, 0).toFixed(2);
+        const totalAsmBadge = `<span style="background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 2px 10px; border-radius: 6px; font-size: 0.9rem; margin-left: 10px; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 700;">总计: ${asmTotal} 万</span>`;
+        const totalCompBadge = `<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 2px 10px; border-radius: 6px; font-size: 0.9rem; margin-left: 10px; border: 1px solid rgba(16, 185, 129, 0.2); font-weight: 700;">总计: ${compTotal} 万</span>`;
+
+        const exemptionTotal = (data.exemption_effect || []).reduce((a, b) => a + (b.ExemptionDiff || 0), 0).toFixed(2);
+        const totalExemptionBadge = `<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 2px 10px; border-radius: 6px; font-size: 0.9rem; margin-left: 10px; border: 1px solid rgba(16, 185, 129, 0.2); font-weight: 700;">减免总量: ${exemptionTotal} MWh</span>`;
+
+        document.getElementById("profitChartTitle").innerHTML = "场站经营损益分布 (TOP 10)" + infoSpan;
+        document.getElementById("compositionChartTitle").innerHTML = "考核动因项占比分析" + totalAsmBadge + infoSpan;
+        document.getElementById("compChartTitle").innerHTML = "辅助服务补偿构成分析" + totalCompBadge + infoSpan;
+        document.getElementById("exemptionChartTitle").innerHTML = "免考与申诉增益分析" + totalExemptionBadge + infoSpan;
+
         // Charts
         requestAnimationFrame(() => {
           initProfitChart(data.profit_ranking);
@@ -864,16 +924,41 @@
           backgroundColor: "transparent",
           tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
           legend: {
-            orient: "horizontal",
-            bottom: 0,
-            textStyle: { color: "#94a3b8", fontSize: 10 },
+            orient: "vertical",
+            right: "5%",
+            top: "middle",
+            itemGap: 10,
             type: "scroll",
+            pageTextStyle: { color: "#fff" },
+            textStyle: { 
+                color: "#cbd5e1", 
+                fontSize: 12,
+                rich: {
+                    name: {
+                        color: "#94a3b8",
+                        width: 100,
+                        align: 'left',
+                        padding: [0, 10, 0, 0]
+                    },
+                    val: {
+                        color: "#fff",
+                        width: 80,
+                        align: 'right',
+                        fontWeight: 'bold'
+                    }
+                }
+            },
+            formatter: function(name) {
+                const item = data.find(d => d.name === name);
+                return item ? `{name|${name}}{val|${item.value}}` : name;
+            }
           },
+
           series: [
             {
               type: "pie",
-              radius: ["45%", "70%"],
-              center: ["50%", "50%"],
+              radius: ["50%", "75%"],
+              center: ["25%", "50%"],
               avoidLabelOverlap: true,
               itemStyle: {
                 borderRadius: 10,
@@ -883,13 +968,13 @@
               label: { show: false },
               data: data,
               color: [
-                "#f97316", // Orange
-                "#10b981", // Emerald
-                "#3b82f6", // Blue
-                "#f59e0b", // Amber
-                "#6366f1", // Indigo
-                "#ef4444", // Red
-                "#ec4899", // Pink
+                "#f97316", 
+                "#10b981", 
+                "#3b82f6", 
+                "#f59e0b", 
+                "#6366f1", 
+                "#ef4444", 
+                "#ec4899", 
               ],
             },
           ],
@@ -961,11 +1046,16 @@
           return;
         }
 
+        // Set dynamic height based on data length
+        const chartHeight = Math.max(300, data.length * 30);
+        dom.style.height = chartHeight + "px";
+
         if (!chart) {
            dom.innerHTML = "";
            chart = echarts.init(dom);
+        } else {
+           chart.resize();
         }
-        const top10 = data.slice(0, 10);
 
         const option = {
           backgroundColor: "transparent",
@@ -984,14 +1074,14 @@
           },
           yAxis: {
             type: "category",
-            data: top10.map((d) => d.Station),
+            data: data.map((d) => d.Station),
             axisLabel: { color: "#cbd5e1", fontSize: 10 },
             inverse: true,
           },
           series: [
             {
               type: "bar",
-              data: top10.map((d) => d.ExemptionDiff.toFixed(2)),
+              data: data.map((d) => d.ExemptionDiff.toFixed(2)),
               itemStyle: { color: "#10b981", borderRadius: [0, 4, 4, 0] },
               label: { show: true, position: "right", color: "#fff" },
             },
@@ -1026,16 +1116,41 @@
           backgroundColor: "transparent",
           tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
           legend: {
-            orient: "horizontal",
-            bottom: 0,
-            textStyle: { color: "#94a3b8", fontSize: 10 },
+            orient: "vertical",
+            right: "5%",
+            top: "middle",
+            itemGap: 10,
             type: "scroll",
+            pageTextStyle: { color: "#fff" },
+            textStyle: { 
+                color: "#cbd5e1", 
+                fontSize: 12,
+                rich: {
+                    name: {
+                        color: "#94a3b8",
+                        width: 100,
+                        align: 'left',
+                        padding: [0, 10, 0, 0]
+                    },
+                    val: {
+                        color: "#fff",
+                        width: 80,
+                        align: 'right',
+                        fontWeight: 'bold'
+                    }
+                }
+            },
+            formatter: function(name) {
+                const item = data.find(d => d.name === name);
+                return item ? `{name|${name}}{val|${item.value}}` : name;
+            }
           },
+
           series: [
             {
               type: "pie",
-              radius: ["45%", "70%"],
-              center: ["50%", "50%"],
+              radius: ["50%", "75%"],
+              center: ["25%", "50%"],
               avoidLabelOverlap: true,
               itemStyle: {
                 borderRadius: 10,
@@ -1044,7 +1159,7 @@
               },
               label: { show: false },
               data: data,
-              color: ["#f97316", "#10b981", "#f59e0b", "#3b82f6", "#ef4444"], // Orange Palette
+              color: ["#f97316", "#10b981", "#f59e0b", "#3b82f6", "#ef4444"], 
             },
           ],
         };
@@ -1072,6 +1187,9 @@
         echarts
           .getInstanceByDom(document.getElementById("appealChart"))
           ?.resize();
+        echarts
+          .getInstanceByDom(document.getElementById("trendChart")) // New
+          ?.resize();
       });
 
       // History Functions
@@ -1080,6 +1198,7 @@
           const res = await fetch("/two_rules/history");
           const history = await res.json();
           renderHistory(history);
+          initTrendFilters(history); // Populate trend filters
         } catch (err) {
           console.error("Failed to fetch history");
         }
@@ -1115,6 +1234,198 @@
         `,
           )
           .join("");
+      }
+
+      // Trend Functions
+      function initTrendFilters(history) {
+        if (!history || history.length === 0) return;
+        
+        const periods = new Set();
+        const stations = new Set();
+        const years = new Set();
+        const categories = new Set();
+        
+        history.forEach(item => {
+            if (item.data && item.data.selected_period && item.data.selected_period !== 'all') {
+                periods.add(item.data.selected_period);
+                years.add(item.data.selected_period.split('-')[0]);
+            }
+            if (item.data && item.data.available_stations) {
+                item.data.available_stations.forEach(s => stations.add(s));
+            }
+            if (item.data && item.data.assessment_composition) {
+                Object.keys(item.data.assessment_composition).forEach(cat => categories.add(cat));
+            }
+            if (item.data && item.data.comp_composition) {
+                Object.keys(item.data.comp_composition).forEach(cat => categories.add(cat));
+            }
+        });
+        
+        const sortedPeriods = Array.from(periods).sort();
+        const sortedStations = Array.from(stations).sort();
+        const sortedYears = Array.from(years).sort().reverse();
+        const sortedCategories = Array.from(categories).sort();
+        
+        const startSelect = document.getElementById('trendStartPeriod');
+        const endSelect = document.getElementById('trendEndPeriod');
+        const yearSelect = document.getElementById('trendYear');
+        const stationSelect = document.getElementById('trendStation');
+        const indicatorSelect = document.getElementById('trendIndicator');
+        
+        if (sortedPeriods.length > 0) {
+            document.getElementById('trendCard').style.display = 'block';
+            
+            const periodOptions = sortedPeriods.map(p => `<option value="${p}">${p}</option>`).join('');
+            startSelect.innerHTML = `<option value="all">最早</option>` + periodOptions;
+            endSelect.innerHTML = `<option value="all">最晚</option>` + periodOptions;
+            
+            yearSelect.innerHTML = `<option value="all">全部年份</option>` + sortedYears.map(y => `<option value="${y}">${y}年</option>`).join('');
+            stationSelect.innerHTML = `<option value="all">全部场站对比</option>` + sortedStations.map(s => `<option value="${s}">${s}</option>`).join('');
+            
+            indicatorSelect.innerHTML = `<option value="overview">总体损益概览 (盈亏/考核/补偿)</option>` + 
+                sortedCategories.map(cat => `<option value="${cat}">明细指标: ${cat}</option>`).join('');
+
+            updateTrends();
+        }
+      }
+
+      async function updateTrends() {
+        const start = document.getElementById('trendStartPeriod').value;
+        const end = document.getElementById('trendEndPeriod').value;
+        const year = document.getElementById('trendYear').value;
+        const station = document.getElementById('trendStation').value;
+        const indicator = document.getElementById('trendIndicator').value;
+        
+        const params = new URLSearchParams({
+            start_period: start,
+            end_period: end,
+            year: year,
+            station: station,
+            indicator: indicator
+        });
+        
+        try {
+            const res = await fetch(`/two_rules/trends?${params.toString()}`);
+            const data = await res.json();
+            if (data.success) {
+                renderTrendChart(data.trends);
+            }
+        } catch (err) {
+            console.error("Failed to fetch trends", err);
+        }
+      }
+
+      function renderTrendChart(trends) {
+        const dom = document.getElementById("trendChart");
+        if (!dom) return;
+        let chart = echarts.getInstanceByDom(dom);
+        if (!chart) chart = echarts.init(dom);
+        
+        const isOverview = trends.indicator === 'overview';
+        
+        let series = [];
+        let legendData = [];
+        
+        if (isOverview) {
+            legendData = ['经营净损益', '考核总费用', '补偿总收益'];
+            series = [
+                {
+                    name: '经营净损益',
+                    type: 'bar',
+                    barWidth: '30%',
+                    data: trends.profit,
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#3b82f6' },
+                            { offset: 1, color: '#1d4ed8' }
+                        ]),
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    label: { show: true, position: 'top', color: '#94a3b8', fontSize: 10 }
+                },
+                {
+                    name: '考核总费用',
+                    type: 'line',
+                    data: trends.assessment,
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    itemStyle: { color: '#ef4444' },
+                    lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(239, 68, 68, 0.3)' }
+                },
+                {
+                    name: '补偿总收益',
+                    type: 'line',
+                    data: trends.compensation,
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    itemStyle: { color: '#10b981' },
+                    lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(16, 185, 129, 0.3)' }
+                }
+            ];
+        } else {
+            legendData = [trends.indicator];
+            series = [
+                {
+                    name: trends.indicator,
+                    type: 'line',
+                    data: trends.values,
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                            { offset: 1, color: 'rgba(59, 130, 246, 0)' }
+                        ])
+                    },
+                    itemStyle: { color: '#3b82f6' },
+                    lineStyle: { width: 3 }
+                }
+            ];
+        }
+        
+        const option = {
+            backgroundColor: "transparent",
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross' },
+                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                borderColor: '#334155',
+                textStyle: { color: '#fff' }
+            },
+            legend: {
+                data: legendData,
+                textStyle: { color: '#94a3b8', fontSize: 12 },
+                bottom: 0,
+                icon: 'circle'
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '12%',
+                top: '10%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: trends.periods,
+                axisLabel: { color: '#94a3b8', fontSize: 11 },
+                axisLine: { lineStyle: { color: '#334155' } }
+            },
+            yAxis: {
+                type: 'value',
+                name: '金额 (万元)',
+                nameTextStyle: { color: '#94a3b8', padding: [0, 0, 0, 40] },
+                axisLabel: { color: '#94a3b8' },
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' } },
+                axisLine: { show: false }
+            },
+            series: series
+        };
+        
+        chart.setOption(option);
       }
 
       let currentAssessmentGroup = null;
@@ -1183,9 +1494,10 @@
           .map(([item]) => item);
 
         // Avoid double counting: If both "Total/Sum" items and sub-items exist, prioritize sub-items
-        if (groupName !== "全部") {
-            const totals = targetItems.filter(item => /总考核|总计|合计|小计/.test(item));
-            const subs = targetItems.filter(item => !/总考核|总计|合计|小计/.test(item));
+        if (groupName !== "全部" && groupName !== "数据质量") {
+            const isTotal = (item) => /总考核|总计|合计|小计/.test(item) || item.trim() === groupName;
+            const totals = targetItems.filter(item => isTotal(item));
+            const subs = targetItems.filter(item => !isTotal(item));
             if (subs.length > 0 && totals.length > 0) {
                 targetItems = subs; 
             }
@@ -1230,6 +1542,9 @@
           (a, b) => b[1] - a[1], // Sort descending? Or magnitude? Assumed positive cost/quantity usually.
         );
 
+        // Calculate Grand Total
+        const grandTotal = topStations.reduce((sum, item) => sum + item[1], 0);
+
         // Period/Station Info for Title
         const periodSelect = document.getElementById("periodSelect");
         const stationSelect = document.getElementById("stationSelect");
@@ -1266,7 +1581,10 @@
                     <div id="detailItemChart" style="height: 300px; width: 100%;"></div>
                 </div>
                 <div style="flex: 1; min-width: 300px;">
-                     <h4 style="color: var(--text-sub); margin-bottom: 1rem;">涉及场站排名 (全部)</h4>
+                     <h4 style="color: var(--text-sub); margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>涉及场站排名 (全部)</span>
+                        <span style="font-size: 0.9em; color: ${axisColor}; margin-right: 15px;">总计: ${grandTotal.toFixed(2)}</span>
+                     </h4>
                      <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
                         <div id="detailStationChart" style="height: ${stationChartHeight}px; width: 100%;"></div>
                      </div>
@@ -1289,6 +1607,12 @@
                         `,
                           )
                           .join("")}
+                        <tr style="background: rgba(255,255,255,0.05); font-weight: bold;">
+                            <td>-</td>
+                            <td style="text-align: right; padding-right: 2rem;">总计</td>
+                            <td style="color: ${axisColor}; font-weight:700;">${grandTotal.toFixed(2)}</td>
+                            <td></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -1303,28 +1627,57 @@
             tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
             legend: { 
                 type: 'scroll',
-                orient: 'vertical',
-                right: 0,
-                top: 20,
-                bottom: 20,
+                orient: 'horizontal',
+                bottom: 0,
+                left: 'center',
                 textStyle: { color: "#cbd5e1" } 
             },
             series: [
               {
                 type: "pie",
                 radius: ["40%", "70%"],
-                center: ["40%", "50%"],
+                center: ["50%", "45%"], // Adjusted center
                 avoidLabelOverlap: true,
                 itemStyle: {
                   borderRadius: 10,
                   borderColor: "#1e293b",
                   borderWidth: 2,
                 },
-                label: { show: false },
+                label: { 
+                    show: true, 
+                    formatter: '{b}\n{c}', 
+                    color: '#cbd5e1' 
+                },
+                labelLine: { 
+                    show: true, 
+                    lineStyle: { color: '#64748b' } 
+                },
                 data: pieData,
                 color: colorPalette,
               },
             ],
+            graphic: [{
+                type: 'text',
+                left: 'center',
+                top: '42%',
+                style: {
+                    text: grandTotal.toFixed(0),
+                    textAlign: 'center',
+                    fill: '#fff',
+                    fontSize: 24,
+                    fontWeight: 'bold'
+                }
+            }, {
+                type: 'text',
+                left: 'center',
+                top: '52%',
+                style: {
+                    text: '总计',
+                    textAlign: 'center',
+                    fill: '#94a3b8',
+                    fontSize: 12
+                }
+            }]
           });
 
           // Render Station Chart (All Stations)
@@ -1649,8 +2002,17 @@
         }
         
         // Avoid double counting in station detail pie chart
-        const totalItems = asmItems.filter(i => /总考核|总计|合计|小计/.test(i.name));
-        const subItems = asmItems.filter(i => !/总考核|总计|合计|小计/.test(i.name));
+        const isTotal = (name) => /总考核|总计|合计|小计/.test(name) || (currentDetailView === 'cost' ? false : name.trim() === '技术指导与管理'); 
+        // Note: For station detail, checking exact group name match is tricky because we don't know the group context per item easily without lookups.
+        // However, "技术指导与管理" is a known Total column in MWh view.
+        // Let's use a more generic check: if the item name is one of the known Group Keys.
+        // But we don't have the group keys here easily. 
+        // Heuristic: If item name ends with "总考核电量" or similar.
+        // Or if it is exactly "技术指导与管理" (which user says is a total).
+        
+        const totalItems = asmItems.filter(i => /总考核|总计|合计|小计/.test(i.name) || i.name === '技术指导与管理');
+        const subItems = asmItems.filter(i => !(/总考核|总计|合计|小计/.test(i.name) || i.name === '技术指导与管理'));
+        
         if (subItems.length > 0 && totalItems.length > 0) {
             asmItems = subItems;
         }

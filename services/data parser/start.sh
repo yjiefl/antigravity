@@ -18,7 +18,7 @@ fi
 echo "正在启动新能源功率预测数据分析服务..."
 
 # 后台启动应用，并将日志输出到 server.log
-nohup python3 app.py > server.log 2>&1 &
+nohup python3 app.py > server_v2.log 2>&1 &
 
 # 等待 2 秒确保服务启动
 sleep 2
@@ -29,4 +29,4 @@ echo "访问地址: http://127.0.0.1:5001"
 # 在 macOS 上自动打开默认浏览器
 open "http://127.0.0.1:5001"
 
-echo "日志文件: $DIR/server.log"
+echo "日志文件: $DIR/server_v2.log"

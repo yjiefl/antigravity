@@ -32,10 +32,9 @@ def normalize_station_name(name):
     # Reverse lookup (if full name is passed)
     if name in STATION_MAPPING.values():
         return name
-    # Partial match (risky but useful)
-    for k, v in STATION_MAPPING.items():
-        if k in name:
-            return v
+    # Partial match removed to prevent incorrect merging of distinct stations (e.g. Zhangmu Wind vs Zhangmu PV)
+    # The user reported discrepancies where stations were being merged.
+    # We now strictly trust the Excel names after stripping whitespace, unless they exactly match a short alias key.
     return name
 
 def clean_numeric(val):
@@ -501,7 +500,7 @@ def analyze_excel(filepath, output_path, period=None, station=None):
         '功率预测': ['功率预测', '预测上报率', '预测准确率'],
         '有功功率变化率': ['有功功率变化率', '变化率'],
         '脱网': ['脱网'],
-        '数据质量': ['数据质量', '数据合格率', '质量', '传输', '通信', '合格率'],
+        '数据质量': ['数据合格率'],
         '安全管理': ['安全管理'],
         '调度管理': ['调度管理'],
         '检修管理': ['检修管理'],
@@ -531,9 +530,16 @@ def analyze_excel(filepath, output_path, period=None, station=None):
         grouped_totals = {}
         for g_name, items in items_by_group.items():
             # If both "Total/Sum" columns and sub-items exist, prioritize sub-items to avoid double counting
-            subs = [v for k, v in items if not any(x in str(k) for x in ['总考核', '总计', '合计', '小计'])]
-            totals = [v for k, v in items if any(x in str(k) for x in ['总考核', '总计', '合计', '小计'])]
-            grouped_totals[g_name] = sum(subs) if subs else sum(totals)
+            # Also exclude items that are exactly the group name or contain "总考核"/"总计"
+            subs = [v for k, v in items if not (any(x in str(k) for x in ['总考核', '总计', '合计', '小计']) or str(k).strip() == g_name)]
+            totals = [v for k, v in items if (any(x in str(k) for x in ['总考核', '总计', '合计', '小计']) or str(k).strip() == g_name)]
+            
+            # Special handling for categories known to be single-item totals (like '数据质量' -> '数据合格率总考核')
+            if g_name == '数据质量':
+                 grouped_totals[g_name] = sum([v for k,v in items])
+            else:
+                # If we have sub-items, summarize them. If not, use the total column.
+                grouped_totals[g_name] = sum(subs) if subs else sum(totals)
                 
         # Filter zero values and sort
         analysis_results['assessment_composition'] = {k: v for k, v in grouped_totals.items() if v != 0}
