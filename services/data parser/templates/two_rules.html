@@ -1,0 +1,1891 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>两个细则分析工作站</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+      :root {
+        --bg-dark: #0f172a; /* Slate 900 */
+        --card-bg: #1e293b; /* Slate 800 */
+        --primary-color: #f97316; /* Orange 500 */
+        --accent-color: #fbbf24; /* Amber 400 */
+        --text-main: #f8fafc;
+        --text-sub: #cbd5e1;
+        --glass-border: rgba(249, 115, 22, 0.2);
+      }
+      body {
+        background-color: var(--bg-dark);
+        background-image:
+          radial-gradient(
+            circle at 0% 0%,
+            rgba(249, 115, 22, 0.15) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 100% 100%,
+            rgba(251, 191, 36, 0.15) 0%,
+            transparent 50%
+          );
+        color: var(--text-main);
+        font-family:
+          "Inter",
+          -apple-system,
+          sans-serif;
+        margin: 0;
+        padding: 2rem;
+      }
+      /* Modal Styles */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(5px);
+      }
+      .modal-content {
+        background: var(--card-bg);
+        width: 95%;
+        max-width: 1500px;
+        border-radius: 20px;
+        border: 1px solid var(--glass-border);
+        padding: 2.5rem;
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      }
+      .modal-close {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        background: none;
+        border: none;
+        color: var(--text-sub);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+      .modal-close:hover {
+        color: #fff;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      .data-table th {
+        text-align: left;
+        padding: 0.8rem;
+        color: var(--text-sub);
+        border-bottom: 1px solid var(--glass-border);
+      }
+      .data-table td {
+        padding: 0.8rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 0.9rem;
+      }
+      .theme-rules {
+        --primary-color: #f97316;
+        --accent-color: #fbbf24;
+        --bg-gradient: radial-gradient(circle at top right, #451a03, #0f172a);
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      .metric-card {
+        padding: 1.5rem;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.05); /* Slightly brighter */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: center;
+      }
+      /* Ensure viz grid expands */
+      .viz-grid {
+        display: grid;
+        grid-template-columns: 1fr; /* Force 1 column per row */
+        gap: 2rem;
+        width: 100%;
+      }
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 2rem;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+      .chart-card {
+        min-height: 550px !important;
+      }
+      .wide-card {
+        grid-column: auto;
+      }
+      @media (max-width: 1000px) {
+        .viz-grid {
+          grid-template-columns: 1fr;
+        }
+        .wide-card {
+          grid-column: span 1;
+        }
+      }
+      .chart-container {
+        flex: 1;
+        width: 100%;
+        min-height: 0; /* Flex fix */
+        position: relative;
+      }
+      .metric-label {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 0.4rem;
+      }
+      /* Toggle Segment Control */
+      .toggle-group {
+        display: inline-flex;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 4px;
+        border-radius: 12px;
+        border: 1px solid var(--glass-border);
+      }
+      .toggle-item {
+        padding: 0.6rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+        border: none;
+        color: var(--text-sub);
+        background: transparent;
+      }
+      .toggle-item.active {
+        background: var(--primary-color);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+      }
+      .toggle-group.theme-mwh .active {
+        background: #10b981 !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+      }
+      .nav-btn.active {
+        background: var(--primary-color);
+        box-shadow: 0 4px 12px -2px rgba(249, 115, 22, 0.3) !important;
+      }
+      .ranking-list {
+        position: relative;
+        max-height: 1000px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+      }
+      .ranking-list::-webkit-scrollbar {
+        display: none;
+      }
+      .ranking-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.4rem;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+      .ranking-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .rank-idx {
+        width: 1.8rem;
+        font-weight: 800;
+        color: #475569;
+        font-style: italic;
+      }
+      .rank-idx.top {
+        color: #f59e0b;
+      }
+      .rank-name {
+        flex: 1;
+        color: #e2e8f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding-right: 0.5rem;
+      }
+      .rank-val {
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 600;
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+  <body class="theme-rules">
+    <div class="container">
+      <header class="app-header">
+        <div class="branding">
+          <h1>两个细则·并网考核分析</h1>
+          <p>自动化统计损益、考核动因及申诉对比</p>
+        </div>
+
+        <nav class="top-nav">
+          <a href="/power_prediction" class="btn btn-secondary nav-btn"
+            >功率预测分析</a
+          >
+          <a href="/daily_report" class="btn btn-secondary nav-btn"
+            >运营日报审核</a
+          >
+          <a href="/two_rules" class="btn nav-btn active">两个细则分析</a>
+        </nav>
+      </header>
+
+      <section class="upload-section">
+        <div class="upload-box" id="dropZone">
+          <div id="fileTriggerArea" style="cursor: pointer; padding: 2rem">
+            <span style="font-size: 3rem">📊</span>
+            <p
+              id="fileDisplay"
+              style="
+                color: var(--text-muted);
+                font-size: 1rem;
+                margin-top: 1rem;
+              "
+            >
+              点击浏览文件 或 拖入两个细则结算单 <br />
+              <span style="font-size: 0.85rem; color: #64748b"
+                >(支持 .xlsx 格式，需包含数据表及汇总表)</span
+              >
+            </p>
+          </div>
+          <input
+            type="file"
+            id="fileInput"
+            accept=".xlsx"
+            style="display: none"
+          />
+          <button
+            class="btn btn-primary"
+            onclick="document.getElementById('fileInput').click()"
+            style="margin-top: 1rem"
+          >
+            选择文件并分析
+          </button>
+
+          <div id="uploadStatus" style="display: none; margin-top: 1rem">
+            <div class="spinner"></div>
+            <p style="color: var(--primary-color)">
+              正在进行多维交叉分析，请稍候...
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="viz-grid"
+        id="historySection"
+        style="margin-top: 1rem; margin-bottom: 2rem; display: block !important"
+      >
+        <div
+          class="card wide-card"
+          style="padding: 1.5rem; border: 1px dashed var(--glass-border); min-height: auto;"
+        >
+          <div
+            class="card-title"
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+              padding-bottom: 0.8rem;
+              margin-bottom: 1rem;
+            "
+          >
+            <span style="font-size: 1.1rem">📂 历史分析记录</span>
+            <span
+              id="historyCount"
+              style="
+                font-size: 0.85rem;
+                color: var(--primary-color);
+                font-weight: 600;
+              "
+              >检测中...</span
+            >
+          </div>
+          <div
+            id="historyList"
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 0.8rem;
+              max-height: 200px;
+              overflow-y: auto;
+              padding-right: 0.5rem;
+            "
+          >
+            <!-- 历史记录列表 -->
+          </div>
+        </div>
+      </section>
+
+      <div id="resultsArea" style="display: none">
+        <div
+          class="flex-row"
+          style="
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+          "
+        >
+          <div style="display: flex; align-items: center; gap: 1.5rem">
+            <h2 style="color: #fff; margin: 0; font-size: 1.4rem">
+              核心分析看板
+            </h2>
+            <div
+              id="filterWrap"
+              style="
+                display: none;
+                align-items: center;
+                gap: 0.8rem;
+                padding-left: 1.5rem;
+                border-left: 1px solid rgba(255, 255, 255, 0.1);
+              "
+            >
+              <div style="display: flex; align-items: center; gap: 0.5rem">
+                <span style="color: var(--text-sub); font-size: 0.9rem"
+                  >周期:</span
+                >
+                <select
+                  id="periodSelect"
+                  style="
+                    background: var(--bg-dark);
+                    color: #fff;
+                    border: 1px solid var(--glass-border);
+                    padding: 0.4rem 0.8rem;
+                    border-radius: 8px;
+                    font-family: inherit;
+                    font-size: 0.9rem;
+                    cursor: pointer;
+                    outline: none;
+                    min-width: 110px;
+                  "
+                >
+                  <option value="all">全部</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem">
+                <span style="color: var(--text-sub); font-size: 0.9rem"
+                  >场站:</span
+                >
+                <select
+                  id="stationSelect"
+                  style="
+                    background: var(--bg-dark);
+                    color: #fff;
+                    border: 1px solid var(--glass-border);
+                    padding: 0.4rem 0.8rem;
+                    border-radius: 8px;
+                    font-family: inherit;
+                    font-size: 0.9rem;
+                    cursor: pointer;
+                    outline: none;
+                    min-width: 160px;
+                  "
+                >
+                  <option value="all">全部</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <a
+            id="downloadReport"
+            href="#"
+            class="btn"
+            style="
+              background: #10b981;
+              border: none;
+              font-weight: 600;
+              padding: 0.8rem 1.5rem;
+              border-radius: 10px;
+              color: #fff;
+              text-decoration: none;
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              font-size: 1rem;
+            "
+          >
+            🚢 下载详细分析报告 (Excel)
+          </a>
+        </div>
+
+        <!-- 关键排行榜 -->
+        <div class="grid-3" style="margin-bottom: 1.5rem">
+          <div
+            class="metric-card"
+            style="border-top: 3px solid #ef4444; padding: 1.2rem"
+          >
+            <div
+              class="metric-label"
+              style="display: flex; justify-content: space-between"
+            >
+              <span>🚩 损益最大亏损排行</span>
+            </div>
+            <div class="ranking-list" id="lossRankingList"></div>
+          </div>
+          <div
+            class="metric-card"
+            style="border-top: 3px solid #10b981; padding: 1.2rem"
+          >
+            <div
+              class="metric-label"
+              style="display: flex; justify-content: space-between"
+            >
+              <span>🏆 损益最大盈利排行</span>
+            </div>
+            <div class="ranking-list" id="profitRankingList"></div>
+          </div>
+          <div
+            class="metric-card"
+            style="border-top: 3px solid #10b981; padding: 1.2rem"
+          >
+            <div
+              class="metric-label"
+              style="display: flex; justify-content: space-between"
+            >
+              <span>🛡️ 免考增益排行 (MWh)</span>
+            </div>
+            <div class="ranking-list" id="exemptionRankingList"></div>
+          </div>
+        </div>
+
+        <!-- 关键亮点与巡检汇总 -->
+        <div class="card wide-card" id="highlightsCard" style="display: none; min-height: auto; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div class="card-title" style="margin-bottom: 1.2rem;">关键指标巡检汇总 (MWh)</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                <div style="background: rgba(249, 115, 22, 0.05); border: 1px solid rgba(249, 115, 22, 0.1); padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">功率预测考核之最</div>
+                    <div id="hl_pred_name" style="font-size: 1.1rem; color: #fff; font-weight: 700; margin-bottom: 0.2rem;">-</div>
+                    <div id="hl_pred_val" style="font-size: 1rem; color: #f97316; font-weight: 600;">-</div>
+                </div>
+                <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">技术指导考核之最</div>
+                    <div id="hl_tech_name" style="font-size: 1.1rem; color: #fff; font-weight: 700; margin-bottom: 0.2rem;">-</div>
+                    <div id="hl_tech_val" style="font-size: 1rem; color: #3b82f6; font-weight: 600;">-</div>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.1); padding: 1.2rem; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">数据质量考核之最</div>
+                    <div id="hl_data_name" style="font-size: 1.1rem; color: #fff; font-weight: 700; margin-bottom: 0.2rem;">-</div>
+                    <div id="hl_data_val" style="font-size: 1rem; color: #10b981; font-weight: 600;">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="viz-grid" id="chartsGrid" style="display: none">
+          <!-- 经营损益排行 -->
+          <div class="card wide-card chart-card">
+            <div class="card-title">场站经营损益分布 (TOP 10)</div>
+            <div id="profitChart" class="chart-container"></div>
+          </div>
+
+          <!-- 考核项构成 -->
+          <div class="card chart-card">
+            <div class="card-title">考核动因项占比分析</div>
+            <div id="compositionChart" class="chart-container"></div>
+          </div>
+
+          <!-- 补偿项构成 -->
+          <div class="card chart-card">
+            <div class="card-title">辅助服务补偿构成分析</div>
+            <div id="compChart" class="chart-container"></div>
+          </div>
+
+
+          <!-- 免考与申诉 -->
+          <div class="card wide-card chart-card">
+            <div class="card-title">免考与申诉增益分析</div>
+            <div
+              class="grid-3"
+              style="
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+                margin-bottom: 0;
+                height: 100%;
+              "
+            >
+              <div style="flex: 1">
+                <h4
+                  style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1rem"
+                >
+                  功率预测/数据合格率免考增益 (TOP 10)
+                </h4>
+                <div
+                  id="exemptionChart"
+                  class="chart-container"
+                  style="height: 300px"
+                ></div>
+              </div>
+              <!-- Appeal placeholder or future chart -->
+              <div
+                style="
+                  flex: 1;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  border: 1px dashed rgba(255, 255, 255, 0.1);
+                  border-radius: 12px;
+                "
+              >
+                <div style="text-align: center; color: #64748b">
+                  <div style="font-size: 2rem; margin-bottom: 0.5rem">⚖️</div>
+                  <div>申诉效果统计暂无数据</div>
+                  <div style="font-size: 0.8rem; opacity: 0.7">
+                    (需接入单独申诉台账)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drill-down Modal -->
+    <div class="modal-overlay" id="detailModal">
+      <div class="modal-content">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2 id="modalTitle" style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.5rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem;">
+          详情分析
+        </h2>
+        <div id="modalTableWrap"></div>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const dropZone = document.getElementById("dropZone");
+      const uploadStatus = document.getElementById("uploadStatus");
+      const resultsArea = document.getElementById("resultsArea");
+      const periodSelect = document.getElementById("periodSelect");
+      const stationSelect = document.getElementById("stationSelect");
+      const filterWrap = document.getElementById("filterWrap");
+
+      let currentFilename = ""; // Store current working filename
+
+      // Drag and Drop
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = "var(--primary-color)";
+      });
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.style.borderColor = "rgba(255, 255, 255, 0.1)";
+      });
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = "rgba(255, 255, 255, 0.1)";
+        const file = e.dataTransfer.files[0];
+        if (file) handleUpload(file);
+      });
+
+      fileInput.addEventListener("change", (e) =>
+        handleUpload(e.target.files[0]),
+      );
+
+      async function handleUpload(file) {
+        if (!file) return;
+
+        uploadStatus.style.display = "block";
+        resultsArea.style.display = "none";
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+          const res = await fetch("/upload_two_rules", {
+            method: "POST",
+            body: formData,
+          });
+          const json = await res.json();
+
+          if (json.success) {
+            currentFilename = file.name;
+            renderDashboard(json.data);
+            document.getElementById("downloadReport").href = json.report_url;
+            resultsArea.style.display = "block";
+            document.getElementById("chartsGrid").style.display = "grid"; // Ensure charts are shown
+
+            // Wait for DOM update then render
+            setTimeout(() => {
+              window.dispatchEvent(new Event("resize"));
+              resultsArea.scrollIntoView({ behavior: "smooth" });
+            }, 100);
+            
+            setTimeout(() => {
+              window.dispatchEvent(new Event("resize"));
+            }, 500);
+
+            fetchHistory(); // Refresh history after upload
+          } else {
+            alert("分析失败: " + json.error);
+          }
+        } catch (err) {
+          alert("网络错误");
+        } finally {
+          uploadStatus.style.display = "none";
+        }
+      }
+
+      let globalData = null; // Store data for interactions
+
+      function renderDashboard(data) {
+        globalData = data; // Save to global scope
+
+        // --- Render Highlights ---
+        if (data.category_highlights) {
+            document.getElementById('highlightsCard').style.display = 'block';
+            const h = data.category_highlights;
+            
+            const pred = h['功率预测'];
+            if(pred) {
+                document.getElementById('hl_pred_name').innerText = pred.station;
+                document.getElementById('hl_pred_val').innerText = pred.amount.toFixed(2) + ' MWh';
+            } else {
+                document.getElementById('hl_pred_name').innerText = "暂无高额考核";
+                document.getElementById('hl_pred_val').innerText = "-";
+            }
+            
+            const tech = h['技术指导与管理'];
+            if(tech) {
+                document.getElementById('hl_tech_name').innerText = tech.station;
+                document.getElementById('hl_tech_val').innerText = tech.amount.toFixed(2) + ' MWh';
+            } else {
+                document.getElementById('hl_tech_name').innerText = "暂无高额考核";
+                document.getElementById('hl_tech_val').innerText = "-";
+            }
+            
+            const dataQ = h['数据合格率'];
+            if(dataQ) {
+                document.getElementById('hl_data_name').innerText = dataQ.station;
+                document.getElementById('hl_data_val').innerText = dataQ.amount.toFixed(2) + ' MWh';
+            } else {
+                document.getElementById('hl_data_name').innerText = "暂无高额考核";
+                document.getElementById('hl_data_val').innerText = "-";
+            }
+        } else {
+            document.getElementById('highlightsCard').style.display = 'none';
+        }
+
+        // Update Filters
+        const showPeriod =
+          data.available_periods && data.available_periods.length > 0;
+        const showStation =
+          data.available_stations && data.available_stations.length > 0;
+
+        if (showPeriod || showStation) {
+          filterWrap.style.display = "flex";
+
+          // Period
+          if (showPeriod) {
+            periodSelect.innerHTML =
+              '<option value="all">全部周期</option>' +
+              data.available_periods
+                .map(
+                  (p) =>
+                    `<option value="${p}" ${data.selected_period === p ? "selected" : ""}>${p}</option>`,
+                )
+                .join("");
+          }
+
+          // Station
+          if (showStation) {
+            stationSelect.innerHTML =
+              '<option value="all">全部场站</option>' +
+              data.available_stations
+                .map(
+                  (s) =>
+                    `<option value="${s}" ${data.selected_station === s ? "selected" : ""}>${s}</option>`,
+                )
+                .join("");
+          }
+        } else {
+          filterWrap.style.display = "none";
+        }
+
+        // --- Render Rankings ---
+        const renderRankList = (
+          elId,
+          list,
+          key,
+          color,
+          unit,
+          isProfit = false,
+        ) => {
+          const listEl = document.getElementById(elId);
+          if (!list || list.length === 0) {
+            listEl.innerHTML =
+              '<div style="color: #64748b; text-align: center; padding: 2rem;">暂无数据</div>';
+            return;
+          }
+          listEl.innerHTML = list
+            .map((item, idx) => {
+              const val = item[key];
+              const displayVal = isProfit
+                ? (val >= 0 ? "+" : "") + val.toFixed(2)
+                : val.toFixed(2);
+              const valColor =
+                color === "dynamic"
+                  ? val >= 0
+                    ? "#ef4444" // Profit (Red)
+                    : "#10b981" // Loss (Green)
+                  : color;
+              return `
+                    <div class="ranking-item" onclick="showStationDetail('${item.Station.replace(/'/g, "\\'")}')">
+                        <span class="rank-idx ${idx < 3 ? "top" : ""}">${idx + 1}</span>
+                        <span class="rank-name" title="${item.Station}">${item.Station}</span>
+                        <span class="rank-val" style="color: ${valColor}">${displayVal} <small style="font-weight: 400; font-size: 0.7rem">${unit}</small></span>
+                    </div>
+                `;
+            })
+            .join("");
+        };
+
+        if (data.profit_ranking) {
+          renderRankList(
+            "lossRankingList",
+            data.profit_ranking.top_loss,
+            "NetIncome",
+            "dynamic",
+            "万",
+          );
+          renderRankList(
+            "profitRankingList",
+            data.profit_ranking.top_profit,
+            "NetIncome",
+            "dynamic",
+            "万",
+          );
+        } else {
+           document.getElementById("lossRankingList").innerHTML = '<div style="color: #64748b; text-align: center; padding: 2rem;">暂无损益数据</div>';
+           document.getElementById("profitRankingList").innerHTML = '<div style="color: #64748b; text-align: center; padding: 2rem;">暂无损益数据</div>';
+        }
+
+        if (data.exemption_effect) {
+          renderRankList(
+            "exemptionRankingList",
+            data.exemption_effect,
+            "ExemptionDiff",
+            "dynamic",
+            "MWh",
+            true,
+          );
+        } else {
+           document.getElementById("exemptionRankingList").innerHTML = '<div style="color: #64748b; text-align: center; padding: 2rem;">暂无免考数据</div>';
+        }
+
+        // Charts
+        requestAnimationFrame(() => {
+          initProfitChart(data.profit_ranking);
+          initCompositionChart(data.assessment_composition);
+          initCompChart(data.comp_composition);
+          initExemptionChart(data.exemption_effect);
+
+
+          // Force resize trigger
+          window.dispatchEvent(new Event("resize"));
+        });
+      }
+
+      function initProfitChart(rankingData) {
+        const dom = document.getElementById("profitChart");
+        let chart = echarts.getInstanceByDom(dom);
+
+        if (!rankingData || !rankingData.full || rankingData.full.length === 0) {
+          if (chart) {
+            chart.dispose();
+            chart = null;
+          }
+          dom.innerHTML = '<div style="display: flex; height: 100%; align-items: center; justify-content: center; color: #64748b;">该状态下暂无损益数据</div>';
+          dom.removeAttribute('_echarts_instance_');
+          return;
+        }
+        
+        if (!chart) {
+          dom.innerHTML = "";
+          chart = echarts.init(dom);
+        }
+
+        const displayData = rankingData.full;
+
+        const option = {
+          backgroundColor: "transparent",
+          tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+          grid: {
+            left: "3%",
+            right: "15%",
+            bottom: "15%",
+            top: "10%",
+            containLabel: true,
+          },
+          xAxis: {
+            type: "value",
+            axisLabel: { color: "#94a3b8" },
+            splitLine: { lineStyle: { color: "rgba(255,255,255,0.05)" } },
+          },
+          yAxis: {
+            type: "category",
+            data: displayData.map((d) => d.Station),
+            axisLabel: { color: "#cbd5e1", fontSize: 11, interval: 0 },
+            inverse: true,
+          },
+          series: [
+            {
+              name: "损益净收入",
+              type: "bar",
+              // Use aggregated data, but keep colors based on +/-
+              data: displayData.map((d) => ({
+                value: d.NetIncome.toFixed(2),
+                itemStyle: {
+                  color: d.NetIncome >= 0 ? "#ef4444" : "#10b981",
+                  // Add hover effect
+                  shadowBlur: 10,
+                  shadowColor: "rgba(0,0,0,0.3)",
+                },
+              })),
+              label: {
+                show: true,
+                position: "right",
+                color: "#fff",
+                fontSize: 10,
+                formatter: "{c}",
+              },
+              barMaxWidth: 30,
+            },
+          ],
+          // Use dataZoom to handle many stations gracefully
+          // Use dataZoom to handle many stations gracefully
+
+        };
+        chart.setOption(option);
+
+        // Click for drill-down
+        chart.off("click"); // Remove old listeners
+        chart.on("click", function (params) {
+          const stationName = params.name;
+          showStationDetail(stationName);
+        });
+      }
+
+      function initCompositionChart(compData) {
+        const dom = document.getElementById("compositionChart");
+        let chart = echarts.getInstanceByDom(dom);
+        
+        if (!compData || Object.keys(compData).length === 0) {
+          if (chart) {
+            chart.dispose();
+            chart = null;
+          }
+          dom.innerHTML = '<div style="display: flex; height: 100%; align-items: center; justify-content: center; color: #64748b;">该状态下暂无考核数据</div>';
+          dom.removeAttribute('_echarts_instance_');
+          return;
+        }
+        
+        if (!chart) {
+          dom.innerHTML = "";
+          chart = echarts.init(dom);
+        }
+        const data = Object.entries(compData)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }));
+
+        const option = {
+          backgroundColor: "transparent",
+          tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+          legend: {
+            orient: "horizontal",
+            bottom: 0,
+            textStyle: { color: "#94a3b8", fontSize: 10 },
+            type: "scroll",
+          },
+          series: [
+            {
+              type: "pie",
+              radius: ["45%", "70%"],
+              center: ["50%", "50%"],
+              avoidLabelOverlap: true,
+              itemStyle: {
+                borderRadius: 10,
+                borderColor: "#1e293b",
+                borderWidth: 2,
+              },
+              label: { show: false },
+              data: data,
+              color: [
+                "#f97316", // Orange
+                "#10b981", // Emerald
+                "#3b82f6", // Blue
+                "#f59e0b", // Amber
+                "#6366f1", // Indigo
+                "#ef4444", // Red
+                "#ec4899", // Pink
+              ],
+            },
+          ],
+        };
+        chart.setOption(option);
+
+        // Detailed Drill down by Group
+        // Detailed Drill down by Group
+        chart.on("click", function (params) {
+          if (params.componentType === 'series') {
+              const groupName = params.name;
+              showAssessmentDetail(groupName);
+          }
+        });
+      }
+
+      function initAppealChart(appealData) {
+        if (!appealData) return;
+        const chart = echarts.init(document.getElementById("appealChart"));
+
+        const option = {
+          backgroundColor: "transparent",
+          tooltip: { trigger: "axis" },
+          legend: {
+            data: ["免考前", "免考后"],
+            textStyle: { color: "#94a3b8" },
+          },
+          grid: { left: 60, right: 40, top: 60, bottom: 60 },
+          xAxis: {
+            type: "category",
+            data: appealData.map((d) => d.Station),
+            axisLabel: {
+              color: "#94a3b8",
+              fontSize: 10,
+              rotate: 30,
+              interval: 0,
+            },
+          },
+          yAxis: { type: "value", axisLabel: { color: "#94a3b8" } },
+          series: [
+            {
+              name: "免考前",
+              type: "bar",
+              data: appealData.map((d) => d["免考前"].toFixed(2)),
+              itemStyle: { color: "rgba(255,255,255,0.1)" },
+            },
+            {
+              name: "免考后",
+              type: "bar",
+              data: appealData.map((d) => d["免考后"].toFixed(2)),
+              itemStyle: { color: "#10b981" },
+            },
+          ],
+        };
+        chart.setOption(option);
+      }
+
+      function initExemptionChart(data) {
+        const dom = document.getElementById("exemptionChart");
+        let chart = echarts.getInstanceByDom(dom);
+
+        if (!data || data.length === 0) {
+          if (chart) {
+             chart.dispose();
+             chart = null;
+          }
+          dom.innerHTML = '<div style="display: flex; height: 100%; align-items: center; justify-content: center; color: #64748b;">该状态下暂无免考数据</div>';
+          dom.removeAttribute('_echarts_instance_');
+          return;
+        }
+
+        if (!chart) {
+           dom.innerHTML = "";
+           chart = echarts.init(dom);
+        }
+        const top10 = data.slice(0, 10);
+
+        const option = {
+          backgroundColor: "transparent",
+          tooltip: { trigger: "axis" },
+          grid: {
+            left: "3%",
+            right: "10%",
+            bottom: "3%",
+            top: "5%",
+            containLabel: true,
+          },
+          xAxis: {
+            type: "value",
+            axisLabel: { color: "#94a3b8" },
+            splitLine: { show: false },
+          },
+          yAxis: {
+            type: "category",
+            data: top10.map((d) => d.Station),
+            axisLabel: { color: "#cbd5e1", fontSize: 10 },
+            inverse: true,
+          },
+          series: [
+            {
+              type: "bar",
+              data: top10.map((d) => d.ExemptionDiff.toFixed(2)),
+              itemStyle: { color: "#10b981", borderRadius: [0, 4, 4, 0] },
+              label: { show: true, position: "right", color: "#fff" },
+            },
+          ],
+        };
+        chart.setOption(option);
+      }
+
+      function initCompChart(compData) {
+        const dom = document.getElementById("compChart");
+        let chart = echarts.getInstanceByDom(dom);
+
+        if (!compData || Object.keys(compData).length === 0) {
+          if (chart) {
+             chart.dispose();
+             chart = null;
+          }
+          dom.innerHTML = '<div style="display: flex; height: 100%; align-items: center; justify-content: center; color: #64748b;">该状态下暂无补偿数据</div>';
+          dom.removeAttribute('_echarts_instance_');
+          return;
+        }
+
+        if (!chart) {
+           dom.innerHTML = "";
+           chart = echarts.init(dom);
+        }
+        const data = Object.entries(compData)
+          .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }))
+          .sort((a, b) => b.value - a.value);
+
+        const option = {
+          backgroundColor: "transparent",
+          tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+          legend: {
+            orient: "horizontal",
+            bottom: 0,
+            textStyle: { color: "#94a3b8", fontSize: 10 },
+            type: "scroll",
+          },
+          series: [
+            {
+              type: "pie",
+              radius: ["45%", "70%"],
+              center: ["50%", "50%"],
+              avoidLabelOverlap: true,
+              itemStyle: {
+                borderRadius: 10,
+                borderColor: "#1e293b",
+                borderWidth: 2,
+              },
+              label: { show: false },
+              data: data,
+              color: ["#f97316", "#10b981", "#f59e0b", "#3b82f6", "#ef4444"], // Orange Palette
+            },
+          ],
+        };
+        chart.setOption(option);
+
+        // Detailed Drill down by Compensation Item
+        chart.on("click", function (params) {
+          const compName = params.name;
+          showCompensationDetail(compName);
+        });
+      }
+
+
+
+      window.addEventListener("resize", () => {
+        echarts
+          .getInstanceByDom(document.getElementById("profitChart"))
+          ?.resize();
+        echarts
+          .getInstanceByDom(document.getElementById("compositionChart"))
+          ?.resize();
+        echarts
+          .getInstanceByDom(document.getElementById("compChart"))
+          ?.resize(); // New
+        echarts
+          .getInstanceByDom(document.getElementById("appealChart"))
+          ?.resize();
+      });
+
+      // History Functions
+      async function fetchHistory() {
+        try {
+          const res = await fetch("/two_rules/history");
+          const history = await res.json();
+          renderHistory(history);
+        } catch (err) {
+          console.error("Failed to fetch history");
+        }
+      }
+
+      function renderHistory(history) {
+        const list = document.getElementById("historyList");
+        document.getElementById("historyCount").innerText =
+          `共 ${history.length} 条记录`;
+
+        if (history.length === 0) {
+          list.innerHTML =
+            '<p style="color: #94a3b8; text-align: center; padding: 1rem;">暂无历史记录</p>';
+          return;
+        }
+
+        list.innerHTML = history
+          .map(
+            (item) => `
+            <div class="history-item" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 0.8rem 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: #fff; margin-bottom: 0.2rem; font-size: 0.95rem;">${item.filename}</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.8rem;">
+                        <span>📅 ${item.timestamp}</span>
+                        <a href="/download/${item.report_filename}" style="color: #10b981; text-decoration: none;">📥 下载报告</a>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.6rem;">
+                    <button class="btn btn-secondary" onclick='loadRecord(${JSON.stringify(item).replace(/'/g, "&apos;")})' style="padding: 0.35rem 0.8rem; font-size: 0.75rem;">📊 查看看板</button>
+                    <button class="btn" onclick="deleteHistory('${item.file_id}')" style="padding: 0.35rem 0.8rem; font-size: 0.75rem; background: rgba(255,77,77,0.1); color: #ff4d4d; border-color: rgba(255,77,77,0.2)">🗑️ 删除</button>
+                </div>
+            </div>
+        `,
+          )
+          .join("");
+      }
+
+      let currentAssessmentGroup = null;
+      let currentAssessmentView = 'cost'; // 'cost' or 'mwh'
+
+      function showAssessmentDetail(groupName) {
+         currentAssessmentGroup = groupName;
+         currentAssessmentView = 'cost'; // Default to cost
+         renderAssessmentDetail();
+      }
+
+      function switchAssessmentView(view) {
+          currentAssessmentView = view;
+          renderAssessmentDetail();
+      }
+
+      function renderAssessmentDetail() {
+        const groupName = currentAssessmentGroup;
+        if (
+          !groupName ||
+          !globalData ||
+          !globalData.details
+        )
+          return;
+
+        // correct data source
+        let rawData;
+        let valueUnit;
+        let colorPalette;
+        let axisColor;
+
+        if (currentAssessmentView === 'mwh') {
+            rawData = globalData.details.assessment_mwh || [];
+            valueUnit = "MWh";
+            // Green/Teal palette for MWh
+            colorPalette = ["#10b981", "#34d399", "#6ee7b7", "#059669", "#047857"];
+            axisColor = "#10b981";
+        } else {
+            rawData = globalData.details.assessment_raw || globalData.details.assessment_cost || [];
+            valueUnit = "万元";
+            // Orange/Red palette for Cost
+            colorPalette = ["#f97316", "#fbbf24", "#3b82f6", "#ef4444", "#f59e0b", "#8b5cf6"];
+            axisColor = "#f97316";
+        }
+        
+        if (!rawData || rawData.length === 0) {
+            alert("该视图暂无数据");
+            return;
+        }
+
+        // 1. Filter Items for this Group
+        // Note: We use itemGroupMap from Cost analysis. 
+        // We assume MWh items have same keys or similar enough to be mapped?
+        // If keys differ, we might need a separate map. 
+        // For now, assume keys are shared (normalized item names).
+        const itemGroupMap = globalData.item_group_map || (globalData.details && globalData.details.item_group_map) || {};
+        
+        // Find items that belong to this group
+        // If specific keys for MWh exist, this might miss them if they are not in the map.
+        // Fallback: If MWh view and no items found via map, maybe try to match fuzzy?
+        // Let's stick to map for now.
+        const targetItems = Object.entries(itemGroupMap)
+          .filter(
+            ([item, group]) => group === groupName || groupName === "全部",
+          )
+          .map(([item]) => item);
+
+        if (targetItems.length === 0 && groupName !== "全部") {
+          // If no items found in map, maybe this group doesn't have cost items?
+          // Or maybe I should check the data columns directly?
+          // For safety, proceed.
+        }
+
+        // 2. Aggregate value per Item for the top pie chart
+        let itemTotals = {};
+        targetItems.forEach((item) => (itemTotals[item] = 0));
+
+        // Aggregate
+        rawData.forEach((row) => {
+          targetItems.forEach((item) => {
+            // value check
+            const val = parseFloat(row[item]) || 0;
+            // For MWh, values might be positive or negative depending on context.
+            // Usually we sum them.
+            itemTotals[item] += val;
+          });
+        });
+
+        const topItems = Object.entries(itemTotals)
+          .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])) // Sort by magnitude
+          .filter((x) => x[1] !== 0); // Remove zeros
+
+        // 3. Aggregate value per Station for the table
+        let stationTotals = {};
+        rawData.forEach((row) => {
+          let sum = 0;
+          targetItems.forEach((item) => (sum += parseFloat(row[item]) || 0));
+          if (sum !== 0) {
+            stationTotals[row.Station] = (stationTotals[row.Station] || 0) + sum;
+          }
+        });
+
+        const topStations = Object.entries(stationTotals).sort(
+          (a, b) => b[1] - a[1], // Sort descending? Or magnitude? Assumed positive cost/quantity usually.
+        );
+
+        // Period/Station Info for Title
+        const periodSelect = document.getElementById("periodSelect");
+        const stationSelect = document.getElementById("stationSelect");
+        const periodText = periodSelect.options[periodSelect.selectedIndex]?.text || "全部周期";
+        const stationText = stationSelect.options[stationSelect.selectedIndex]?.text || "全部场站";
+
+        // Render Markup
+        // We inject the toggle into the title or body. 
+        // Let's use openModal logic but append toggle.
+        openModal(`${groupName} - 详细考核分析 <span style="font-size: 0.8rem; font-weight: normal; color: #94a3b8; margin-left: 1rem;">${periodText} · ${stationText}</span>`);
+
+        // Calculate height for station chart
+        const stationChartHeight = Math.max(300, topStations.length * 30);
+        
+        // Prepare Pie Data
+        const pieData = topItems.map(x => ({ name: x[0], value: parseFloat(x[1].toFixed(2)) }));
+        
+        // Toggle Buttons HTML
+        const toggleHtml = `
+            <div style="position: absolute; right: 50px; top: 20px; z-index: 10;">
+                <div class="toggle-group ${currentAssessmentView === 'mwh' ? 'theme-mwh' : ''}" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);">
+                    <button onclick="switchAssessmentView('cost')" class="toggle-item ${currentAssessmentView === 'cost' ? 'active' : ''}" style="font-size: 0.8rem; padding: 4px 12px;">考核费用 (万元)</button>
+                    <button onclick="switchAssessmentView('mwh')" class="toggle-item ${currentAssessmentView === 'mwh' ? 'active' : ''}" style="font-size: 0.8rem; padding: 4px 12px;">考核电量 (MWh)</button>
+                </div>
+            </div>
+        `;
+
+        const content = document.getElementById("modalTableWrap");
+        content.innerHTML = `
+            ${toggleHtml}
+            <div style="display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; margin-top: 1rem;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h4 style="color: var(--text-sub); margin-bottom: 1rem;">细分项占比 (${valueUnit})</h4>
+                    <div id="detailItemChart" style="height: 300px; width: 100%;"></div>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                     <h4 style="color: var(--text-sub); margin-bottom: 1rem;">涉及场站排名 (全部)</h4>
+                     <div style="max-height: 400px; overflow-y: auto; padding-right: 10px;">
+                        <div id="detailStationChart" style="height: ${stationChartHeight}px; width: 100%;"></div>
+                     </div>
+                </div>
+            </div>
+            <h4 style="color: var(--text-sub); margin-bottom: 1rem;">考核明细表</h4>
+            <div>
+                <table class="data-table">
+                    <thead><tr><th>排名</th><th>场站名称</th><th>总计 (${valueUnit})</th><th>查看</th></tr></thead>
+                    <tbody>
+                        ${topStations
+                          .map(
+                            (s, i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td>${s[0]}</td>
+                                <td style="color: ${axisColor}; font-weight:600;">${s[1].toFixed(2)}</td>
+                                <td style="color: #94a3b8; font-size: 0.85rem;">查看原始单据</td>
+                            </tr>
+                        `,
+                          )
+                          .join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Render Item Chart (Pie)
+        setTimeout(() => {
+          const chart1 = echarts.init(
+            document.getElementById("detailItemChart"),
+          );
+          chart1.setOption({
+            tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+            legend: { 
+                type: 'scroll',
+                orient: 'vertical',
+                right: 0,
+                top: 20,
+                bottom: 20,
+                textStyle: { color: "#cbd5e1" } 
+            },
+            series: [
+              {
+                type: "pie",
+                radius: ["40%", "70%"],
+                center: ["40%", "50%"],
+                avoidLabelOverlap: true,
+                itemStyle: {
+                  borderRadius: 10,
+                  borderColor: "#1e293b",
+                  borderWidth: 2,
+                },
+                label: { show: false },
+                data: pieData,
+                color: colorPalette,
+              },
+            ],
+          });
+
+          // Render Station Chart (All Stations)
+          const chart2 = echarts.init(
+            document.getElementById("detailStationChart"),
+          );
+          chart2.setOption({
+            tooltip: { trigger: "axis" },
+            grid: {
+              left: "3%",
+              right: "4%",
+              bottom: "3%",
+              top: "5%",
+              containLabel: true,
+            },
+            xAxis: { 
+                type: "value", 
+                axisLabel: { color: "#94a3b8" },
+                position: 'top',
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
+            },
+            yAxis: {
+              type: "category",
+              data: topStations.map((x) => x[0]),
+              axisLabel: { color: "#cbd5e1" },
+              inverse: true,
+            },
+            series: [
+              {
+                type: "bar",
+                data: topStations.map((x) => x[1].toFixed(2)),
+                itemStyle: { color: axisColor },
+                label: { show: true, position: 'right', color: '#fff', fontSize: 10 }
+              },
+            ],
+          });
+        }, 100);
+      }
+
+      function showCompensationDetail(compName) {
+        if (
+          !globalData ||
+          !globalData.details ||
+          !globalData.details.compensation_raw
+        )
+          return;
+
+        const raw = globalData.details.compensation_raw;
+        
+        let stationTotals = {};
+        raw.forEach((row) => {
+            const val = parseFloat(row[compName]) || 0;
+            if (val !== 0) {
+                stationTotals[row.Station] = (stationTotals[row.Station] || 0) + val;
+            }
+        });
+
+        const topStations = Object.entries(stationTotals).sort(
+          (a, b) => b[1] - a[1],
+        );
+        
+        if (topStations.length === 0) return;
+
+        openModal(`${compName} - 详细补偿分析`);
+
+        const content = document.getElementById("modalTableWrap");
+        content.innerHTML = `
+            <div style="display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 600px;">
+                     <h4 style="color: var(--text-sub); margin-bottom: 1rem;">涉及场站排名 (TOP 10)</h4>
+                     <div id="detailStationChart" style="height: 350px; width: 100%;"></div>
+                </div>
+            </div>
+            <h4 style="color: var(--text-sub); margin-bottom: 1rem;">场站补偿明细表</h4>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>排名</th><th>场站名称</th><th>补偿总额</th><th>原始数据</th></tr></thead>
+                    <tbody>
+                        ${topStations
+                          .map(
+                            (s, i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td>${s[0]}</td>
+                                <td style="color: #10b981;">${s[1].toFixed(2)}</td>
+                                <td style="color: #94a3b8; font-size: 0.85rem;">查看</td>
+                            </tr>
+                        `,
+                          )
+                          .join("")}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+          setTimeout(() => {
+          const chart2 = echarts.init(
+            document.getElementById("detailStationChart"),
+          );
+          chart2.setOption({
+            tooltip: { trigger: "axis" },
+            grid: {
+              left: "3%",
+              right: "5%",
+              bottom: "3%",
+              containLabel: true,
+            },
+            xAxis: { type: "value", axisLabel: { color: "#94a3b8" } },
+            yAxis: {
+              type: "category",
+              data: topStations.slice(0, 15).map((x) => x[0]),
+              axisLabel: { color: "#cbd5e1" },
+              inverse: true,
+            },
+            series: [
+              {
+                type: "bar",
+                data: topStations.slice(0, 15).map((x) => x[1].toFixed(2)),
+                itemStyle: { color: "#10b981" },
+                label: { show: true, position: 'right', color: '#fff' }
+              },
+            ],
+          });
+        }, 100);
+      }
+
+      function loadRecord(item) {
+        currentFilename = item.filename; // Sync filename for period selection
+        const data = item.data;
+        resultsArea.style.display = "block";
+        document.getElementById("chartsGrid").style.display = "grid";
+        setTimeout(() => {
+          renderDashboard(data);
+          if (item.report_filename) {
+              document.getElementById("downloadReport").href = "/download/" + item.report_filename;
+          }
+          
+          setTimeout(() => {
+            window.dispatchEvent(new Event("resize"));
+            resultsArea.scrollIntoView({ behavior: "smooth" });
+          }, 100);
+          setTimeout(() => {
+            window.dispatchEvent(new Event("resize"));
+          }, 500);
+        }, 50);
+      }
+
+      async function deleteHistory(fileId) {
+        const password = prompt("请输入删除密码:");
+        if (password === null) return;
+
+        try {
+          const res = await fetch(
+            `/two_rules/history/${fileId}?password=${encodeURIComponent(password)}`,
+            { method: "DELETE" },
+          );
+          const data = await res.json();
+          if (data.success) {
+            fetchHistory();
+          } else {
+            alert(data.error || "删除失败");
+          }
+        } catch (err) {
+          alert("网络错误");
+        }
+      }
+
+      async function handleRefilter() {
+        if (!currentFilename) return;
+
+        uploadStatus.style.display = "block";
+        try {
+          const res = await fetch("/reanalyze_two_rules", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename: currentFilename,
+              period: periodSelect.value,
+              station: stationSelect.value,
+            }),
+          });
+          const json = await res.json();
+          if (json.success) {
+            renderDashboard(json.data);
+            document.getElementById("downloadReport").href = json.report_url;
+            
+            setTimeout(() => {
+              window.dispatchEvent(new Event("resize"));
+            }, 100);
+            setTimeout(() => {
+              window.dispatchEvent(new Event("resize"));
+            }, 500);
+          } else {
+            alert("重新统计失败: " + json.error);
+          }
+        } catch (err) {
+          alert("网络错误");
+        } finally {
+          uploadStatus.style.display = "none";
+        }
+      }
+
+      periodSelect.addEventListener("change", handleRefilter);
+      stationSelect.addEventListener("change", handleRefilter);
+
+      // --- Drill-down Handlers ---
+
+      const modal = document.getElementById("detailModal");
+      const modalTitle = document.getElementById("modalTitle");
+      const modalChartDiv = document.getElementById("modalChart");
+      const modalTableWrap = document.getElementById("modalTableWrap");
+      let modalChart = null;
+
+      function openModal(title) {
+        modalTitle.innerHTML = title;
+        modal.style.display = "flex";
+        // Clear previous content
+        if (modalChart) {
+          modalChart.dispose();
+          modalChart = null;
+        }
+        modalTableWrap.innerHTML = "";
+      }
+
+      function closeModal() {
+        modal.style.display = "none";
+      }
+
+      // Close on outside click
+      window.onclick = function (event) {
+        if (event.target == modal) closeModal();
+      };
+
+      let currentDetailStation = null;
+      let currentDetailView = 'cost'; // 'cost' or 'mwh'
+
+      // 1. Show Station Detail (Assessment vs Compensation breakdown)
+      function showStationDetail(stationName) {
+        if (!globalData || !globalData.details) return;
+        currentDetailStation = stationName;
+        currentDetailView = 'cost'; // Reset to default
+        
+        openModal(stationName + " - 详细考核分析");
+        renderStationDetailModal();
+      }
+
+      let currentDetailChart = null;
+
+      function highlightStationDetail(name) {
+          if (currentDetailChart) {
+              currentDetailChart.dispatchAction({
+                  type: 'highlight',
+                  seriesIndex: 0,
+                  name: name
+              });
+              currentDetailChart.dispatchAction({
+                  type: 'showTip',
+                  seriesIndex: 0,
+                  name: name
+              });
+          }
+      }
+
+      function unhighlightStationDetail() {
+          if (currentDetailChart) {
+              currentDetailChart.dispatchAction({
+                  type: 'downplay',
+                  seriesIndex: 0
+              });
+              currentDetailChart.dispatchAction({
+                  type: 'hideTip'
+              });
+          }
+      }
+
+      function renderStationDetailModal() {
+        if (!currentDetailStation) return;
+        
+        // Data sources
+        const asmCostRaw = globalData.details.assessment_cost || globalData.details.assessment_raw || [];
+        const asmMwhRaw = globalData.details.assessment_mwh || [];
+        const compRaw = globalData.details.compensation_raw || []; 
+        
+        const stationCost = asmCostRaw.find((r) => r.Station === currentDetailStation);
+        const stationMwh = asmMwhRaw.find((r) => r.Station === currentDetailStation);
+        const stationComp = compRaw.find((r) => r.Station === currentDetailStation);
+
+        const pSel = document.getElementById("periodSelect");
+        const periodText = pSel.options[pSel.selectedIndex]?.text || "全部周期";
+        openModal(`${currentDetailStation} - 考核与补偿明细 <span style="font-size: 0.8rem; font-weight: normal; color: #94a3b8; margin-left: 1rem;">${periodText}</span>`);
+
+        // Inject Toggle Buttons
+        const toggleHtml = `
+            <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
+                <div class="toggle-group ${currentDetailView === 'mwh' ? 'theme-mwh' : ''}">
+                    <button onclick="switchDetailView('cost')" class="toggle-item ${currentDetailView === 'cost' ? 'active' : ''}">考核费用 (万元)</button>
+                    <button onclick="switchDetailView('mwh')" class="toggle-item ${currentDetailView === 'mwh' ? 'active' : ''}">考核电量 (MWh)</button>
+                </div>
+            </div>
+        `;
+        
+        // Determine active dataset
+        const activeData = currentDetailView === 'cost' ? stationCost : stationMwh;
+        const unit = currentDetailView === 'cost' ? '万元' : 'MWh';
+        const color = currentDetailView === 'cost' ? '#ef4444' : '#f59e0b'; 
+        
+        // Build items
+        let asmItems = [];
+        const excludeKeys = ["Station", "Date", "装机容量(MW)", "并网时间(h)", "理论发电量(MWh)", "实际发电量(MWh)"];
+        
+        if (activeData) {
+          Object.keys(activeData).forEach((k) => {
+            if (
+              !excludeKeys.includes(k) &&
+              !k.startsWith("abs_") &&
+              typeof activeData[k] === "number" &&
+              activeData[k] !== 0
+            ) {
+              asmItems.push({ name: k, value: activeData[k] });
+            }
+          });
+        }
+        asmItems.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+
+        // Assign Colors
+        const palette = [
+            "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", 
+            "#ec4899", "#6366f1", "#14b8a6", "#f97316", "#06b6d4",
+            "#84cc16", "#d946ef"
+        ];
+        asmItems.forEach((item, index) => {
+            item.itemStyle = { color: palette[index % palette.length] };
+            item.color = palette[index % palette.length];
+        });
+
+        // Start building Modal Body
+        let bodyHtml = toggleHtml;
+        
+        // Initial Calculation
+        const asmTotal = asmItems.reduce((sum, item) => sum + item.value, 0);
+
+        if (asmItems.length === 0) {
+            bodyHtml += '<p style="text-align: center; color: #94a3b8; padding: 2rem;">该场站无此项记录</p>';
+        } else {
+             bodyHtml += `
+                <div style="display: flex; gap: 3rem; align-items: start;">
+                    <div style="width: 50%; height: 480px; flex-shrink: 0;" id="modalChartInner"></div>
+                    <div style="flex: 1; padding-top: 1rem;">
+                        <h4 style="color: ${color}; border-bottom: 1px solid ${color}; padding-bottom: 0.8rem; margin-bottom: 1.2rem; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center;">
+                            <span>${currentDetailView === 'cost' ? '考核费用' : '考核电量'}明细</span>
+                            <span style="font-size: 0.9rem; color: #cbd5e1;">总计: <span id="stationDetailTotal" style="font-size: 1.2rem; font-weight: 700; color: ${color}; margin-left: 5px;">${asmTotal.toFixed(2)}</span> ${unit}</span>
+                        </h4>
+                        <div style="max-height: 380px; overflow-y: auto; padding-right: 0.5rem;">
+                            <table class="data-table">
+                                <thead style="position: sticky; top: 0; background: var(--card-bg); z-index: 5;">
+                                    <tr>
+                                        <th style="text-align: left; padding: 0.8rem 0; font-size: 0.85rem; color: #94a3b8;">考核项</th>
+                                        <th style="text-align: right; padding: 0.8rem 0; font-size: 0.85rem; color: #94a3b8;">数值 (${unit})</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stationDetailTable">
+                                    <!-- Content will be updated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+             `;
+        }
+
+        if (stationComp && currentDetailView === 'cost') {
+            let compItems = [];
+            Object.keys(stationComp).forEach((k) => {
+              if (k !== "Station" && typeof stationComp[k] === "number" && stationComp[k] !== 0) {
+                compItems.push({ name: k, value: stationComp[k] });
+              }
+            });
+            compItems.sort((a, b) => b.value - a.value);
+            
+            if (compItems.length > 0) {
+                const compTotal = compItems.reduce((sum, item) => sum + item.value, 0);
+                bodyHtml += `
+                <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 2rem;">
+                     <h4 style="color: #10b981; margin-bottom: 1.5rem; text-align: center;">辅助服务补偿明细 (万元)</h4>
+                     <div style="display: flex; gap: 3rem; align-items: start;">
+                         <div id="modalCompChartInner" style="width: 48%; height: 300px; flex-shrink: 0;"></div>
+                         <div style="flex: 1;">
+                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(16, 185, 129, 0.3);">
+                                 <span style="color: #10b981; font-weight: 600;">总计收入</span>
+                                 <span style="font-size: 1.2rem; font-weight: 700; color: #10b981;">${compTotal.toFixed(2)} <span style="font-size: 0.8rem;">万元</span></span>
+                             </div>
+                             <table class="data-table">
+                                 ${compItems.slice(0, 5).map(i => `<tr><td style="padding: 0.6rem 0;">${i.name}</td><td style="text-align: right; color: #10b981; font-weight: 600;">${i.value.toFixed(2)}</td></tr>`).join("")}
+                             </table>
+                         </div>
+                     </div>
+                </div>
+                `;
+                window.tempCompItems = compItems; 
+            }
+        }
+
+        document.getElementById("modalTableWrap").innerHTML = bodyHtml;
+
+        // Render Table Function
+        const renderTable = (items) => {
+            const tableEl = document.getElementById('stationDetailTable');
+            if (!tableEl) return;
+            // Only show Top 10 or all? User request implies detailed check. Let's show all visible.
+            // But if many, scrolling is active. 
+            // Let's show items passed.
+            tableEl.innerHTML = items.map(i => `
+                <tr onmouseenter="highlightStationDetail('${i.name}')" onmouseleave="unhighlightStationDetail()" style="cursor: pointer; transition: background 0.2s;">
+                    <td style="padding: 0.8rem 0; color: var(--text-sub); display:flex; align-items:center;">
+                        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${i.color};margin-right:10px;"></span>
+                        ${i.name}
+                    </td>
+                    <td style="text-align: right; color: ${color}; font-weight: 700; font-size: 1.05rem;">${i.value.toFixed(2)}</td>
+                </tr>
+            `).join("");
+        };
+        
+        // Initial Table Render
+        if (asmItems.length > 0) {
+            renderTable(asmItems);
+            
+            setTimeout(() => {
+                const chartDom = document.getElementById("modalChartInner");
+                if (chartDom) {
+                     if (currentDetailChart) {
+                         currentDetailChart.dispose();
+                     }
+                     currentDetailChart = echarts.init(chartDom);
+                     currentDetailChart.setOption({
+                      tooltip: { trigger: "item", formatter: "{b}: {c} (" + unit + ")" },
+                      legend: { 
+                        type: "scroll", 
+                        orient: "horizontal", 
+                        bottom: 0, 
+                        width: "100%",
+                        left: 'center',
+                        textStyle: { color: "#cbd5e1", fontSize: 11 },
+                        pageTextStyle: { color: "#fff" },
+                        pageIconColor: "#3b82f6"
+                      },
+                      series: [{
+                          name: "明细",
+                          type: "pie",
+                          radius: ["35%", "65%"], 
+                          center: ["50%", "38%"], 
+                          data: asmItems,
+                          label: { show: false },
+                          itemStyle: { borderRadius: 8, borderColor: "#0f172a", borderWidth: 2 }
+                      }]
+                    });
+                    
+                    // Event Listener for Legend Change
+                    currentDetailChart.on('legendselectchanged', function(params) {
+                        const selected = params.selected;
+                        const visibleItems = asmItems.filter(item => selected[item.name] !== false);
+                        const newTotal = visibleItems.reduce((sum, item) => sum + item.value, 0);
+                        
+                        // Update Total
+                        const totalEl = document.getElementById('stationDetailTotal');
+                        if(totalEl) totalEl.innerText = newTotal.toFixed(2);
+                        
+                        // Update Table
+                        renderTable(visibleItems);
+                    });
+                }
+            }, 50);
+        }
+        
+        if (stationComp && currentDetailView === 'cost' && window.tempCompItems) {
+            setTimeout(() => {
+                const chartDom = document.getElementById("modalCompChartInner");
+                if (chartDom) {
+                    let myChart = echarts.getInstanceByDom(chartDom);
+                    if (myChart) myChart.dispose();
+                    myChart = echarts.init(chartDom);
+                    myChart.setOption({
+                      tooltip: { trigger: "item", formatter: "{b}: {c}" },
+                      legend: { 
+                        type: "scroll", 
+                        orient: "horizontal", 
+                        bottom: 0, 
+                        width: '100%',
+                        left: 'center',
+                        textStyle: { color: "#cbd5e1", fontSize: 10 },
+                        pageIconColor: "#10b981"
+                      },
+                      series: [{
+                          type: "pie",
+                          radius: ["40%", "70%"],
+                          center: ["50%", "45%"],
+                          data: window.tempCompItems,
+                          label: { show: false },
+                          color: ["#8b5cf6", "#10b981", "#f59e0b"]
+                      }]
+                    });
+                }
+                delete window.tempCompItems;
+            }, 50);
+        }
+      }
+
+      function switchDetailView(mode) {
+          currentDetailView = mode;
+          renderStationDetailModal();
+      }
+
+      // Init
+      fetchHistory();
+    </script>
+  </body>
+</html>
