@@ -437,6 +437,20 @@ def analyze_excel(filepath, output_path, period=None, station=None):
         if not df_comp.empty: df_comp = df_comp[df_comp['Station'] == station]
         if not df_main.empty: df_main = df_main[df_main['Station'] == station]
     
+    # --- NEW: Extract monthly breakdown for trends before station aggregation ---
+    monthly_summary = []
+    if not df_settlement.empty and 'Date' in df_settlement.columns:
+        # Group by Date and calculate totals
+        m_counts = df_settlement.groupby('Date').sum(numeric_only=True).reset_index()
+        for _, row in m_counts.iterrows():
+            monthly_summary.append({
+                'Date': row['Date'],
+                'NetIncome': round(row.get('NetIncome', 0), 2),
+                'AssessmentCost': round(row.get('AssessmentCost', 0), 2),
+                'CompensationIncome': round(row.get('CompensationIncome', 0), 2)
+            })
+    analysis_results['monthly_summary'] = sorted(monthly_summary, key=lambda x: x['Date'])
+
     # Aggregate data by station if multiple entries exist
     if not df_settlement.empty:
         # Use only numeric columns for sum to avoid TypeError

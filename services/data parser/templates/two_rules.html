@@ -1246,18 +1246,26 @@
         const categories = new Set();
         
         history.forEach(item => {
-            if (item.data && item.data.selected_period && item.data.selected_period !== 'all') {
-                periods.add(item.data.selected_period);
-                years.add(item.data.selected_period.split('-')[0]);
-            }
-            if (item.data && item.data.available_stations) {
-                item.data.available_stations.forEach(s => stations.add(s));
-            }
-            if (item.data && item.data.assessment_composition) {
-                Object.keys(item.data.assessment_composition).forEach(cat => categories.add(cat));
-            }
-            if (item.data && item.data.comp_composition) {
-                Object.keys(item.data.comp_composition).forEach(cat => categories.add(cat));
+            if (item.data) {
+                if (item.data.available_periods) {
+                    item.data.available_periods.forEach(p => {
+                        periods.add(p);
+                        years.add(p.split('-')[0]);
+                    });
+                }
+                if (item.data.selected_period && item.data.selected_period !== 'all') {
+                    periods.add(item.data.selected_period);
+                    years.add(item.data.selected_period.split('-')[0]);
+                }
+                if (item.data.available_stations) {
+                    item.data.available_stations.forEach(s => stations.add(s));
+                }
+                if (item.data.assessment_composition) {
+                    Object.keys(item.data.assessment_composition).forEach(cat => categories.add(cat));
+                }
+                if (item.data.comp_composition) {
+                    Object.keys(item.data.comp_composition).forEach(cat => categories.add(cat));
+                }
             }
         });
         

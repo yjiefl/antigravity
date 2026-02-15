@@ -321,12 +321,57 @@ def get_two_rules_trends():
     
     history = load_two_rules_history()
     
+    # Auto-patching older history entries that lack monthly_summary
+    history_updated = False
+    for entry in history:
+        if 'data' in entry and entry['data'].get('selected_period') == 'all' and 'monthly_summary' not in entry['data']:
+            # Try to re-analyze to get the summary
+            filename = entry.get('filename')
+            if filename:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if os.path.exists(filepath):
+                    try:
+                        from analyzer_two_rules import analyze_excel
+                        # Use a dummy output path
+                        dummy_out = os.path.join(app.config['OUTPUT_FOLDER'], f"temp_{entry['file_id']}.xlsx")
+                        new_results = analyze_excel(filepath, dummy_out, period='all')
+                        entry['data'] = new_results
+                        history_updated = True
+                        if os.path.exists(dummy_out): os.remove(dummy_out)
+                    except Exception as e:
+                        print(f"Auto-patch failed for {filename}: {e}")
+    
+    if history_updated:
+        save_two_rules_history(history)
+    
     period_map = {}
     for entry in history:
-        if 'data' in entry and entry['data'].get('selected_period') and entry['data']['selected_period'] != 'all':
-            p = entry['data']['selected_period']
+        data = entry.get('data', {})
+        p = data.get('selected_period')
+        if not p: continue
+        
+        if p != 'all':
+            # Specific month entry - highest priority
             if p not in period_map:
-                period_map[p] = entry['data']
+                period_map[p] = data
+        else:
+            # "All" entry - extract monthly_summary if it exists and we don't have better data
+            summary = data.get('monthly_summary', [])
+            for m_data in summary:
+                m_date = m_data.get('Date')
+                if m_date and m_date not in period_map:
+                    # Create a mini-data object for the trend
+                    period_map[m_date] = {
+                        'profit_ranking': {
+                            'full': [{
+                                'Station': 'all',
+                                'NetIncome': m_data.get('NetIncome', 0),
+                                'AssessmentCost': m_data.get('AssessmentCost', 0),
+                                'CompensationIncome': m_data.get('CompensationIncome', 0)
+                            }]
+                        },
+                        'selected_period': m_date
+                    }
     
     sorted_periods = sorted(period_map.keys())
     
