@@ -1293,7 +1293,7 @@
             indicatorSelect.innerHTML = `<option value="overview">总体损益概览 (盈亏/考核/补偿)</option>` + 
                 sortedCategories.map(cat => `<option value="${cat}">明细指标: ${cat}</option>`).join('');
 
-            updateTrends();
+            setTimeout(updateTrends, 100);
         }
       }
 
@@ -1412,14 +1412,18 @@
             grid: {
                 left: '3%',
                 right: '4%',
-                bottom: '12%',
+                bottom: '15%',
                 top: '10%',
                 containLabel: true
             },
             xAxis: {
                 type: 'category',
                 data: trends.periods,
-                axisLabel: { color: '#94a3b8', fontSize: 11 },
+                axisLabel: { 
+                    color: '#94a3b8', 
+                    fontSize: 10,
+                    rotate: 35
+                },
                 axisLine: { lineStyle: { color: '#334155' } }
             },
             yAxis: {
@@ -1434,6 +1438,7 @@
         };
         
         chart.setOption(option);
+        setTimeout(() => chart.resize(), 0);
       }
 
       let currentAssessmentGroup = null;
