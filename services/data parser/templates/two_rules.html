@@ -479,28 +479,6 @@
           </div>
         </div>
 
-        <!-- 关键亮点与巡检汇总 -->
-        <div class="card wide-card" id="highlightsCard" style="display: none; min-height: auto; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <div class="card-title" style="margin-bottom: 1.2rem;">关键指标巡检汇总 (MWh)</div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
-                <div style="background: rgba(249, 115, 22, 0.05); border: 1px solid rgba(249, 115, 22, 0.1); padding: 1.2rem; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">功率预测考核之最</div>
-                    <div id="hl_pred_name" style="font-size: 1.1rem; color: #fff; font-weight: 700; margin-bottom: 0.2rem;">-</div>
-                    <div id="hl_pred_val" style="font-size: 1rem; color: #f97316; font-weight: 600;">-</div>
-                </div>
-                <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); padding: 1.2rem; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">技术指导考核之最</div>
-                    <div id="hl_tech_name" style="font-size: 1.1rem; color: #fff; font-weight: 700; margin-bottom: 0.2rem;">-</div>
-                    <div id="hl_tech_val" style="font-size: 1rem; color: #3b82f6; font-weight: 600;">-</div>
-                </div>
-                <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.1); padding: 1.2rem; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem;">数据质量考核之最</div>
-                    <div id="hl_data_name" style="font-size: 1.1rem; color: #fff; font-weight: 700; margin-bottom: 0.2rem;">-</div>
-                    <div id="hl_data_val" style="font-size: 1rem; color: #10b981; font-weight: 600;">-</div>
-                </div>
-            </div>
-        </div>
-
         <div class="viz-grid" id="chartsGrid" style="display: none">
           <!-- 经营损益排行 -->
           <div class="card wide-card chart-card">
@@ -659,41 +637,6 @@
 
       function renderDashboard(data) {
         globalData = data; // Save to global scope
-
-        // --- Render Highlights ---
-        if (data.category_highlights) {
-            document.getElementById('highlightsCard').style.display = 'block';
-            const h = data.category_highlights;
-            
-            const pred = h['功率预测'];
-            if(pred) {
-                document.getElementById('hl_pred_name').innerText = pred.station;
-                document.getElementById('hl_pred_val').innerText = pred.amount.toFixed(2) + ' MWh';
-            } else {
-                document.getElementById('hl_pred_name').innerText = "暂无高额考核";
-                document.getElementById('hl_pred_val').innerText = "-";
-            }
-            
-            const tech = h['技术指导与管理'];
-            if(tech) {
-                document.getElementById('hl_tech_name').innerText = tech.station;
-                document.getElementById('hl_tech_val').innerText = tech.amount.toFixed(2) + ' MWh';
-            } else {
-                document.getElementById('hl_tech_name').innerText = "暂无高额考核";
-                document.getElementById('hl_tech_val').innerText = "-";
-            }
-            
-            const dataQ = h['数据合格率'];
-            if(dataQ) {
-                document.getElementById('hl_data_name').innerText = dataQ.station;
-                document.getElementById('hl_data_val').innerText = dataQ.amount.toFixed(2) + ' MWh';
-            } else {
-                document.getElementById('hl_data_name').innerText = "暂无高额考核";
-                document.getElementById('hl_data_val').innerText = "-";
-            }
-        } else {
-            document.getElementById('highlightsCard').style.display = 'none';
-        }
 
         // Update Filters
         const showPeriod =

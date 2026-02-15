@@ -558,68 +558,8 @@ def analyze_excel(filepath, output_path, period=None, station=None):
     
     analysis_results['item_group_map'] = item_group_map
 
-    # 3. High-impact stations per category (Highlights using Mwh)
-    highlights = {}
-    if not df_assessment_mwh.empty:
-        # Find max for specific key categories (with variations)
-        category_aliases = {
-            '技术指导与管理': ['技术指导与管理总考核电量（MWH）', '技术指导与管理', '技术指导'],
-            '功率预测': ['功率预测总考核电量（MWH）', '功率预测总考核电量', '风电(光伏)功率预测', '风电功率预测', '光伏功率预测', '功率预测'],
-            '数据合格率': ['数据合格率总考核电量（MWH）', '数据合格率总考核电量', '风电(光伏)数据合格率', '数据合格率', '场站数据合格率']
-        }
-        
-        # Define station types (Basic heuristic based on name)
-        wind_stations = df_assessment_mwh[df_assessment_mwh['Station'].str.contains('风电', na=False)]
-        solar_stations = df_assessment_mwh[df_assessment_mwh['Station'].str.contains('光伏', na=False)]
-        
-        # Helper to find column by aliases
-        def get_best_col(aliases):
-            for a in aliases:
-                if a in df_assessment_mwh.columns: return a
-            return None
+    analysis_results['category_highlights'] = {} # Placeholder removed by user request
 
-        for label, aliases in category_aliases.items():
-            cat = get_best_col(aliases)
-            if cat:
-                # Use absolute value to ignore sign differences
-                df_assessment_mwh['abs_' + cat] = df_assessment_mwh[cat].abs()
-                
-                # Overall top
-                top = df_assessment_mwh.sort_values(by='abs_' + cat, ascending=False).iloc[0]
-                highlights[label] = {
-                    'station': top['Station'],
-                    'amount': top[cat],
-                    'type': '总体'
-                }
-                
-                # Wind top
-                if not wind_stations.empty:
-                    wind_df = wind_stations.copy()
-                    wind_df['abs_' + cat] = wind_df[cat].abs()
-                    top_wind = wind_df.sort_values(by='abs_' + cat, ascending=False).iloc[0]
-                    highlights[label + '_wind'] = {
-                        'station': top_wind['Station'],
-                        'amount': top_wind[cat],
-                        'type': '风电'
-                    }
-
-                # Solar top
-                if not solar_stations.empty:
-                    solar_df = solar_stations.copy()
-                    solar_df['abs_' + cat] = solar_df[cat].abs()
-                    top_solar = solar_df.sort_values(by='abs_' + cat, ascending=False).iloc[0]
-                    highlights[label + '_solar'] = {
-                        'station': top_solar['Station'],
-                        'amount': top_solar[cat],
-                        'type': '光伏'
-                    }
-
-        # Cleanup helper columns starting with 'abs_'
-        abs_cols = [c for c in df_assessment_mwh.columns if str(c).startswith('abs_')]
-        if abs_cols:
-            df_assessment_mwh = df_assessment_mwh.drop(columns=abs_cols)
-
-    analysis_results['category_highlights'] = highlights
 
     # 2.5 补偿动因分析 (Total breakdown)
     if not df_comp.empty:
